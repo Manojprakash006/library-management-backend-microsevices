@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package library.books;
+
+service BooksService {
+  rpc CreateBook (CreateBookRequest) returns (BookResponse);
+  rpc GetBookById (GetBookByIdRequest) returns (BookResponse);
+  rpc GetAllBooks (GetAllBooksRequest) returns (BooksListResponse);
+  rpc UpdateBook (UpdateBookRequest) returns (BookResponse);
+  rpc DeleteBook (DeleteBookRequest) returns (DeleteResponse);
+  rpc SearchBooks (SearchBooksRequest) returns (BooksListResponse);
+  rpc BrowseBooks (BrowseBooksRequest) returns (BooksListResponse);
+  rpc GetBookReviews (GetBookReviewsRequest) returns (ReviewsListResponse);
+  rpc CreateReview (CreateReviewRequest) returns (ReviewResponse);
+  rpc UpdateReview (UpdateReviewRequest) returns (ReviewResponse);
+  rpc DeleteReview (DeleteReviewRequest) returns (DeleteResponse);
+}
+
+message CreateBookRequest {
+  string bookId = 1;
+  string isbn = 2;
+  string title = 3;
+  string author = 4;
+  string publisher = 5;
+  int32 publishYear = 6;
+  string category = 7;
+  string edition = 8;
+  string language = 9;
+  int32 pages = 10;
+  double price = 11;
+  string rackNumber = 12;
+  string shelfNumber = 13;
+  string bookType = 14;
+  string condition = 15;
+  string description = 16;
+  int32 quantity = 17;
+  string coverUrl = 18;
+}
+
+message GetBookByIdRequest {
+  string id = 1;
+}
+
+message GetAllBooksRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message UpdateBookRequest {
+  string id = 1;
+  string isbn = 2;
+  string title = 3;
+  string author = 4;
+  string publisher = 5;
+  int32 publishYear = 6;
+  string category = 7;
+  string edition = 8;
+  string language = 9;
+  int32 pages = 10;
+  double price = 11;
+  string rackNumber = 12;
+  string shelfNumber = 13;
+  string bookType = 14;
+  string condition = 15;
+  string description = 16;
+  int32 quantity = 17;
+  string coverUrl = 18;
+}
+
+message DeleteBookRequest {
+  string id = 1;
+}
+
+message SearchBooksRequest {
+  string query = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message BrowseBooksRequest {
+  string category = 1;
+  string rackNumber = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message GetBookReviewsRequest {
+  string bookId = 1;
+}
+
+message CreateReviewRequest {
+  string bookId = 1;
+  string memberId = 2;
+  int32 rating = 3;
+  string reviewTitle = 4;
+  string review = 5;
+  bool recommended = 6;
+}
+
+message UpdateReviewRequest {
+  string id = 1;
+  int32 rating = 2;
+  string reviewTitle = 3;
+  string review = 4;
+  bool recommended = 5;
+}
+
+message DeleteReviewRequest {
+  string id = 1;
+}
+
+message BookResponse {
+  string id = 1;
+  string bookId = 2;
+  string isbn = 3;
+  string title = 4;
+  string author = 5;
+  string publisher = 6;
+  int32 publishYear = 7;
+  string category = 8;
+  string edition = 9;
+  string language = 10;
+  int32 pages = 11;
+  double price = 12;
+  string rackNumber = 13;
+  string shelfNumber = 14;
+  string bookType = 15;
+  string condition = 16;
+  string description = 17;
+  int32 quantity = 18;
+  int32 availableQuantity = 19;
+  string coverUrl = 20;
+  string status = 21;
+  string createdAt = 22;
+  string updatedAt = 23;
+}
+
+message BooksListResponse {
+  repeated BookResponse books = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message ReviewResponse {
+  string id = 1;
+  string bookId = 2;
+  string memberId = 3;
+  int32 rating = 4;
+  string reviewTitle = 5;
+  string review = 6;
+  bool recommended = 7;
+  string status = 8;
+  string createdAt = 9;
+  string updatedAt = 10;
+}
+
+message ReviewsListResponse {
+  repeated ReviewResponse reviews = 1;
+  int32 total = 2;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}

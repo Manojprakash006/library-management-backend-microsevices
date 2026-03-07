@@ -1,0 +1,116 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RequestsController = void 0;
+const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
+const requests_service_1 = require("../service/requests.service");
+const create_book_request_dto_1 = require("../dto/create-book-request.dto");
+const book_request_entity_1 = require("../entities/book-request.entity");
+let RequestsController = class RequestsController {
+    constructor(requestsService) {
+        this.requestsService = requestsService;
+    }
+    async create(createDto) {
+        const request = await this.requestsService.create(createDto);
+        return { message: 'Book request created successfully', data: request };
+    }
+    async findAll() {
+        const requests = await this.requestsService.findAll();
+        return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
+    }
+    async findOne(id) {
+        const request = await this.requestsService.findOne(id);
+        return { message: 'Book request retrieved successfully', data: request };
+    }
+    async approve(id) {
+        const request = await this.requestsService.approve(id);
+        return { message: 'Book request approved successfully', data: request };
+    }
+    async reject(id) {
+        const request = await this.requestsService.reject(id);
+        return { message: 'Book request rejected successfully', data: request };
+    }
+    async remove(id) {
+        await this.requestsService.remove(id);
+        return { message: 'Book request deleted successfully' };
+    }
+};
+exports.RequestsController = RequestsController;
+__decorate([
+    (0, common_1.Version)('1'),
+    (0, common_1.Post)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new book request' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Book request created successfully', type: book_request_entity_1.BookRequest }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_book_request_dto_1.CreateBookRequestDto]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Version)('1'),
+    (0, common_1.Get)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all book requests' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book requests retrieved successfully', type: [book_request_entity_1.BookRequest] }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Version)('1'),
+    (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get book request by ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request retrieved successfully', type: book_request_entity_1.BookRequest }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Version)('1'),
+    (0, common_1.Put)(':id/approve'),
+    (0, swagger_1.ApiOperation)({ summary: 'Approve a book request' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request approved successfully', type: book_request_entity_1.BookRequest }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "approve", null);
+__decorate([
+    (0, common_1.Version)('1'),
+    (0, common_1.Put)(':id/reject'),
+    (0, swagger_1.ApiOperation)({ summary: 'Reject a book request' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request rejected successfully', type: book_request_entity_1.BookRequest }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "reject", null);
+__decorate([
+    (0, common_1.Version)('1'),
+    (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete book request' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request deleted successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "remove", null);
+exports.RequestsController = RequestsController = __decorate([
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiTags)('Book Requests'),
+    (0, common_1.Controller)('requests'),
+    __metadata("design:paramtypes", [requests_service_1.RequestsService])
+], RequestsController);
+//# sourceMappingURL=requests.controller.js.map

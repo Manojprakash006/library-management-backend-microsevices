@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: library-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+    depends_on:
+      - library-books-service
+      - library-members-service
+      - library-issues-service
+      - library-requests-service
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Library Books Service
+  library-books-service:
+    build:
+      context: ./services/library-books-service
+      dockerfile: Dockerfile
+    container_name: library-books-service
+    ports:
+      - "3001:3001"
+      - "5001:5001"
+    environment:
+      - PORT=3001
+      - GRPC_URL=0.0.0.0:5001
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
+      - MONGODB_DB=BooksService
+      - JWT_SECRET=your-secret-key
+      - KAFKA_BROKER=localhost:9092
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Library Members Service
+  library-members-service:
+    build:
+      context: ./services/library-members-service
+      dockerfile: Dockerfile
+    container_name: library-members-service
+    ports:
+      - "3012:3012"
+      - "5002:5002"
+    environment:
+      - PORT=3012
+      - GRPC_URL=0.0.0.0:5002
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
+      - MONGODB_DB=Authentication
+      - JWT_SECRET=your-secret-key
+      - KAFKA_BROKER=localhost:9092
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Library Issues Service
+  library-issues-service:
+    build:
+      context: ./services/library-issues-service
+      dockerfile: Dockerfile
+    container_name: library-issues-service
+    ports:
+      - "3013:3013"
+      - "5003:5003"
+    environment:
+      - PORT=3013
+      - GRPC_URL=0.0.0.0:5003
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
+      - MONGODB_DB=IssueService
+      - JWT_SECRET=your-secret-key
+      - KAFKA_BROKER=localhost:9092
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Library Requests Service
+  library-requests-service:
+    build:
+      context: ./services/library-requests-service
+      dockerfile: Dockerfile
+    container_name: library-requests-service
+    ports:
+      - "3014:3014"
+      - "5004:5004"
+    environment:
+      - PORT=3014
+      - GRPC_URL=0.0.0.0:5004
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
+      - MONGODB_DB=RequestService
+      - JWT_SECRET=your-secret-key
+      - KAFKA_BROKER=localhost:9092
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: library-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local

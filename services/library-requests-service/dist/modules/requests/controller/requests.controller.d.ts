@@ -1,0 +1,31 @@
+import { RequestsService } from '../service/requests.service';
+import { CreateBookRequestDto } from '../dto/create-book-request.dto';
+import { BookRequest } from '../entities/book-request.entity';
+export declare class RequestsController {
+    private readonly requestsService;
+    constructor(requestsService: RequestsService);
+    create(createDto: CreateBookRequestDto): Promise<{
+        message: string;
+        data: BookRequest;
+    }>;
+    findAll(): Promise<{
+        message: string;
+        data: BookRequest[];
+        count: number;
+    }>;
+    findOne(id: string): Promise<{
+        message: string;
+        data: BookRequest;
+    }>;
+    approve(id: string): Promise<{
+        message: string;
+        data: BookRequest;
+    }>;
+    reject(id: string): Promise<{
+        message: string;
+        data: BookRequest;
+    }>;
+    remove(id: string): Promise<{
+        message: string;
+    }>;
+}

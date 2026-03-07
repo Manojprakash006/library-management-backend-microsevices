@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package library.requests;
+
+service RequestsService {
+  rpc CreateRequest (CreateRequestRequest) returns (RequestResponse);
+  rpc GetRequestById (GetRequestByIdRequest) returns (RequestResponse);
+  rpc GetAllRequests (GetAllRequestsRequest) returns (RequestsListResponse);
+  rpc UpdateRequest (UpdateRequestRequest) returns (RequestResponse);
+  rpc DeleteRequest (DeleteRequestRequest) returns (DeleteResponse);
+  rpc ApproveRequest (ApproveRequestRequest) returns (RequestResponse);
+  rpc RejectRequest (RejectRequestRequest) returns (RequestResponse);
+  rpc GetMemberRequests (GetMemberRequestsRequest) returns (RequestsListResponse);
+  rpc GetPendingRequests (GetPendingRequestsRequest) returns (RequestsListResponse);
+  rpc CancelRequest (CancelRequestRequest) returns (RequestResponse);
+  rpc GetRecentRequests (GetMemberRequestsRequest) returns (RequestsListResponse);
+}
+
+message CreateRequestRequest {
+  string bookId = 1;
+  string memberId = 2;
+  string bookTitle = 3;
+  string memberName = 4;
+  string requestType = 5;
+  string notes = 6;
+  int32 priority = 7;
+}
+
+message GetRequestByIdRequest {
+  string id = 1;
+}
+
+message GetAllRequestsRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string status = 3;
+  string memberId = 4;
+}
+
+message UpdateRequestRequest {
+  string id = 1;
+  string notes = 2;
+  int32 priority = 3;
+}
+
+message DeleteRequestRequest {
+  string id = 1;
+}
+
+message ApproveRequestRequest {
+  string id = 1;
+  string approvedBy = 2;
+  string notes = 3;
+}
+
+message RejectRequestRequest {
+  string id = 1;
+  string rejectedBy = 2;
+  string reason = 3;
+}
+
+message GetMemberRequestsRequest {
+  string memberId = 1;
+  string status = 2;
+}
+
+message GetPendingRequestsRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message CancelRequestRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+message RequestResponse {
+  string id = 1;
+  string bookId = 2;
+  string memberId = 3;
+  string bookTitle = 4;
+  string memberName = 5;
+  string requestType = 6;
+  string status = 7;
+  string notes = 8;
+  int32 priority = 9;
+  string requestedDate = 10;
+  string approvedDate = 11;
+  string rejectedDate = 12;
+  string approvedBy = 13;
+  string rejectedBy = 14;
+  string rejectionReason = 15;
+  string createdAt = 16;
+  string updatedAt = 17;
+}
+
+message RequestsListResponse {
+  repeated RequestResponse requests = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}

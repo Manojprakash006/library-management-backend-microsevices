@@ -1,0 +1,12 @@
+import { StaffRole, StaffStatus } from '../entities/staff.entity';
+export declare class UpdateStaffDto {
+    fullName?: string;
+    phone?: string;
+    department?: string;
+    shift?: string;
+    status?: StaffStatus;
+    role?: StaffRole;
+    qualification?: string;
+    address?: string;
+    emergencyContact?: string;
+}

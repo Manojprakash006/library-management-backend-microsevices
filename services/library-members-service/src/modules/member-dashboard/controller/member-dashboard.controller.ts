@@ -1,0 +1,90 @@
+import { Controller, Get, Post, Body, Param, Version, UseGuards, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { MemberDashboardService } from '../service/member-dashboard.service';
+import { ReportDamageDto } from '../dto/report-damage.dto';
+import { RenewBookDto } from '../dto/renew-book.dto';
+import { SubmitReviewDto } from '../dto/submit-review.dto';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { Roles } from '../../../auth/guards/roles.decorator';
+import { RolesGuard } from '../../../auth/guards/roles.guard';
+
+@ApiTags('Member Dashboard')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('member')
+@Controller('member-dashboard')
+export class MemberDashboardController {
+  constructor(private readonly memberDashboardService: MemberDashboardService) {}
+
+  @Version('1')
+  @Get('stats')
+  @ApiOperation({ summary: 'Get member dashboard stats' })
+  async getMemberStats(@Request() req: any) {
+    const result = await this.memberDashboardService.getMemberStats(req.user.userId);
+    return { message: 'Stats retrieved successfully', data: result };
+  }
+
+  @Version('1')
+  @Get('overdue-books')
+  @ApiOperation({ summary: 'Get overdue books' })
+  async getOverdueBooks(@Request() req: any) {
+    const result = await this.memberDashboardService.getOverdueBooks(req.user.userId);
+    return { message: 'Overdue books retrieved', data: result };
+  }
+
+  @Version('1')
+  @Get('recent-requests')
+  @ApiOperation({ summary: 'Get recent book requests' })
+  async getRecentRequests(@Request() req: any) {
+    const result = await this.memberDashboardService.getRecentRequests(req.user.userId);
+    return { message: 'Recent requests retrieved', data: result };
+  }
+
+  @Version('1')
+  @Get('borrowed-books')
+  @ApiOperation({ summary: 'Get currently borrowed books' })
+  async getCurrentlyBorrowedBooks(@Request() req: any) {
+    const result = await this.memberDashboardService.getCurrentlyBorrowedBooks(req.user.userId);
+    return { message: 'Borrowed books retrieved', data: result };
+  }
+
+  @Version('1')
+  @Get('book-details/:issueId')
+  @ApiOperation({ summary: 'Get book details by issue ID' })
+  async getBookDetails(@Param('issueId') issueId: string) {
+    const result = await this.memberDashboardService.getBookDetails(issueId);
+    return { message: 'Book details retrieved', data: result };
+  }
+
+  @Version('1')
+  @Get('my-books')
+  @ApiOperation({ summary: 'Get my books' })
+  async getMyBooks(@Request() req: any) {
+    const result = await this.memberDashboardService.getMyBooks(req.user.userId);
+    return { message: 'My books retrieved', data: result };
+  }
+
+  @Version('1')
+  @Post('report-damage')
+  @ApiOperation({ summary: 'Report book damage' })
+  async reportBookDamage(@Body() damageDto: ReportDamageDto) {
+    const result = await this.memberDashboardService.reportBookDamage(damageDto);
+    return { message: 'Damage report submitted', data: result };
+  }
+
+  @Version('1')
+  @Post('renew-book')
+  @ApiOperation({ summary: 'Renew a book' })
+  async renewBook(@Body() renewDto: RenewBookDto) {
+    const result = await this.memberDashboardService.renewBook(renewDto);
+    return { message: 'Book renewal requested', data: result };
+  }
+
+  @Version('1')
+  @Post('submit-review')
+  @ApiOperation({ summary: 'Submit a book review' })
+  async submitReview(@Request() req: any, @Body() reviewDto: SubmitReviewDto) {
+    const result = await this.memberDashboardService.submitReview(req.user.userId, reviewDto);
+    return { message: 'Review submitted', data: result };
+  }
+}

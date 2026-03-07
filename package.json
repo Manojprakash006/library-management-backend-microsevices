@@ -1,0 +1,35 @@
+{
+  "name": "library-management-microservices",
+  "version": "1.0.0",
+  "description": "Library Management System - Microservices Architecture",
+  "scripts": {
+    "install:all": "npm run install:gateway && npm run install:books && npm run install:members && npm run install:issues && npm run install:requests",
+    "install:gateway": "cd api-gateway && npm install",
+    "install:books": "cd services/library-books-service && npm install",
+    "install:members": "cd services/library-members-service && npm install",
+    "install:issues": "cd services/library-issues-service && npm install",
+    "install:requests": "cd services/library-requests-service && npm install",
+    
+    "start:gateway": "cd api-gateway && npm run start:dev",
+    "start:books": "cd services/library-books-service && npm run start:dev",
+    "start:members": "cd services/library-members-service && npm run start:dev",
+    "start:issues": "cd services/library-issues-service && npm run start:dev",
+    "start:requests": "cd services/library-requests-service && npm run start:dev",
+    
+    "start:all": "concurrently -n GATEWAY,BOOKS,MEMBERS,ISSUES,REQUESTS -c yellow,green,blue,red,white \"npm run start:gateway\" \"npm run start:books\" \"npm run start:members\" \"npm run start:issues\" \"npm run start:requests\"",
+    
+    "build:all": "npm run build:gateway && npm run build:books && npm run build:members && npm run build:issues && npm run build:requests",
+    "build:gateway": "cd api-gateway && npm run build",
+    "build:books": "cd services/library-books-service && npm run build",
+    "build:members": "cd services/library-members-service && npm run build",
+    "build:issues": "cd services/library-issues-service && npm run build",
+    "build:requests": "cd services/library-requests-service && npm run build",
+    
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose up -d --build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
