@@ -14,8 +14,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class ActivityLogsController {
   constructor(private readonly activityLogsService: ActivityLogsService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @Roles('admin')
   @ApiOperation({ summary: 'Create a new activity log' })
   @ApiResponse({ status: 201, description: 'Activity log created successfully', type: ActivityLog })
@@ -24,8 +23,7 @@ export class ActivityLogsController {
     return { message: 'Activity log created successfully', data: log };
   }
 
-  @Version('1')
-  @Get('recent')
+   @Get('recent')
   @Roles('admin')
   @ApiOperation({ summary: 'Get recent activities' })
   @ApiResponse({ status: 200, description: 'Recent activities retrieved successfully', type: [ActivityLog] })
@@ -34,8 +32,7 @@ export class ActivityLogsController {
     return { message: 'Recent activities retrieved successfully', data: logs, count: logs.length };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all activity logs' })
   @ApiResponse({ status: 200, description: 'Activity logs retrieved successfully', type: [ActivityLog] })
@@ -44,8 +41,7 @@ export class ActivityLogsController {
     return { message: 'Activity logs retrieved successfully', data: logs, count: logs.length };
   }
 
-  @Version('1')
-  @Get('member/:memberId')
+   @Get('member/:memberId')
   @Roles('admin', 'member')
   @ApiOperation({ summary: 'Get activity logs by member ID' })
   @ApiResponse({ status: 200, description: 'Member activity logs retrieved successfully', type: [ActivityLog] })
@@ -57,8 +53,7 @@ export class ActivityLogsController {
     return { message: 'Member activity logs retrieved successfully', data: logs, count: logs.length };
   }
 
-  @Version('1')
-  @Get('book/:bookId')
+   @Get('book/:bookId')
   @Roles('admin')
   @ApiOperation({ summary: 'Get activity logs by book ID' })
   @ApiResponse({ status: 200, description: 'Book activity logs retrieved successfully', type: [ActivityLog] })
@@ -70,8 +65,7 @@ export class ActivityLogsController {
     return { message: 'Book activity logs retrieved successfully', data: logs, count: logs.length };
   }
 
-  @Version('1')
-  @Get(':id')
+   @Get(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Get activity log by ID' })
   @ApiResponse({ status: 200, description: 'Activity log retrieved successfully', type: ActivityLog })
@@ -81,8 +75,7 @@ export class ActivityLogsController {
     return { message: 'Activity log retrieved successfully', data: log };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Delete activity log' })
   @ApiResponse({ status: 200, description: 'Activity log deleted successfully' })

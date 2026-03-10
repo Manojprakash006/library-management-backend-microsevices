@@ -13,8 +13,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class MemberAuthController {
   constructor(private readonly memberAuthService: MemberAuthService) {}
 
-  @Version('1')
-  @Post('register')
+   @Post('register')
   @ApiOperation({ summary: 'Register a new member' })
   @ApiResponse({ status: 201, description: 'Member registered successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
@@ -23,8 +22,7 @@ export class MemberAuthController {
     return { message: 'Member registered successfully', data: result };
   }
 
-  @Version('1')
-  @Post('login')
+   @Post('login')
   @ApiOperation({ summary: 'Member login' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
@@ -33,8 +31,7 @@ export class MemberAuthController {
     return { message: 'Login successful', data: result };
   }
 
-  @Version('1')
-  @Get('profile')
+   @Get('profile')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('member')
   @ApiBearerAuth()
@@ -45,8 +42,7 @@ export class MemberAuthController {
     return { message: 'Profile retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Post('forgot-password')
+   @Post('forgot-password')
   @ApiOperation({ summary: 'Request password reset' })
   @ApiResponse({ status: 200, description: 'Password reset instructions sent' })
   @ApiResponse({ status: 404, description: 'Email not found' })
@@ -55,8 +51,7 @@ export class MemberAuthController {
     return { message: 'Password reset instructions sent to email', data: result };
   }
 
-  @Version('1')
-  @Post('reset-password')
+   @Post('reset-password')
   @ApiOperation({ summary: 'Reset password with token' })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
   @ApiResponse({ status: 400, description: 'Invalid token or password' })

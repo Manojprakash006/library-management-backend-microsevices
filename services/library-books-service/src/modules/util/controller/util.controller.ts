@@ -7,23 +7,20 @@ import { UtilService } from '../service/util.service';
 export class UtilController {
   constructor(private readonly utilService: UtilService) {}
 
-  @Version('1')
-  @Get('health')
+   @Get('health')
   @ApiOperation({ summary: 'Health check' })
   async healthCheck() {
     const result = await this.utilService.healthCheck();
     return { message: 'Health check completed', data: result };
   }
 
-  @Version('1')
-  @Get('ping')
+   @Get('ping')
   @ApiOperation({ summary: 'Ping service' })
   async ping() {
     return { message: 'Pong', timestamp: new Date().toISOString() };
   }
 
-  @Version('1')
-  @Delete('clear-all')
+   @Delete('clear-all')
   @ApiOperation({ summary: 'Clear all products' })
   async clearAll() {
     const result = await this.utilService.clearAll();

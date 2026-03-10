@@ -103,6 +103,14 @@ export class IssuesService {
     return issuedBook.save();
   }
 
+  async findRecent(limit: number = 5): Promise<IssueBook[]> {
+    return this.issueBookModel
+      .find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.issueBookModel.findByIdAndDelete(id).exec();
     if (!result) {

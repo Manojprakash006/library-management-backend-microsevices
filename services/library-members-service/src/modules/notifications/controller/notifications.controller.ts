@@ -14,8 +14,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @Roles('admin')
   @ApiOperation({ summary: 'Create a new notification' })
   @ApiResponse({ status: 201, description: 'Notification created successfully', type: Notification })
@@ -24,8 +23,7 @@ export class NotificationsController {
     return { message: 'Notification created successfully', data: notification };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all notifications' })
   @ApiResponse({ status: 200, description: 'Notifications retrieved successfully', type: [Notification] })
@@ -34,8 +32,7 @@ export class NotificationsController {
     return { message: 'Notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
-  @Version('1')
-  @Get('member/my-notifications')
+   @Get('member/my-notifications')
   @Roles('member')
   @ApiOperation({ summary: 'Get member notifications' })
   @ApiResponse({ status: 200, description: 'Member notifications retrieved successfully', type: [Notification] })
@@ -45,8 +42,7 @@ export class NotificationsController {
     return { message: 'Member notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
-  @Version('1')
-  @Get('member/unread')
+   @Get('member/unread')
   @Roles('member')
   @ApiOperation({ summary: 'Get unread notifications for member' })
   @ApiResponse({ status: 200, description: 'Unread notifications retrieved successfully', type: [Notification] })
@@ -56,8 +52,7 @@ export class NotificationsController {
     return { message: 'Unread notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
-  @Version('1')
-  @Post(':id/read')
+   @Post(':id/read')
   @Roles('member')
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read', type: Notification })
@@ -68,8 +63,7 @@ export class NotificationsController {
     return { message: 'Notification marked as read', data: notification };
   }
 
-  @Version('1')
-  @Post('mark-all-read')
+   @Post('mark-all-read')
   @Roles('member')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
@@ -79,8 +73,7 @@ export class NotificationsController {
     return { message: 'All notifications marked as read' };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Delete notification' })
   @ApiResponse({ status: 200, description: 'Notification deleted successfully' })
@@ -90,8 +83,7 @@ export class NotificationsController {
     return { message: 'Notification deleted successfully' };
   }
 
-  @Version('1')
-  @Post('send-due-reminders')
+   @Post('send-due-reminders')
   @Roles('admin')
   @ApiOperation({ summary: 'Send due date reminders to members' })
   @ApiResponse({ status: 200, description: 'Due date reminders sent successfully' })
@@ -99,8 +91,7 @@ export class NotificationsController {
     return this.notificationsService.sendDueDateReminders();
   }
 
-  @Version('1')
-  @Post('send-overdue')
+   @Post('send-overdue')
   @Roles('admin')
   @ApiOperation({ summary: 'Send overdue notifications to members' })
   @ApiResponse({ status: 200, description: 'Overdue notifications sent successfully' })

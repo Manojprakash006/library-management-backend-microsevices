@@ -13,8 +13,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class RacksController {
   constructor(private readonly racksService: RacksService) {}
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Get all racks with book summary' })
   @ApiResponse({ status: 200, description: 'Racks retrieved successfully', type: [RackDto] })
@@ -23,8 +22,7 @@ export class RacksController {
     return { message: 'Racks retrieved successfully', data: racks, count: racks.length };
   }
 
-  @Version('1')
-  @Get(':rackNumber')
+   @Get(':rackNumber')
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Get rack details by rack number' })
   @ApiResponse({ status: 200, description: 'Rack details retrieved successfully', type: RackDto })

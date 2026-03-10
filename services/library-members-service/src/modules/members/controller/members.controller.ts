@@ -15,8 +15,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @ApiOperation({ summary: 'Create a new member' })
   @ApiResponse({ status: 201, description: 'Member created successfully', type: Member })
   @ApiResponse({ status: 409, description: 'Member ID or email already exists' })
@@ -25,8 +24,7 @@ export class MembersController {
     return { message: 'Member created successfully', data: member };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @ApiOperation({ summary: 'Get all members' })
   @ApiResponse({ status: 200, description: 'Members retrieved successfully', type: [Member] })
   async findAll(): Promise<{ message: string; data: Member[]; count: number }> {
@@ -34,8 +32,7 @@ export class MembersController {
     return { message: 'Members retrieved successfully', data: members, count: members.length };
   }
 
-  @Version('1')
-  @Get(':id')
+   @Get(':id')
   @ApiOperation({ summary: 'Get member by ID' })
   @ApiResponse({ status: 200, description: 'Member retrieved successfully', type: Member })
   @ApiResponse({ status: 404, description: 'Member not found' })
@@ -44,8 +41,7 @@ export class MembersController {
     return { message: 'Member retrieved successfully', data: member };
   }
 
-  @Version('1')
-  @Put(':id')
+   @Put(':id')
   @ApiOperation({ summary: 'Update member' })
   @ApiResponse({ status: 200, description: 'Member updated successfully', type: Member })
   @ApiResponse({ status: 404, description: 'Member not found' })
@@ -54,8 +50,7 @@ export class MembersController {
     return { message: 'Member updated successfully', data: member };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @ApiOperation({ summary: 'Delete member' })
   @ApiResponse({ status: 200, description: 'Member deleted successfully' })
   @ApiResponse({ status: 404, description: 'Member not found' })

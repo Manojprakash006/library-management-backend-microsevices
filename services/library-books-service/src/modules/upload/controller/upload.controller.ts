@@ -8,8 +8,7 @@ import { UploadService } from '../service/upload.service';
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @ApiOperation({ summary: 'Upload a file' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({

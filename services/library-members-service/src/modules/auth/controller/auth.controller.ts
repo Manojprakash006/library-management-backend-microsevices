@@ -8,8 +8,7 @@ import { LoginDto, RegisterDto } from '../dto/auth.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Version('1')
-  @Post('login')
+   @Post('login')
   @ApiOperation({ summary: 'User login' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
@@ -17,8 +16,7 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Version('1')
-  @Post('register')
+   @Post('register')
   @ApiOperation({ summary: 'User registration' })
   @ApiResponse({ status: 201, description: 'Registration successful' })
   @ApiResponse({ status: 400, description: 'User already exists' })
@@ -26,16 +24,14 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
-  @Version('1')
-  @Post('refresh-token')
+   @Post('refresh-token')
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 501, description: 'Not implemented' })
   async refreshToken(): Promise<{ message: string }> {
     return this.authService.refreshToken();
   }
 
-  @Version('1')
-  @Post('logout')
+   @Post('logout')
   @ApiOperation({ summary: 'User logout' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
   async logout(): Promise<{ message: string }> {

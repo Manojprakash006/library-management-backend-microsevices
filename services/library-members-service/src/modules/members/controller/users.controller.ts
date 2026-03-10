@@ -14,8 +14,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'List all users' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully', type: [User] })
@@ -24,8 +23,7 @@ export class UsersController {
     return { message: 'Users retrieved successfully', data: users, count: users.length };
   }
 
-  @Version('1')
-  @Get('me')
+   @Get('me')
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'Profile retrieved successfully' })
@@ -34,8 +32,7 @@ export class UsersController {
     return this.usersService.getProfile(userId);
   }
 
-  @Version('1')
-  @Put('me')
+   @Put('me')
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })

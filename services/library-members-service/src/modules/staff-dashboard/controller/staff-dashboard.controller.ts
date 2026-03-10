@@ -12,8 +12,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class StaffDashboardController {
   constructor(private readonly staffDashboardService: StaffDashboardService) {}
 
-  @Version('1')
-  @Get('stats')
+   @Get('stats')
   @Roles('staff')
   @ApiOperation({ summary: 'Get staff dashboard stats' })
   async getStaffStats() {
@@ -21,8 +20,7 @@ export class StaffDashboardController {
     return { message: 'Stats retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Get('recent-issues')
+   @Get('recent-issues')
   @Roles('staff')
   @ApiOperation({ summary: 'Get recent book issues' })
   async getRecentIssues() {
@@ -30,8 +28,7 @@ export class StaffDashboardController {
     return { message: 'Recent issues retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('overdue-books')
+   @Get('overdue-books')
   @Roles('staff')
   @ApiOperation({ summary: 'Get all overdue books' })
   async getOverdueBooks() {
@@ -39,8 +36,7 @@ export class StaffDashboardController {
     return { message: 'Overdue books retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('pending-requests')
+   @Get('pending-requests')
   @Roles('staff')
   @ApiOperation({ summary: 'Get pending book requests' })
   async getPendingRequests() {
@@ -48,8 +44,7 @@ export class StaffDashboardController {
     return { message: 'Pending requests retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('stat-cards')
+   @Get('stat-cards')
   @Roles('staff')
   @ApiOperation({ summary: 'Get staff stat cards' })
   async getStaffStatCards() {
@@ -57,8 +52,7 @@ export class StaffDashboardController {
     return { message: 'Stat cards retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Get('books-added-today')
+   @Get('books-added-today')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books added today' })
   async getBooksAddedToday() {
@@ -66,8 +60,7 @@ export class StaffDashboardController {
     return { message: 'Books added today retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('recent-activities')
+   @Get('recent-activities')
   @Roles('staff')
   @ApiOperation({ summary: 'Get recent activities' })
   async getRecentActivities() {
@@ -75,8 +68,7 @@ export class StaffDashboardController {
     return { message: 'Recent activities retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('rack-distribution')
+   @Get('rack-distribution')
   @Roles('staff')
   @ApiOperation({ summary: 'Get rack distribution' })
   async getRackDistribution() {
@@ -84,8 +76,7 @@ export class StaffDashboardController {
     return { message: 'Rack distribution retrieved', data: result };
   }
 
-  @Version('1')
-  @Post('books')
+   @Post('books')
   @Roles('staff')
   @ApiOperation({ summary: 'Create a new book' })
   async createBook(@Body() bookData: any) {
@@ -93,8 +84,7 @@ export class StaffDashboardController {
     return { message: 'Book created successfully', data: result };
   }
 
-  @Version('1')
-  @Get('my-activity-logs')
+   @Get('my-activity-logs')
   @Roles('staff')
   @ApiOperation({ summary: 'Get my activity logs' })
   async getMyActivityLogs(@Request() req) {
@@ -102,8 +92,7 @@ export class StaffDashboardController {
     return { message: 'Activity logs retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('my-profile')
+   @Get('my-profile')
   @Roles('staff')
   @ApiOperation({ summary: 'Get my profile' })
   async getMyProfile(@Request() req) {
@@ -111,8 +100,7 @@ export class StaffDashboardController {
     return { message: 'Profile retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('my-contribution')
+   @Get('my-contribution')
   @Roles('staff')
   @ApiOperation({ summary: 'Get my contribution' })
   async getMyContribution(@Request() req) {
@@ -120,8 +108,7 @@ export class StaffDashboardController {
     return { message: 'Contribution data retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('books-by-category')
+   @Get('books-by-category')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books by category' })
   async getBooksByCategory() {
@@ -129,8 +116,7 @@ export class StaffDashboardController {
     return { message: 'Books by category retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('rack-utilization')
+   @Get('rack-utilization')
   @Roles('staff')
   @ApiOperation({ summary: 'Get rack utilization' })
   async getRackUtilization() {
@@ -138,8 +124,7 @@ export class StaffDashboardController {
     return { message: 'Rack utilization retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('books-status-distribution')
+   @Get('books-status-distribution')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books status distribution' })
   async getBooksStatusDistribution() {

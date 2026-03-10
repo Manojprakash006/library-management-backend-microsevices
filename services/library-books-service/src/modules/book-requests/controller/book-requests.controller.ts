@@ -28,8 +28,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class BookRequestsController {
   constructor(private readonly bookRequestsService: BookRequestsService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @Roles('admin')
   @ApiOperation({ summary: 'Create a new book request' })
   @ApiResponse({ status: 201, description: 'Book request created successfully', type: BookRequest })
@@ -42,8 +41,7 @@ export class BookRequestsController {
     return { message: 'Book request created successfully', data: bookRequest };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
@@ -57,8 +55,7 @@ export class BookRequestsController {
     };
   }
 
-  @Version('1')
-  @Get('member/my-requests')
+   @Get('member/my-requests')
   @Roles('member')
   @ApiOperation({ summary: 'Get member book requests' })
   @ApiResponse({ status: 200, description: 'Member book requests retrieved successfully', type: [BookRequest] })
@@ -72,8 +69,7 @@ export class BookRequestsController {
     };
   }
 
-  @Version('1')
-  @Get(':id')
+   @Get(':id')
   @Roles('admin', 'member')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
@@ -83,8 +79,7 @@ export class BookRequestsController {
     return { message: 'Book request retrieved successfully', data: bookRequest };
   }
 
-  @Version('1')
-  @Put(':id')
+   @Put(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Update book request' })
   @ApiResponse({ status: 200, description: 'Book request updated successfully', type: BookRequest })
@@ -97,8 +92,7 @@ export class BookRequestsController {
     return { message: 'Book request updated successfully', data: bookRequest };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Delete book request' })
   @ApiResponse({ status: 200, description: 'Book request deleted successfully' })
@@ -108,8 +102,7 @@ export class BookRequestsController {
     return { message: 'Book request deleted successfully' };
   }
 
-  @Version('1')
-  @Put(':id/cancel')
+   @Put(':id/cancel')
   @Roles('member')
   @ApiOperation({ summary: 'Cancel book request (Member only)' })
   @ApiResponse({ status: 200, description: 'Book request cancelled successfully' })
@@ -122,8 +115,7 @@ export class BookRequestsController {
     return { message: 'Book request cancelled successfully' };
   }
 
-  @Version('1')
-  @Put(':id/approve')
+   @Put(':id/approve')
   @Roles('admin')
   @ApiOperation({ summary: 'Approve book request (Admin only)' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
@@ -134,8 +126,7 @@ export class BookRequestsController {
     return { message: 'Book request approved successfully', data: bookRequest };
   }
 
-  @Version('1')
-  @Put(':id/reject')
+   @Put(':id/reject')
   @Roles('admin')
   @ApiOperation({ summary: 'Reject book request (Admin only)' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })

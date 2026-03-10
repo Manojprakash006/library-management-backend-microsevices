@@ -11,8 +11,7 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Version('1')
-  @Get('me')
+   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'Profile retrieved successfully' })
   async getProfile(@Request() req: any) {
@@ -20,8 +19,7 @@ export class UsersController {
     return { message: 'Profile retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Put('me')
+   @Put('me')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   async updateProfile(@Request() req: any, @Body() updateDto: UpdateUserDto) {
@@ -29,8 +27,7 @@ export class UsersController {
     return { message: 'Profile updated successfully', data: result };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @ApiOperation({ summary: 'List all users' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   async listUsers() {

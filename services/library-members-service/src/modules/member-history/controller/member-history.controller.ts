@@ -16,8 +16,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class MemberHistoryController {
   constructor(private readonly memberHistoryService: MemberHistoryService) {}
 
-  @Version('1')
-  @Get('history')
+   @Get('history')
   @ApiOperation({ summary: 'Get member borrowing history' })
   @ApiResponse({ status: 200, description: 'History retrieved successfully' })
   async getMemberHistory(@Request() req: any) {
@@ -25,8 +24,7 @@ export class MemberHistoryController {
     return { message: 'History retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Post('request-again')
+   @Post('request-again')
   @ApiOperation({ summary: 'Request book again' })
   @ApiResponse({ status: 201, description: 'Book request submitted' })
   async requestBookAgain(@Request() req: any, @Body() requestDto: RequestBookAgainDto) {
@@ -34,8 +32,7 @@ export class MemberHistoryController {
     return { message: 'Book request submitted', data: result };
   }
 
-  @Version('1')
-  @Get('reviews')
+   @Get('reviews')
   @ApiOperation({ summary: 'Get member reviews' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
   async getMemberReviews(@Request() req: any) {
@@ -43,8 +40,7 @@ export class MemberHistoryController {
     return { message: 'Reviews retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Post('reviews')
+   @Post('reviews')
   @ApiOperation({ summary: 'Create a review' })
   @ApiResponse({ status: 201, description: 'Review created successfully' })
   async createReview(@Request() req: any, @Body() reviewDto: CreateReviewDto) {
@@ -52,8 +48,7 @@ export class MemberHistoryController {
     return { message: 'Review created successfully', data: result };
   }
 
-  @Version('1')
-  @Put('reviews/:id')
+   @Put('reviews/:id')
   @ApiOperation({ summary: 'Update a review' })
   @ApiResponse({ status: 200, description: 'Review updated successfully' })
   async updateReview(@Param('id') id: string, @Body() reviewDto: UpdateReviewDto) {
@@ -61,8 +56,7 @@ export class MemberHistoryController {
     return { message: 'Review updated successfully', data: result };
   }
 
-  @Version('1')
-  @Delete('reviews/:id')
+   @Delete('reviews/:id')
   @ApiOperation({ summary: 'Delete a review' })
   @ApiResponse({ status: 200, description: 'Review deleted successfully' })
   async deleteReview(@Param('id') id: string) {

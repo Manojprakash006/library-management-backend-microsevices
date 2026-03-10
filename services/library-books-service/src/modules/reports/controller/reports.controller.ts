@@ -12,8 +12,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all reports summary' })
   @ApiResponse({ status: 200, description: 'All reports retrieved successfully' })
@@ -22,8 +21,7 @@ export class ReportsController {
     return { message: 'All reports retrieved successfully', data: reports };
   }
 
-  @Version('1')
-  @Get('daily-issue-return')
+   @Get('daily-issue-return')
   @Roles('admin')
   @ApiOperation({ summary: 'Get daily issue and return report' })
   @ApiResponse({ status: 200, description: 'Daily issue and return report retrieved successfully' })
@@ -32,8 +30,7 @@ export class ReportsController {
     return { message: 'Daily issue and return report retrieved successfully', data: report };
   }
 
-  @Version('1')
-  @Get('overdue')
+   @Get('overdue')
   @Roles('admin')
   @ApiOperation({ summary: 'Get overdue books report' })
   @ApiResponse({ status: 200, description: 'Overdue report retrieved successfully' })
@@ -42,8 +39,7 @@ export class ReportsController {
     return { message: 'Overdue report retrieved successfully', data: report };
   }
 
-  @Version('1')
-  @Get('rack-inventory')
+   @Get('rack-inventory')
   @Roles('admin')
   @ApiOperation({ summary: 'Get rack inventory report' })
   @ApiResponse({ status: 200, description: 'Rack inventory report retrieved successfully' })
@@ -52,8 +48,7 @@ export class ReportsController {
     return { message: 'Rack inventory report retrieved successfully', data: report, count: report.length };
   }
 
-  @Version('1')
-  @Get('rack-inventory/:rackNumber')
+   @Get('rack-inventory/:rackNumber')
   @Roles('admin')
   @ApiOperation({ summary: 'Get rack inventory by rack number' })
   @ApiResponse({ status: 200, description: 'Rack inventory details retrieved successfully' })
@@ -63,8 +58,7 @@ export class ReportsController {
     return { message: 'Rack inventory details retrieved successfully', data: report };
   }
 
-  @Version('1')
-  @Get('member-activity')
+   @Get('member-activity')
   @Roles('admin')
   @ApiOperation({ summary: 'Get member activity report' })
   @ApiResponse({ status: 200, description: 'Member activity report retrieved successfully' })

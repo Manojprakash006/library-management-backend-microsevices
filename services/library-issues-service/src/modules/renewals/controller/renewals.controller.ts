@@ -14,8 +14,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class RenewalsController {
   constructor(private readonly renewalsService: RenewalsService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @Roles('admin', 'member')
   @ApiOperation({ summary: 'Create a new renewal request' })
   @ApiResponse({ status: 201, description: 'Renewal request created successfully', type: BookRenewal })
@@ -24,8 +23,7 @@ export class RenewalsController {
     return { message: 'Renewal request created successfully', data: renewal };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all renewal requests' })
   @ApiResponse({ status: 200, description: 'Renewal requests retrieved successfully', type: [BookRenewal] })
@@ -34,8 +32,7 @@ export class RenewalsController {
     return { message: 'Renewal requests retrieved successfully', data: renewals, count: renewals.length };
   }
 
-  @Version('1')
-  @Get(':id')
+   @Get(':id')
   @Roles('admin', 'member')
   @ApiOperation({ summary: 'Get renewal request by ID' })
   @ApiResponse({ status: 200, description: 'Renewal request retrieved successfully', type: BookRenewal })
@@ -45,8 +42,7 @@ export class RenewalsController {
     return { message: 'Renewal request retrieved successfully', data: renewal };
   }
 
-  @Version('1')
-  @Put(':id/approve')
+   @Put(':id/approve')
   @Roles('admin')
   @ApiOperation({ summary: 'Approve renewal request' })
   @ApiResponse({ status: 200, description: 'Renewal approved successfully', type: BookRenewal })
@@ -56,8 +52,7 @@ export class RenewalsController {
     return { message: 'Renewal approved successfully', data: renewal };
   }
 
-  @Version('1')
-  @Put(':id/reject')
+   @Put(':id/reject')
   @Roles('admin')
   @ApiOperation({ summary: 'Reject renewal request' })
   @ApiResponse({ status: 200, description: 'Renewal rejected successfully', type: BookRenewal })
@@ -67,8 +62,7 @@ export class RenewalsController {
     return { message: 'Renewal rejected successfully', data: renewal };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Delete renewal request' })
   @ApiResponse({ status: 200, description: 'Renewal request deleted successfully' })

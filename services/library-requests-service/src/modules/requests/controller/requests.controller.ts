@@ -10,8 +10,7 @@ import { BookRequest } from '../entities/book-request.entity';
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @ApiOperation({ summary: 'Create a new book request' })
   @ApiResponse({ status: 201, description: 'Book request created successfully', type: BookRequest })
   async create(@Body() createDto: CreateBookRequestDto): Promise<{ message: string; data: BookRequest }> {
@@ -19,8 +18,7 @@ export class RequestsController {
     return { message: 'Book request created successfully', data: request };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
   async findAll(): Promise<{ message: string; data: BookRequest[]; count: number }> {
@@ -28,8 +26,7 @@ export class RequestsController {
     return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
   }
 
-  @Version('1')
-  @Get(':id')
+   @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
   async findOne(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
@@ -37,8 +34,7 @@ export class RequestsController {
     return { message: 'Book request retrieved successfully', data: request };
   }
 
-  @Version('1')
-  @Put(':id')
+   @Put(':id')
   @ApiOperation({ summary: 'Update book request' })
   @ApiResponse({ status: 200, description: 'Book request updated successfully', type: BookRequest })
   async update(@Param('id') id: string, @Body() updateDto: Partial<CreateBookRequestDto>): Promise<{ message: string; data: BookRequest }> {
@@ -46,8 +42,7 @@ export class RequestsController {
     return { message: 'Book request updated successfully', data: request };
   }
 
-  @Version('1')
-  @Put(':id/cancel')
+   @Put(':id/cancel')
   @ApiOperation({ summary: 'Cancel book request' })
   @ApiResponse({ status: 200, description: 'Book request cancelled successfully', type: BookRequest })
   async cancel(@Param('id') id: string, @Req() req): Promise<{ message: string; data: BookRequest }> {
@@ -56,8 +51,7 @@ export class RequestsController {
     return { message: 'Book request cancelled successfully', data: request };
   }
 
-  @Version('1')
-  @Put(':id/approve')
+   @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
   async approve(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
@@ -65,8 +59,7 @@ export class RequestsController {
     return { message: 'Book request approved successfully', data: request };
   }
 
-  @Version('1')
-  @Put(':id/reject')
+   @Put(':id/reject')
   @ApiOperation({ summary: 'Reject a book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })
   async reject(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
@@ -74,8 +67,7 @@ export class RequestsController {
     return { message: 'Book request rejected successfully', data: request };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @ApiOperation({ summary: 'Delete book request' })
   @ApiResponse({ status: 200, description: 'Book request deleted successfully' })
   async remove(@Param('id') id: string): Promise<{ message: string }> {

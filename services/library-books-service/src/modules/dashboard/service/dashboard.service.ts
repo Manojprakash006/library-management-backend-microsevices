@@ -11,6 +11,51 @@ interface CountResponse {
   count: number;
 }
 
+interface RecentIssue {
+  _id: string;
+  bookId: string;
+  memberId: string;
+  issueType: string;
+  numberOfDays: number;
+  issueDate: Date;
+  dueDate: Date;
+  returnDate?: Date;
+  status: string;
+  daysOverdue: number;
+  fine: number;
+  finePerDay: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PopulatedRecentBook {
+  _id: string;
+  book: {
+    _id: string;
+    title: string;
+    author: string;
+    isbn: string;
+    category: string;
+  };
+  member: {
+    _id: string;
+    name: string;
+    email: string;
+    phone?: string;
+  };
+  issueType: string;
+  numberOfDays: number;
+  issueDate: Date;
+  dueDate: Date;
+  returnDate?: Date;
+  status: string;
+  daysOverdue: number;
+  fine: number;
+  finePerDay: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -81,28 +126,213 @@ export class DashboardService {
     };
   }
 
-  async getRecentBooks() {
+  async getRecentBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
     try {
       const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
-      const response: AxiosResponse<{ issues: any[] }> = await firstValueFrom(
+      const response: AxiosResponse<{ issues: RecentIssue[] }> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/recent?limit=5`)
       );
-      return response.data?.issues || [];
+
+      const issues = response.data?.issues || [];
+      if (issues.length === 0) return [];
+
+      const populatedIssues = await Promise.all(
+        issues.map(async (issue) => {
+          const [book, member] = await Promise.all([
+            this.fetchBookDetails(issue.bookId),
+            this.fetchMemberDetails(issue.memberId, authHeader),
+          ]);
+
+          return {
+            _id: issue._id,
+            book,
+            member,
+            issueType: issue.issueType,
+            numberOfDays: issue.numberOfDays,
+            issueDate: issue.issueDate,
+            dueDate: issue.dueDate,
+            returnDate: issue.returnDate,
+            status: issue.status,
+            daysOverdue: issue.daysOverdue,
+            fine: issue.fine,
+            finePerDay: issue.finePerDay,
+            createdAt: issue.createdAt,
+            updatedAt: issue.updatedAt,
+          };
+        })
+      );
+
+      return populatedIssues;
     } catch (error) {
       return [];
     }
   }
 
-  async getOverdueBooks() {
-    return this.bookModel.find({ status: 'overdue' }).select('-__v');
+  private async fetchBookDetails(bookId: string): Promise<any> {
+    try {
+      const book = await this.bookModel.findById(bookId)
+        .select('title author isbn category rackNumber shelfNumber quantity')
+        .lean();
+      if (book) {
+        return {
+          _id: book._id.toString(),
+          bookId: book._id.toString(),
+          title: book.title,
+          author: book.author,
+          isbn: book.isbn,
+          category: book.category,
+          rackNumber: book.rackNumber,
+          shelfNumber: book.shelfNumber,
+          location: `Rack ${book.rackNumber}${book.shelfNumber ? ', Shelf ' + book.shelfNumber : ''}`,
+          status: book.quantity > 0 ? 'Available' : 'Not Available',
+        };
+      }
+    } catch (error) {
+      // Fall through to default
+    }
+
+    return {
+      _id: bookId,
+      bookId: 'N/A',
+      title: 'Unknown Book',
+      author: 'Unknown',
+      isbn: 'N/A',
+      category: 'N/A',
+      rackNumber: 'N/A',
+      shelfNumber: 'N/A',
+      location: 'N/A',
+      status: 'Unknown',
+    };
   }
 
-  async getPendingRequests() {
-    return this.bookRequestModel.find({ status: 'Pending' })
-      .populate('bookId', 'title author')
-      .populate('memberId', 'name email')
-      .sort({ requestDate: -1 })
-      .select('-__v');
+  private async fetchMemberDetails(memberId: string, authHeader?: string): Promise<any> {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const response: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/${memberId}`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      if (response.data?.data) {
+        const member = response.data.data;
+        const borrowingHistory = member.borrowingHistory || [];
+        const activeBooks = borrowingHistory.filter(h => h.status === 'borrowed').length;
+        
+        return {
+          _id: member._id,
+          memberId: member.memberId,
+          name: member.name,
+          email: member.email,
+          phone: member.phoneNumber,
+          address: member.address,
+          memberSince: member.membershipDate,
+          currentlyBorrowed: activeBooks,
+          totalHistory: borrowingHistory.length,
+          borrowingStatus: {
+            currentlyBorrowed: activeBooks,
+            activeBooks: activeBooks,
+            totalHistory: borrowingHistory.length,
+          },
+        };
+      }
+    } catch (error) {
+      // Fall through to default
+    }
+
+    return {
+      _id: memberId,
+      memberId: 'N/A',
+      name: 'Unknown Member',
+      email: 'N/A',
+      phone: 'N/A',
+      address: 'N/A',
+      memberSince: null,
+      currentlyBorrowed: 0,
+      totalHistory: 0,
+      borrowingStatus: {
+        currentlyBorrowed: 0,
+        activeBooks: 0,
+        totalHistory: 0,
+      },
+    };
+  }
+
+  async getOverdueBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/overdue`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const issues = response.data?.data || [];
+      if (issues.length === 0) return [];
+
+      const populatedIssues = await Promise.all(
+        issues.map(async (issue) => {
+          const [book, member] = await Promise.all([
+            this.fetchBookDetails(issue.bookId),
+            this.fetchMemberDetails(issue.memberId, authHeader),
+          ]);
+
+          return {
+            _id: issue._id,
+            book,
+            member,
+            issueType: issue.issueType,
+            numberOfDays: issue.numberOfDays,
+            issueDate: issue.issueDate,
+            dueDate: issue.dueDate,
+            returnDate: issue.returnDate,
+            status: issue.status,
+            daysOverdue: issue.daysOverdue,
+            fine: issue.fine,
+            finePerDay: issue.finePerDay,
+            createdAt: issue.createdAt,
+            updatedAt: issue.updatedAt,
+          };
+        })
+      );
+
+      return populatedIssues;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async getPendingRequests(authHeader?: string): Promise<any[]> {
+    try {
+      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${requestsServiceUrl}/requests`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+      
+      const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
+      
+      const populatedRequests = await Promise.all(
+        pendingRequests.map(async (req) => {
+          const [book, member] = await Promise.all([
+            this.fetchBookDetails(req.bookId),
+            this.fetchMemberDetails(req.memberId, authHeader),
+          ]);
+          return {
+            ...req,
+            book,
+            member,
+          };
+        })
+      );
+      
+      return populatedRequests.sort((a, b) => 
+        new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()
+      );
+    } catch (error) {
+      return [];
+    }
   }
 
   private async getOverdueBooksCount(): Promise<number> {

@@ -14,8 +14,7 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class DamageReportsController {
   constructor(private readonly damageReportsService: DamageReportsService) {}
 
-  @Version('1')
-  @Post()
+   @Post()
   @Roles('admin')
   @ApiOperation({ summary: 'Create a new damage report' })
   @ApiResponse({ status: 201, description: 'Damage report created successfully', type: BookDamageReport })
@@ -24,8 +23,7 @@ export class DamageReportsController {
     return { message: 'Damage report created successfully', data: report };
   }
 
-  @Version('1')
-  @Get()
+   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all damage reports' })
   @ApiResponse({ status: 200, description: 'Damage reports retrieved successfully', type: [BookDamageReport] })
@@ -34,8 +32,7 @@ export class DamageReportsController {
     return { message: 'Damage reports retrieved successfully', data: reports, count: reports.length };
   }
 
-  @Version('1')
-  @Get(':id')
+   @Get(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Get damage report by ID' })
   @ApiResponse({ status: 200, description: 'Damage report retrieved successfully', type: BookDamageReport })
@@ -45,8 +42,7 @@ export class DamageReportsController {
     return { message: 'Damage report retrieved successfully', data: report };
   }
 
-  @Version('1')
-  @Put(':id/approve')
+   @Put(':id/approve')
   @Roles('admin')
   @ApiOperation({ summary: 'Approve damage report' })
   @ApiResponse({ status: 200, description: 'Damage report approved successfully', type: BookDamageReport })
@@ -56,8 +52,7 @@ export class DamageReportsController {
     return { message: 'Damage report approved successfully', data: report };
   }
 
-  @Version('1')
-  @Put(':id/reject')
+   @Put(':id/reject')
   @Roles('admin')
   @ApiOperation({ summary: 'Reject damage report' })
   @ApiResponse({ status: 200, description: 'Damage report rejected successfully', type: BookDamageReport })
@@ -67,8 +62,7 @@ export class DamageReportsController {
     return { message: 'Damage report rejected successfully', data: report };
   }
 
-  @Version('1')
-  @Delete(':id')
+   @Delete(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Delete damage report' })
   @ApiResponse({ status: 200, description: 'Damage report deleted successfully' })

@@ -1,9 +1,10 @@
-import { Controller, Get, Version, UseGuards } from '@nestjs/common';
+import { Controller, Get, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DashboardService } from '../service/dashboard.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { Request } from 'express';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
@@ -13,7 +14,6 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Version('1')
   @Get()
   @ApiOperation({ summary: 'Get dashboard statistics' })
   async getDashboardStats() {
@@ -21,7 +21,6 @@ export class DashboardController {
     return { message: 'Dashboard stats retrieved', data: result };
   }
 
-  @Version('1')
   @Get('inventory')
   @ApiOperation({ summary: 'Get inventory summary' })
   async getInventorySummary() {
@@ -29,7 +28,6 @@ export class DashboardController {
     return { message: 'Inventory summary retrieved', data: result };
   }
 
-  @Version('1')
   @Get('popular-books')
   @ApiOperation({ summary: 'Get popular books' })
   async getPopularBooks() {
@@ -37,7 +35,6 @@ export class DashboardController {
     return { message: 'Popular books retrieved', data: result };
   }
 
-  @Version('1')
   @Get('stat-cards')
   @ApiOperation({ summary: 'Get stat cards data' })
   async getStatCards() {
@@ -45,35 +42,35 @@ export class DashboardController {
     return { message: 'Stat cards retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('recent-books')
+   @Get('recent-books')
   @ApiOperation({ summary: 'Get recent books' })
-  async getRecentBooks() {
-    const result = await this.dashboardService.getRecentBooks();
+  async getRecentBooks(@Req() req: Request) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.dashboardService.getRecentBooks(authHeader as string);
     return { message: 'Recent books retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('overdue-books')
+   @Get('overdue-books')
   @ApiOperation({ summary: 'Get overdue books' })
-  async getOverdueBooks() {
-    const result = await this.dashboardService.getOverdueBooks();
+  async getOverdueBooks(@Req() req: Request) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.dashboardService.getOverdueBooks(authHeader as string);
     return { message: 'Overdue books retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('pending-requests')
+   @Get('pending-requests')
   @ApiOperation({ summary: 'Get pending requests' })
-  async getPendingRequests() {
-    const result = await this.dashboardService.getPendingRequests();
+  async getPendingRequests(@Req() req: Request): Promise<{ message: string; data: any[] }> {
+    const authHeader = req.headers['authorization'];
+    const result = await this.dashboardService.getPendingRequests(authHeader as string);
     return { message: 'Pending requests retrieved', data: result };
   }
 
-  @Version('1')
-  @Get('pending')
+   @Get('pending')
   @ApiOperation({ summary: 'Get pending requests (alias)' })
-  async getPending() {
-    const result = await this.dashboardService.getPendingRequests();
+  async getPending(@Req() req: Request): Promise<{ message: string; data: any[] }> {
+    const authHeader = req.headers['authorization'];
+    const result = await this.dashboardService.getPendingRequests(authHeader as string);
     return { message: 'Pending requests retrieved', data: result };
   }
 }

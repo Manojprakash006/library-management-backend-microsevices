@@ -14,24 +14,21 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class MemberBooksController {
   constructor(private readonly memberBooksService: MemberBooksService) {}
 
-  @Version('1')
-  @Get('browse')
+   @Get('browse')
   @ApiOperation({ summary: 'Browse all available books' })
   async getAllBooks() {
     const result = await this.memberBooksService.getAllBooks();
     return { message: 'Books retrieved successfully', data: result, count: result.length };
   }
 
-  @Version('1')
-  @Get(':bookId')
+   @Get(':bookId')
   @ApiOperation({ summary: 'Get book by ID' })
   async getBookById(@Param('bookId') bookId: string) {
     const result = await this.memberBooksService.getBookById(bookId);
     return { message: 'Book retrieved successfully', data: result };
   }
 
-  @Version('1')
-  @Post('request')
+   @Post('request')
   @ApiOperation({ summary: 'Request a book' })
   async requestBook(@Body() requestDto: RequestBookDto) {
     const result = await this.memberBooksService.requestBook(requestDto);
