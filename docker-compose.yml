@@ -105,7 +105,7 @@ services:
       - GRPC_URL=0.0.0.0:5004
       - NODE_ENV=production
       - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
-      - MONGODB_DB=RequestService
+      - MONGODB_DB=RequestServices
       - JWT_SECRET=your-secret-key
       - KAFKA_BROKER=localhost:9092
     depends_on:

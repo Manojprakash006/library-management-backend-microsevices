@@ -82,7 +82,15 @@ export class DashboardService {
   }
 
   async getRecentBooks() {
-    return this.bookModel.find().sort({ createdAt: -1 }).limit(5).select('-__v');
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response: AxiosResponse<{ issues: any[] }> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/recent?limit=5`)
+      );
+      return response.data?.issues || [];
+    } catch (error) {
+      return [];
+    }
   }
 
   async getOverdueBooks() {
