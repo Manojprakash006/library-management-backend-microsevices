@@ -111,6 +111,27 @@ export class IssuesService {
       .exec();
   }
 
+  async getOverdueCount(): Promise<number> {
+    const today = new Date();
+    const issues = await this.issueBookModel.find({
+      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
+      dueDate: { $lt: today },
+    }).exec();
+    return issues.length;
+  }
+
+  async getIssuesCount(date?: string): Promise<number> {
+    if (!date) {
+      return this.issueBookModel.countDocuments();
+    }
+    const startOfDay = new Date(date);
+    const endOfDay = new Date(date);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+    return this.issueBookModel.countDocuments({
+      issueDate: { $gte: startOfDay, $lt: endOfDay },
+    });
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.issueBookModel.findByIdAndDelete(id).exec();
     if (!result) {

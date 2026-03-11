@@ -80,4 +80,8 @@ export class MembersService {
       throw new NotFoundException('Member not found');
     }
   }
+
+  async getCount(): Promise<number> {
+    return this.memberModel.countDocuments();
+  }
 }

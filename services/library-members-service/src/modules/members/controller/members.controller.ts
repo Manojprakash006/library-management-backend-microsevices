@@ -6,6 +6,7 @@ import { Member } from '../entities/member.entity';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -22,6 +23,15 @@ export class MembersController {
   async create(@Body() createMemberDto: CreateMemberDto): Promise<{ message: string; data: Member }> {
     const member = await this.membersService.create(createMemberDto);
     return { message: 'Member created successfully', data: member };
+  }
+
+   @Public()
+   @Get('count')
+  @ApiOperation({ summary: 'Get total members count' })
+  @ApiResponse({ status: 200, description: 'Members count retrieved successfully' })
+  async getCount(): Promise<{ count: number }> {
+    const count = await this.membersService.getCount();
+    return { count };
   }
 
    @Get()

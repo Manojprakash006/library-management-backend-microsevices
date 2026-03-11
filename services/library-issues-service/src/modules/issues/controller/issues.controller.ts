@@ -34,6 +34,22 @@ export class IssuesController {
     return { message: 'Recent issued books retrieved successfully', issues: recentIssues };
   }
 
+   @Get('overdue/count')
+  @ApiOperation({ summary: 'Get count of overdue books' })
+  @ApiResponse({ status: 200, description: 'Overdue count retrieved successfully' })
+  async getOverdueCount(): Promise<{ count: number }> {
+    const count = await this.issuesService.getOverdueCount();
+    return { count };
+  }
+
+   @Get('count')
+  @ApiOperation({ summary: 'Get count of issues by date' })
+  @ApiResponse({ status: 200, description: 'Issue count retrieved successfully' })
+  async getIssuesCount(@Query('date') date: string): Promise<{ count: number }> {
+    const count = await this.issuesService.getIssuesCount(date);
+    return { count };
+  }
+
    @Get('overdue')
   @ApiOperation({ summary: 'Get overdue issued books' })
   @ApiResponse({ status: 200, description: 'Overdue books retrieved successfully', type: [IssueBook] })

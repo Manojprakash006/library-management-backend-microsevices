@@ -105,9 +105,14 @@ export class DashboardService {
 
   async getStatCards() {
     const totalBooks = await this.bookModel.countDocuments();
-    const availableBooks = await this.bookModel.countDocuments({ status: 'available' });
-    const issuedBooks = await this.bookModel.countDocuments({ status: 'issued' });
-    const pendingRequests = await this.bookRequestModel.countDocuments({ status: 'Pending' });
+    
+    // Calculate available/issued from quantity and issues service
+    const availableBooks = await this.bookModel.countDocuments({ quantity: { $gt: 0 } });
+    const activeIssues = await this.getActiveIssuesCount();
+    const issuedBooks = activeIssues;
+    
+    // Get pending requests from requests service instead of local DB
+    const pendingRequests = await this.getPendingRequestsCount();
     
     const overdueBooks = await this.getOverdueBooksCount();
     const totalMembers = await this.getTotalMembersCount();
@@ -332,6 +337,31 @@ export class DashboardService {
       );
     } catch (error) {
       return [];
+    }
+  }
+
+  private async getActiveIssuesCount(): Promise<number> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/count`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  private async getPendingRequestsCount(): Promise<number> {
+    try {
+      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${requestsServiceUrl}/requests`)
+      );
+      const requests = response.data?.data || [];
+      return requests.filter(req => req.status === 'Pending' || req.status === 'PENDING').length;
+    } catch (error) {
+      return 0;
     }
   }
 
