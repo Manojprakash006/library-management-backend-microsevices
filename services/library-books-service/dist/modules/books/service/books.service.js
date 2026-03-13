@@ -57,6 +57,14 @@ let BooksService = BooksService_1 = class BooksService {
         }
         return book;
     }
+    async updateStatus(id, status) {
+        const book = await this.bookModel.findByIdAndUpdate(id, { status }, { new: true }).exec();
+        if (!book) {
+            throw new common_1.NotFoundException('Book not found');
+        }
+        this.logger.log(`Book ${id} status updated to ${status}`);
+        return book;
+    }
     async remove(id) {
         const result = await this.bookModel.findByIdAndDelete(id).exec();
         if (!result) {

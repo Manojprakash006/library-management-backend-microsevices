@@ -12,13 +12,19 @@ const mongoose_1 = require("@nestjs/mongoose");
 const staff_dashboard_controller_1 = require("./controller/staff-dashboard.controller");
 const staff_dashboard_service_1 = require("./service/staff-dashboard.service");
 const member_entity_1 = require("../members/entities/member.entity");
+const staff_entity_1 = require("../staff/entities/staff.entity");
+const activity_log_entity_1 = require("../activity-logs/entities/activity-log.entity");
 let StaffDashboardModule = class StaffDashboardModule {
 };
 exports.StaffDashboardModule = StaffDashboardModule;
 exports.StaffDashboardModule = StaffDashboardModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            mongoose_1.MongooseModule.forFeature([{ name: member_entity_1.Member.name, schema: member_entity_1.MemberSchema }]),
+            mongoose_1.MongooseModule.forFeature([
+                { name: member_entity_1.Member.name, schema: member_entity_1.MemberSchema },
+                { name: staff_entity_1.Staff.name, schema: staff_entity_1.StaffSchema },
+                { name: activity_log_entity_1.ActivityLog.name, schema: activity_log_entity_1.ActivityLogSchema },
+            ]),
         ],
         controllers: [staff_dashboard_controller_1.StaffDashboardController],
         providers: [staff_dashboard_service_1.StaffDashboardService],

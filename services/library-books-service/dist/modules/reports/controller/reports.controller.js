@@ -50,7 +50,6 @@ let ReportsController = class ReportsController {
 };
 exports.ReportsController = ReportsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all reports summary' }),
@@ -60,7 +59,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getAllReports", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('daily-issue-return'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get daily issue and return report' }),
@@ -70,7 +68,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getDailyIssueReturnReport", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('overdue'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get overdue books report' }),
@@ -80,7 +77,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getOverdueReport", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('rack-inventory'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get rack inventory report' }),
@@ -90,7 +86,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getRackInventoryReport", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('rack-inventory/:rackNumber'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get rack inventory by rack number' }),
@@ -102,7 +97,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getRackInventoryById", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('member-activity'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get member activity report' }),

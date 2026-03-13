@@ -9,16 +9,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardModule = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
+const axios_1 = require("@nestjs/axios");
 const dashboard_controller_1 = require("./controller/dashboard.controller");
 const dashboard_service_1 = require("./service/dashboard.service");
 const book_entity_1 = require("../books/entities/book.entity");
+const book_request_entity_1 = require("../book-requests/entities/book-request.entity");
 let DashboardModule = class DashboardModule {
 };
 exports.DashboardModule = DashboardModule;
 exports.DashboardModule = DashboardModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            mongoose_1.MongooseModule.forFeature([{ name: book_entity_1.Book.name, schema: book_entity_1.BookSchema }]),
+            mongoose_1.MongooseModule.forFeature([
+                { name: book_entity_1.Book.name, schema: book_entity_1.BookSchema },
+                { name: book_request_entity_1.BookRequest.name, schema: book_request_entity_1.BookRequestSchema },
+            ]),
+            axios_1.HttpModule,
         ],
         controllers: [dashboard_controller_1.DashboardController],
         providers: [dashboard_service_1.DashboardService],

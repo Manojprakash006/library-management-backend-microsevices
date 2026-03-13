@@ -33,4 +33,12 @@ export declare class NotificationsController {
     remove(id: string): Promise<{
         message: string;
     }>;
+    sendDueDateReminders(): Promise<{
+        message: string;
+        count: number;
+    }>;
+    sendOverdueNotifications(): Promise<{
+        message: string;
+        count: number;
+    }>;
 }

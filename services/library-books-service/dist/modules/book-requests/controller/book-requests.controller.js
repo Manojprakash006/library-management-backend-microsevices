@@ -75,7 +75,6 @@ let BookRequestsController = class BookRequestsController {
 };
 exports.BookRequestsController = BookRequestsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new book request' }),
@@ -88,7 +87,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all book requests' }),
@@ -98,7 +96,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('member/my-requests'),
     (0, roles_decorator_1.Roles)('member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get member book requests' }),
@@ -109,7 +106,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "getMemberRequests", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)('admin', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get book request by ID' }),
@@ -121,7 +117,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Update book request' }),
@@ -134,7 +129,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "update", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete book request' }),
@@ -146,7 +140,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "remove", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/cancel'),
     (0, roles_decorator_1.Roles)('member'),
     (0, swagger_1.ApiOperation)({ summary: 'Cancel book request (Member only)' }),
@@ -161,7 +154,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "cancel", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/approve'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Approve book request (Admin only)' }),
@@ -174,7 +166,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BookRequestsController.prototype, "approve", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/reject'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Reject book request (Admin only)' }),

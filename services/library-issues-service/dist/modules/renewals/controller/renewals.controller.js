@@ -52,7 +52,6 @@ let RenewalsController = class RenewalsController {
 };
 exports.RenewalsController = RenewalsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('admin', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new renewal request' }),
@@ -63,7 +62,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RenewalsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all renewal requests' }),
@@ -74,7 +72,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RenewalsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)('admin', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get renewal request by ID' }),
@@ -86,7 +83,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RenewalsController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/approve'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Approve renewal request' }),
@@ -98,7 +94,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RenewalsController.prototype, "approve", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/reject'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Reject renewal request' }),
@@ -110,7 +105,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RenewalsController.prototype, "reject", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete renewal request' }),

@@ -1,6 +1,7 @@
 import { MemberAuthService } from '../service/member-auth.service';
 import { MemberRegisterDto } from '../dto/member-register.dto';
 import { MemberLoginDto } from '../dto/member-login.dto';
+import { ForgotPasswordDto, ResetPasswordDto } from '../dto/forgot-password.dto';
 export declare class MemberAuthController {
     private readonly memberAuthService;
     constructor(memberAuthService: MemberAuthService);
@@ -34,6 +35,19 @@ export declare class MemberAuthController {
             _id: import("mongoose").Types.ObjectId;
         } & {
             __v: number;
+        };
+    }>;
+    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
+        message: string;
+        data: {
+            message: string;
+            email: string;
+        };
+    }>;
+    resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
+        message: string;
+        data: {
+            message: string;
         };
     }>;
 }

@@ -32,14 +32,14 @@ __decorate([
     __metadata("design:type", String)
 ], CreateBookRenewalDto.prototype, "memberId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Current due date' }),
-    (0, class_validator_1.IsDate)(),
-    __metadata("design:type", Date)
+    (0, swagger_1.ApiProperty)({ description: 'Current due date (ISO string)' }),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
 ], CreateBookRenewalDto.prototype, "currentDueDate", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'New requested due date' }),
-    (0, class_validator_1.IsDate)(),
-    __metadata("design:type", Date)
+    (0, swagger_1.ApiProperty)({ description: 'New requested due date (ISO string)' }),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
 ], CreateBookRenewalDto.prototype, "newDueDate", void 0);
 class UpdateBookRenewalDto {
 }

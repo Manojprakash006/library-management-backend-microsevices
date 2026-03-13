@@ -14,4 +14,7 @@ export declare class UtilController {
         message: string;
         timestamp: string;
     }>;
+    clearAll(): Promise<{
+        message: string;
+    }>;
 }

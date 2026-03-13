@@ -13,7 +13,26 @@ export declare class IssuesController {
         data: IssueBook[];
         count: number;
     }>;
+    findRecent(limit: string): Promise<{
+        message: string;
+        issues: IssueBook[];
+    }>;
+    getOverdueCount(): Promise<{
+        count: number;
+    }>;
+    getIssuesCount(date: string): Promise<{
+        count: number;
+    }>;
+    findOverdue(): Promise<{
+        message: string;
+        data: IssueBook[];
+        count: number;
+    }>;
     findOne(id: string): Promise<{
+        message: string;
+        data: IssueBook;
+    }>;
+    update(id: string, updateIssueDto: any): Promise<{
         message: string;
         data: IssueBook;
     }>;

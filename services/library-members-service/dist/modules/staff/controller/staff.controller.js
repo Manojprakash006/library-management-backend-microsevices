@@ -53,7 +53,6 @@ let StaffController = class StaffController {
 };
 exports.StaffController = StaffController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('login'),
     (0, swagger_1.ApiOperation)({ summary: 'Staff login' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),
@@ -63,7 +62,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "staffLogin", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
@@ -76,7 +74,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "createStaff", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
@@ -88,7 +85,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "getAllStaff", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
@@ -101,7 +97,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "getStaffById", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
@@ -115,7 +110,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "updateStaff", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),

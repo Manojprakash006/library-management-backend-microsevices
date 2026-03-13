@@ -1,4 +1,4 @@
-import { BookType, BookCondition } from '../entities/book.entity';
+import { BookType, BookCondition, BookStatus } from '../entities/book.entity';
 export declare class CreateBookDto {
     bookId: string;
     isbn: string;
@@ -15,6 +15,7 @@ export declare class CreateBookDto {
     shelfNumber: string;
     bookType: BookType;
     condition: BookCondition;
+    status: BookStatus;
     description: string;
     quantity: number;
     coverUrl: string;

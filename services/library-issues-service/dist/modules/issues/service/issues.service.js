@@ -17,10 +17,13 @@ exports.IssuesService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
+const axios_1 = require("@nestjs/axios");
+const rxjs_1 = require("rxjs");
 const issue_book_entity_1 = require("../entities/issue-book.entity");
 let IssuesService = IssuesService_1 = class IssuesService {
-    constructor(issueBookModel) {
+    constructor(issueBookModel, httpService) {
         this.issueBookModel = issueBookModel;
+        this.httpService = httpService;
         this.logger = new common_1.Logger(IssuesService_1.name);
     }
     async create(createIssueDto) {
@@ -36,7 +39,27 @@ let IssuesService = IssuesService_1 = class IssuesService {
             dueDate,
             status: issue_book_entity_1.IssueStatus.ACTIVE,
         });
-        return issuedBook.save();
+        const savedIssue = await issuedBook.save();
+        await this.updateBookStatus(createIssueDto.bookId, 'issued');
+        return savedIssue;
+    }
+    async updateBookStatus(bookId, status) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.patch(`${booksServiceUrl}/library/books/${bookId}/status`, { status }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to update book status: ${error.message}`);
+        }
+    }
+    async updateBookStatusByObjectId(bookObjectId, status) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.patch(`${booksServiceUrl}/library/books/${bookObjectId}/status`, { status }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to update book status: ${error.message}`);
+        }
     }
     async findAll() {
         const issuedBooks = await this.issueBookModel.find().exec();
@@ -84,7 +107,50 @@ let IssuesService = IssuesService_1 = class IssuesService {
             issuedBook.daysOverdue = overdueDays;
             issuedBook.fine = overdueDays * issuedBook.finePerDay;
         }
+        const savedIssue = await issuedBook.save();
+        const bookId = issuedBook.bookId.toString();
+        await this.updateBookStatus(bookId, 'available');
+        return savedIssue;
+    }
+    async update(id, updateIssueDto) {
+        const issuedBook = await this.issueBookModel.findById(id).exec();
+        if (!issuedBook) {
+            throw new common_1.NotFoundException('Issued book record not found');
+        }
+        if (updateIssueDto.numberOfDays && updateIssueDto.issueDate) {
+            const startDate = new Date(updateIssueDto.issueDate);
+            const dueDate = new Date(startDate);
+            dueDate.setDate(dueDate.getDate() + updateIssueDto.numberOfDays);
+            updateIssueDto.dueDate = dueDate;
+        }
+        Object.assign(issuedBook, updateIssueDto);
         return issuedBook.save();
+    }
+    async findRecent(limit = 5) {
+        return this.issueBookModel
+            .find()
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .exec();
+    }
+    async getOverdueCount() {
+        const today = new Date();
+        const issues = await this.issueBookModel.find({
+            status: { $in: [issue_book_entity_1.IssueStatus.ACTIVE, issue_book_entity_1.IssueStatus.OVERDUE] },
+            dueDate: { $lt: today },
+        }).exec();
+        return issues.length;
+    }
+    async getIssuesCount(date) {
+        if (!date) {
+            return this.issueBookModel.countDocuments();
+        }
+        const startOfDay = new Date(date);
+        const endOfDay = new Date(date);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+        return this.issueBookModel.countDocuments({
+            issueDate: { $gte: startOfDay, $lt: endOfDay },
+        });
     }
     async remove(id) {
         const result = await this.issueBookModel.findByIdAndDelete(id).exec();
@@ -97,6 +163,7 @@ exports.IssuesService = IssuesService;
 exports.IssuesService = IssuesService = IssuesService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(issue_book_entity_1.IssueBook.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model])
+    __metadata("design:paramtypes", [mongoose_2.Model,
+        axios_1.HttpService])
 ], IssuesService);
 //# sourceMappingURL=issues.service.js.map

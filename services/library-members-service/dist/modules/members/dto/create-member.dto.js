@@ -16,7 +16,8 @@ class CreateMemberDto {
 }
 exports.CreateMemberDto = CreateMemberDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Unique member identifier' }),
+    (0, swagger_1.ApiProperty)({ description: 'Unique member identifier (auto-generated if not provided)', required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(1),
     __metadata("design:type", String)
@@ -34,7 +35,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreateMemberDto.prototype, "email", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Phone number', minLength: 10, maxLength: 20 }),
+    (0, swagger_1.ApiProperty)({ description: 'Phone number', minLength: 10, maxLength: 20, required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(10),
     (0, class_validator_1.MaxLength)(20),

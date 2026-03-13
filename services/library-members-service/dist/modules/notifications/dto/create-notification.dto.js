@@ -42,6 +42,18 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateNotificationDto.prototype, "message", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Member email for email notification', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateNotificationDto.prototype, "memberEmail", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Member name for email notification', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateNotificationDto.prototype, "memberName", void 0);
 class UpdateNotificationDto {
 }
 exports.UpdateNotificationDto = UpdateNotificationDto;

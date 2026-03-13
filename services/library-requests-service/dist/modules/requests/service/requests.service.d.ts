@@ -9,6 +9,8 @@ export declare class RequestsService {
     findAll(): Promise<BookRequest[]>;
     findOne(id: string): Promise<BookRequest>;
     findByMember(memberId: string): Promise<BookRequest[]>;
+    update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<BookRequest>;
+    cancel(id: string, memberId: string): Promise<BookRequest>;
     approve(id: string): Promise<BookRequest>;
     reject(id: string): Promise<BookRequest>;
     remove(id: string): Promise<void>;

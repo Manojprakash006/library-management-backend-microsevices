@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BookSchema = exports.Book = exports.BookCondition = exports.BookType = void 0;
+exports.BookSchema = exports.Book = exports.BookStatus = exports.BookCondition = exports.BookType = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 var BookType;
 (function (BookType) {
@@ -24,6 +24,14 @@ var BookCondition;
     BookCondition["POOR"] = "Poor";
     BookCondition["DAMAGED"] = "Damaged";
 })(BookCondition || (exports.BookCondition = BookCondition = {}));
+var BookStatus;
+(function (BookStatus) {
+    BookStatus["AVAILABLE"] = "available";
+    BookStatus["ISSUED"] = "issued";
+    BookStatus["MAINTENANCE"] = "maintenance";
+    BookStatus["LOST"] = "lost";
+    BookStatus["DAMAGED"] = "damaged";
+})(BookStatus || (exports.BookStatus = BookStatus = {}));
 let Book = class Book {
 };
 exports.Book = Book;
@@ -87,6 +95,10 @@ __decorate([
     (0, mongoose_1.Prop)({ type: String, enum: BookCondition, default: BookCondition.GOOD }),
     __metadata("design:type", String)
 ], Book.prototype, "condition", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, enum: BookStatus, default: BookStatus.AVAILABLE }),
+    __metadata("design:type", String)
+], Book.prototype, "status", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ trim: true, maxlength: 2000 }),
     __metadata("design:type", String)

@@ -18,6 +18,7 @@ const swagger_1 = require("@nestjs/swagger");
 const member_auth_service_1 = require("../service/member-auth.service");
 const member_register_dto_1 = require("../dto/member-register.dto");
 const member_login_dto_1 = require("../dto/member-login.dto");
+const forgot_password_dto_1 = require("../dto/forgot-password.dto");
 const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
 const roles_decorator_1 = require("../../../auth/guards/roles.decorator");
 const roles_guard_1 = require("../../../auth/guards/roles.guard");
@@ -37,10 +38,17 @@ let MemberAuthController = class MemberAuthController {
         const result = await this.memberAuthService.getProfile(req.user.userId);
         return { message: 'Profile retrieved successfully', data: result };
     }
+    async forgotPassword(forgotPasswordDto) {
+        const result = await this.memberAuthService.forgotPassword(forgotPasswordDto.email);
+        return { message: 'Password reset instructions sent to email', data: result };
+    }
+    async resetPassword(resetPasswordDto) {
+        const result = await this.memberAuthService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
+        return { message: 'Password reset successfully', data: result };
+    }
 };
 exports.MemberAuthController = MemberAuthController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('register'),
     (0, swagger_1.ApiOperation)({ summary: 'Register a new member' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Member registered successfully' }),
@@ -51,7 +59,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberAuthController.prototype, "register", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('login'),
     (0, swagger_1.ApiOperation)({ summary: 'Member login' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),
@@ -62,7 +69,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberAuthController.prototype, "login", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('profile'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('member'),
@@ -74,6 +80,26 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MemberAuthController.prototype, "getProfile", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    (0, swagger_1.ApiOperation)({ summary: 'Request password reset' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Password reset instructions sent' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Email not found' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto]),
+    __metadata("design:returntype", Promise)
+], MemberAuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    (0, swagger_1.ApiOperation)({ summary: 'Reset password with token' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Password reset successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid token or password' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ResetPasswordDto]),
+    __metadata("design:returntype", Promise)
+], MemberAuthController.prototype, "resetPassword", null);
 exports.MemberAuthController = MemberAuthController = __decorate([
     (0, swagger_1.ApiTags)('Member Auth'),
     (0, common_1.Controller)('member-auth'),

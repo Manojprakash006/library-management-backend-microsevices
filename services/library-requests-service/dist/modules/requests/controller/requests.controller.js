@@ -18,11 +18,14 @@ const swagger_1 = require("@nestjs/swagger");
 const requests_service_1 = require("../service/requests.service");
 const create_book_request_dto_1 = require("../dto/create-book-request.dto");
 const book_request_entity_1 = require("../entities/book-request.entity");
+const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
+const roles_decorator_1 = require("../../../auth/guards/roles.decorator");
+const roles_guard_1 = require("../../../auth/guards/roles.guard");
 let RequestsController = class RequestsController {
     constructor(requestsService) {
         this.requestsService = requestsService;
     }
-    async create(createDto) {
+    async create(createDto, req) {
         const request = await this.requestsService.create(createDto);
         return { message: 'Book request created successfully', data: request };
     }
@@ -33,6 +36,15 @@ let RequestsController = class RequestsController {
     async findOne(id) {
         const request = await this.requestsService.findOne(id);
         return { message: 'Book request retrieved successfully', data: request };
+    }
+    async update(id, updateDto) {
+        const request = await this.requestsService.update(id, updateDto);
+        return { message: 'Book request updated successfully', data: request };
+    }
+    async cancel(id, req) {
+        const memberId = req.user.id;
+        const request = await this.requestsService.cancel(id, memberId);
+        return { message: 'Book request cancelled successfully', data: request };
     }
     async approve(id) {
         const request = await this.requestsService.approve(id);
@@ -49,17 +61,17 @@ let RequestsController = class RequestsController {
 };
 exports.RequestsController = RequestsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new book request' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Book request created successfully', type: book_request_entity_1.BookRequest }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_book_request_dto_1.CreateBookRequestDto]),
+    __metadata("design:paramtypes", [create_book_request_dto_1.CreateBookRequestDto, Object]),
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Version)('1'),
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get all book requests' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book requests retrieved successfully', type: [book_request_entity_1.BookRequest] }),
@@ -68,7 +80,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get book request by ID' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request retrieved successfully', type: book_request_entity_1.BookRequest }),
@@ -78,7 +90,28 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Version)('1'),
+    (0, roles_decorator_1.Roles)('admin'),
+    (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update book request' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request updated successfully', type: book_request_entity_1.BookRequest }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Put)(':id/cancel'),
+    (0, swagger_1.ApiOperation)({ summary: 'Cancel book request' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request cancelled successfully', type: book_request_entity_1.BookRequest }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "cancel", null);
+__decorate([
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Put)(':id/approve'),
     (0, swagger_1.ApiOperation)({ summary: 'Approve a book request' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request approved successfully', type: book_request_entity_1.BookRequest }),
@@ -88,7 +121,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "approve", null);
 __decorate([
-    (0, common_1.Version)('1'),
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Put)(':id/reject'),
     (0, swagger_1.ApiOperation)({ summary: 'Reject a book request' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request rejected successfully', type: book_request_entity_1.BookRequest }),
@@ -98,7 +131,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "reject", null);
 __decorate([
-    (0, common_1.Version)('1'),
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Delete)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete book request' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request deleted successfully' }),
@@ -109,6 +142,7 @@ __decorate([
 ], RequestsController.prototype, "remove", null);
 exports.RequestsController = RequestsController = __decorate([
     (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiTags)('Book Requests'),
     (0, common_1.Controller)('requests'),
     __metadata("design:paramtypes", [requests_service_1.RequestsService])

@@ -11,4 +11,5 @@ export declare class MembersService {
     findByMemberId(memberId: string): Promise<Member>;
     update(id: string, updateData: Partial<CreateMemberDto>): Promise<Member>;
     remove(id: string): Promise<void>;
+    getCount(): Promise<number>;
 }

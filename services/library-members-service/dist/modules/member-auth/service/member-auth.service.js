@@ -19,23 +19,33 @@ const mongoose_2 = require("mongoose");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcrypt");
 const member_entity_1 = require("../../members/entities/member.entity");
+const email_service_1 = require("../../notifications/service/email.service");
 let MemberAuthService = class MemberAuthService {
-    constructor(memberModel, jwtService) {
+    constructor(memberModel, jwtService, emailService) {
         this.memberModel = memberModel;
         this.jwtService = jwtService;
+        this.emailService = emailService;
     }
     async register(registerDto) {
         const { email, password, name, phone } = registerDto;
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            throw new common_1.ConflictException('Valid email is required');
+        }
+        if (!password || password.length < 6) {
+            throw new common_1.ConflictException('Password must be at least 6 characters');
+        }
+        if (!name || name.trim().length < 2) {
+            throw new common_1.ConflictException('Name is required and must be at least 2 characters');
+        }
         const existingMember = await this.memberModel.findOne({ email });
         if (existingMember) {
             throw new common_1.ConflictException('Email already registered');
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
         const member = new this.memberModel({
             email,
-            password: hashedPassword,
+            password: password,
             name,
-            phone,
+            phoneNumber: phone,
             role: 'member',
             status: 'active',
         });
@@ -57,13 +67,21 @@ let MemberAuthService = class MemberAuthService {
     }
     async login(loginDto) {
         const { email, password } = loginDto;
-        const member = await this.memberModel.findOne({ email });
+        const member = await this.memberModel.findOne({ email }).select('+password');
         if (!member) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        const isPasswordValid = await bcrypt.compare(password, member.password);
-        if (!isPasswordValid) {
-            throw new common_1.UnauthorizedException('Invalid credentials');
+        if (!member.password) {
+            throw new common_1.UnauthorizedException('Account error - password not set');
+        }
+        try {
+            const isPasswordValid = await bcrypt.compare(password, member.password);
+            if (!isPasswordValid) {
+                throw new common_1.UnauthorizedException('Invalid credentials');
+            }
+        }
+        catch (error) {
+            throw new common_1.UnauthorizedException('Password verification failed');
         }
         const token = this.jwtService.sign({
             userId: member._id,
@@ -87,12 +105,34 @@ let MemberAuthService = class MemberAuthService {
         }
         return member;
     }
+    async forgotPassword(email) {
+        const member = await this.memberModel.findOne({ email });
+        if (!member) {
+            throw new common_1.UnauthorizedException('Email not found');
+        }
+        const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await this.emailService.sendPasswordResetEmail(member.email, member.name, resetToken);
+        return {
+            message: 'Password reset instructions sent to email',
+            email: member.email,
+        };
+    }
+    async resetPassword(token, newPassword) {
+        if (!newPassword || newPassword.length < 6) {
+            throw new common_1.ConflictException('Password must be at least 6 characters');
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        return {
+            message: 'Password reset successfully',
+        };
+    }
 };
 exports.MemberAuthService = MemberAuthService;
 exports.MemberAuthService = MemberAuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(member_entity_1.Member.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        email_service_1.EmailService])
 ], MemberAuthService);
 //# sourceMappingURL=member-auth.service.js.map

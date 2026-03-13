@@ -50,6 +50,32 @@ let RequestsService = RequestsService_1 = class RequestsService {
     async findByMember(memberId) {
         return this.bookRequestModel.find({ memberId: new mongoose_2.Types.ObjectId(memberId) }).sort({ requestDate: -1 }).exec();
     }
+    async update(id, updateDto) {
+        const request = await this.bookRequestModel.findById(id).exec();
+        if (!request) {
+            throw new common_1.NotFoundException('Book request not found');
+        }
+        if (request.status !== book_request_entity_1.RequestStatus.PENDING) {
+            throw new common_1.BadRequestException('Only pending requests can be updated');
+        }
+        Object.assign(request, updateDto);
+        return request.save();
+    }
+    async cancel(id, memberId) {
+        const request = await this.bookRequestModel.findById(id).exec();
+        if (!request) {
+            throw new common_1.NotFoundException('Book request not found');
+        }
+        if (request.memberId.toString() !== memberId) {
+            throw new common_1.BadRequestException('Not authorized to cancel this request');
+        }
+        if (request.status !== book_request_entity_1.RequestStatus.PENDING) {
+            throw new common_1.BadRequestException('Only pending requests can be cancelled');
+        }
+        request.status = book_request_entity_1.RequestStatus.CANCELLED;
+        request.processedDate = new Date();
+        return request.save();
+    }
     async approve(id) {
         const request = await this.bookRequestModel.findById(id).exec();
         if (!request) {

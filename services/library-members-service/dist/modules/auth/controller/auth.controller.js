@@ -36,7 +36,6 @@ let AuthController = class AuthController {
 };
 exports.AuthController = AuthController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('login'),
     (0, swagger_1.ApiOperation)({ summary: 'User login' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),
@@ -47,7 +46,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('register'),
     (0, swagger_1.ApiOperation)({ summary: 'User registration' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Registration successful' }),
@@ -58,7 +56,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('refresh-token'),
     (0, swagger_1.ApiOperation)({ summary: 'Refresh access token' }),
     (0, swagger_1.ApiResponse)({ status: 501, description: 'Not implemented' }),
@@ -67,7 +64,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refreshToken", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('logout'),
     (0, swagger_1.ApiOperation)({ summary: 'User logout' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Logged out successfully' }),

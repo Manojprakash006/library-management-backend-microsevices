@@ -8,6 +8,11 @@ export declare class ActivityLogsController {
         message: string;
         data: ActivityLog;
     }>;
+    getRecentActivities(limit?: number): Promise<{
+        message: string;
+        data: ActivityLog[];
+        count: number;
+    }>;
     findAll(limit?: number): Promise<{
         message: string;
         data: ActivityLog[];

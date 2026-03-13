@@ -29,6 +29,10 @@ let ActivityLogsController = class ActivityLogsController {
         const log = await this.activityLogsService.create(createActivityLogDto);
         return { message: 'Activity log created successfully', data: log };
     }
+    async getRecentActivities(limit) {
+        const logs = await this.activityLogsService.getRecent(limit || 10);
+        return { message: 'Recent activities retrieved successfully', data: logs, count: logs.length };
+    }
     async findAll(limit) {
         const logs = await this.activityLogsService.findAll(limit || 50);
         return { message: 'Activity logs retrieved successfully', data: logs, count: logs.length };
@@ -52,7 +56,6 @@ let ActivityLogsController = class ActivityLogsController {
 };
 exports.ActivityLogsController = ActivityLogsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new activity log' }),
@@ -63,7 +66,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ActivityLogsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Version)('1'),
+    (0, common_1.Get)('recent'),
+    (0, roles_decorator_1.Roles)('admin'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get recent activities' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Recent activities retrieved successfully', type: [activity_log_entity_1.ActivityLog] }),
+    __param(0, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], ActivityLogsController.prototype, "getRecentActivities", null);
+__decorate([
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all activity logs' }),
@@ -74,7 +86,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ActivityLogsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('member/:memberId'),
     (0, roles_decorator_1.Roles)('admin', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get activity logs by member ID' }),
@@ -86,7 +97,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ActivityLogsController.prototype, "findByMember", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('book/:bookId'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get activity logs by book ID' }),
@@ -98,7 +108,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ActivityLogsController.prototype, "findByBook", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get activity log by ID' }),
@@ -110,7 +119,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ActivityLogsController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete activity log' }),

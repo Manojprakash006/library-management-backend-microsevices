@@ -12,11 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MemberSchema = exports.Member = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 let Member = class Member {
 };
 exports.Member = Member;
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, unique: true, trim: true, index: true }),
+    (0, mongoose_1.Prop)({ unique: true, trim: true, index: true, default: () => 'MEM' + crypto.randomUUID().slice(0, 8).toUpperCase() }),
     __metadata("design:type", String)
 ], Member.prototype, "memberId", void 0);
 __decorate([
@@ -28,7 +29,7 @@ __decorate([
     __metadata("design:type", String)
 ], Member.prototype, "email", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, trim: true, minlength: 10, maxlength: 20 }),
+    (0, mongoose_1.Prop)({ trim: true, minlength: 10, maxlength: 20, default: '' }),
     __metadata("design:type", String)
 ], Member.prototype, "phoneNumber", void 0);
 __decorate([

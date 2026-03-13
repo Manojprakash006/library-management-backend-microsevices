@@ -24,6 +24,15 @@ let MembersService = MembersService_1 = class MembersService {
         this.logger = new common_1.Logger(MembersService_1.name);
     }
     async create(createMemberDto) {
+        if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
+            throw new common_1.ConflictException('Full name is required and must be at least 2 characters');
+        }
+        if (!createMemberDto.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createMemberDto.email)) {
+            throw new common_1.ConflictException('Valid email is required');
+        }
+        if (!createMemberDto.password || createMemberDto.password.length < 6) {
+            throw new common_1.ConflictException('Password is required and must be at least 6 characters');
+        }
         const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
         if (existingMember) {
             throw new common_1.ConflictException('Member ID already exists');
@@ -32,7 +41,15 @@ let MembersService = MembersService_1 = class MembersService {
         if (existingEmail) {
             throw new common_1.ConflictException('Email already registered');
         }
-        const createdMember = new this.memberModel(createMemberDto);
+        const memberData = {
+            memberId: createMemberDto.memberId,
+            name: createMemberDto.fullName,
+            email: createMemberDto.email,
+            phoneNumber: createMemberDto.phoneNumber,
+            address: createMemberDto.address,
+            password: createMemberDto.password,
+        };
+        const createdMember = new this.memberModel(memberData);
         return createdMember.save();
     }
     async findAll() {
@@ -64,6 +81,9 @@ let MembersService = MembersService_1 = class MembersService {
         if (!result) {
             throw new common_1.NotFoundException('Member not found');
         }
+    }
+    async getCount() {
+        return this.memberModel.countDocuments();
     }
 };
 exports.MembersService = MembersService;

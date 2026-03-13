@@ -57,10 +57,15 @@ let NotificationsController = class NotificationsController {
         await this.notificationsService.remove(id);
         return { message: 'Notification deleted successfully' };
     }
+    async sendDueDateReminders() {
+        return this.notificationsService.sendDueDateReminders();
+    }
+    async sendOverdueNotifications() {
+        return this.notificationsService.sendOverdueNotifications();
+    }
 };
 exports.NotificationsController = NotificationsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new notification' }),
@@ -71,7 +76,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all notifications' }),
@@ -81,7 +85,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('member/my-notifications'),
     (0, roles_decorator_1.Roles)('member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get member notifications' }),
@@ -92,7 +95,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "getMemberNotifications", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('member/unread'),
     (0, roles_decorator_1.Roles)('member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get unread notifications for member' }),
@@ -103,7 +105,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "getUnreadNotifications", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(':id/read'),
     (0, roles_decorator_1.Roles)('member'),
     (0, swagger_1.ApiOperation)({ summary: 'Mark notification as read' }),
@@ -116,7 +117,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "markAsRead", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('mark-all-read'),
     (0, roles_decorator_1.Roles)('member'),
     (0, swagger_1.ApiOperation)({ summary: 'Mark all notifications as read' }),
@@ -127,7 +127,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "markAllAsRead", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete notification' }),
@@ -138,6 +137,24 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)('send-due-reminders'),
+    (0, roles_decorator_1.Roles)('admin'),
+    (0, swagger_1.ApiOperation)({ summary: 'Send due date reminders to members' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Due date reminders sent successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "sendDueDateReminders", null);
+__decorate([
+    (0, common_1.Post)('send-overdue'),
+    (0, roles_decorator_1.Roles)('admin'),
+    (0, swagger_1.ApiOperation)({ summary: 'Send overdue notifications to members' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Overdue notifications sent successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "sendOverdueNotifications", null);
 exports.NotificationsController = NotificationsController = __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiTags)('Notifications'),

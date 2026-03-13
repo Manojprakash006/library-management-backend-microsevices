@@ -11,6 +11,13 @@ export declare enum BookCondition {
     POOR = "Poor",
     DAMAGED = "Damaged"
 }
+export declare enum BookStatus {
+    AVAILABLE = "available",
+    ISSUED = "issued",
+    MAINTENANCE = "maintenance",
+    LOST = "lost",
+    DAMAGED = "damaged"
+}
 export declare class Book {
     bookId: string;
     isbn: string;
@@ -27,6 +34,7 @@ export declare class Book {
     shelfNumber: string;
     bookType: BookType;
     condition: BookCondition;
+    status: BookStatus;
     description: string;
     quantity: number;
     coverUrl: string;

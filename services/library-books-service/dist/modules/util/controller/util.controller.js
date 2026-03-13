@@ -24,10 +24,13 @@ let UtilController = class UtilController {
     async ping() {
         return { message: 'Pong', timestamp: new Date().toISOString() };
     }
+    async clearAll() {
+        const result = await this.utilService.clearAll();
+        return result;
+    }
 };
 exports.UtilController = UtilController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('health'),
     (0, swagger_1.ApiOperation)({ summary: 'Health check' }),
     __metadata("design:type", Function),
@@ -35,13 +38,19 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UtilController.prototype, "healthCheck", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('ping'),
     (0, swagger_1.ApiOperation)({ summary: 'Ping service' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], UtilController.prototype, "ping", null);
+__decorate([
+    (0, common_1.Delete)('clear-all'),
+    (0, swagger_1.ApiOperation)({ summary: 'Clear all products' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], UtilController.prototype, "clearAll", null);
 exports.UtilController = UtilController = __decorate([
     (0, swagger_1.ApiTags)('Util'),
     (0, common_1.Controller)('util'),

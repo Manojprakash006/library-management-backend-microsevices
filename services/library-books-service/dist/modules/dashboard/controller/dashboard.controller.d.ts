@@ -1,4 +1,5 @@
 import { DashboardService } from '../service/dashboard.service';
+import { Request } from 'express';
 export declare class DashboardController {
     private readonly dashboardService;
     constructor(dashboardService: DashboardService);
@@ -11,6 +12,9 @@ export declare class DashboardController {
             totalMembers: number;
             activeIssues: number;
             overdueBooks: number;
+            pendingRequests: number;
+            newArrivals: number;
+            todayIssues: number;
         };
     }>;
     getInventorySummary(): Promise<{
@@ -33,5 +37,34 @@ export declare class DashboardController {
         } & Required<{
             _id: import("mongoose").Types.ObjectId;
         }>)[];
+    }>;
+    getStatCards(): Promise<{
+        message: string;
+        data: {
+            totalBooks: number;
+            availableBooks: number;
+            issuedBooks: number;
+            overdueBooks: number;
+            totalMembers: number;
+            newArrivals: number;
+            pendingRequests: number;
+            todayIssues: number;
+        };
+    }>;
+    getRecentBooks(req: Request): Promise<{
+        message: string;
+        data: import("../service/dashboard.service").PopulatedRecentBook[];
+    }>;
+    getOverdueBooks(req: Request): Promise<{
+        message: string;
+        data: import("../service/dashboard.service").PopulatedRecentBook[];
+    }>;
+    getPendingRequests(req: Request): Promise<{
+        message: string;
+        data: any[];
+    }>;
+    getPending(req: Request): Promise<{
+        message: string;
+        data: any[];
     }>;
 }

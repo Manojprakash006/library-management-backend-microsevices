@@ -1,8 +1,8 @@
 export declare class CreateMemberDto {
-    memberId: string;
+    memberId?: string;
     fullName: string;
     email: string;
-    phoneNumber: string;
-    address: string;
+    phoneNumber?: string;
+    address?: string;
     password: string;
 }

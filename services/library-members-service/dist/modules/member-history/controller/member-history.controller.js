@@ -53,7 +53,6 @@ let MemberHistoryController = class MemberHistoryController {
 };
 exports.MemberHistoryController = MemberHistoryController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('history'),
     (0, swagger_1.ApiOperation)({ summary: 'Get member borrowing history' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'History retrieved successfully' }),
@@ -63,7 +62,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberHistoryController.prototype, "getMemberHistory", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('request-again'),
     (0, swagger_1.ApiOperation)({ summary: 'Request book again' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Book request submitted' }),
@@ -74,7 +72,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberHistoryController.prototype, "requestBookAgain", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('reviews'),
     (0, swagger_1.ApiOperation)({ summary: 'Get member reviews' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Reviews retrieved successfully' }),
@@ -84,7 +81,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberHistoryController.prototype, "getMemberReviews", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('reviews'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a review' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Review created successfully' }),
@@ -95,7 +91,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberHistoryController.prototype, "createReview", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)('reviews/:id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update a review' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Review updated successfully' }),
@@ -106,7 +101,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberHistoryController.prototype, "updateReview", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)('reviews/:id'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a review' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Review deleted successfully' }),

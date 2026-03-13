@@ -4,7 +4,7 @@ import { BookRequest } from '../entities/book-request.entity';
 export declare class RequestsController {
     private readonly requestsService;
     constructor(requestsService: RequestsService);
-    create(createDto: CreateBookRequestDto): Promise<{
+    create(createDto: CreateBookRequestDto, req: any): Promise<{
         message: string;
         data: BookRequest;
     }>;
@@ -14,6 +14,14 @@ export declare class RequestsController {
         count: number;
     }>;
     findOne(id: string): Promise<{
+        message: string;
+        data: BookRequest;
+    }>;
+    update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<{
+        message: string;
+        data: BookRequest;
+    }>;
+    cancel(id: string, req: any): Promise<{
         message: string;
         data: BookRequest;
     }>;

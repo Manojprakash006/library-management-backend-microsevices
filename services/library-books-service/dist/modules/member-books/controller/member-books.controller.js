@@ -39,7 +39,6 @@ let MemberBooksController = class MemberBooksController {
 };
 exports.MemberBooksController = MemberBooksController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('browse'),
     (0, swagger_1.ApiOperation)({ summary: 'Browse all available books' }),
     __metadata("design:type", Function),
@@ -47,7 +46,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberBooksController.prototype, "getAllBooks", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':bookId'),
     (0, swagger_1.ApiOperation)({ summary: 'Get book by ID' }),
     __param(0, (0, common_1.Param)('bookId')),
@@ -56,7 +54,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberBooksController.prototype, "getBookById", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('request'),
     (0, swagger_1.ApiOperation)({ summary: 'Request a book' }),
     __param(0, (0, common_1.Body)()),

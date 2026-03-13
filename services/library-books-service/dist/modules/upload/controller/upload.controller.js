@@ -28,7 +28,6 @@ let UploadController = class UploadController {
 };
 exports.UploadController = UploadController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({ summary: 'Upload a file' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),

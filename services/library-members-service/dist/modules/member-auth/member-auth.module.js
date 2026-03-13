@@ -10,20 +10,24 @@ exports.MemberAuthModule = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
 const member_auth_controller_1 = require("./controller/member-auth.controller");
 const member_auth_service_1 = require("./service/member-auth.service");
 const member_entity_1 = require("../members/entities/member.entity");
+const notifications_module_1 = require("../notifications/notifications.module");
 let MemberAuthModule = class MemberAuthModule {
 };
 exports.MemberAuthModule = MemberAuthModule;
 exports.MemberAuthModule = MemberAuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            config_1.ConfigModule,
             mongoose_1.MongooseModule.forFeature([{ name: member_entity_1.Member.name, schema: member_entity_1.MemberSchema }]),
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_SECRET || 'defaultsecret',
                 signOptions: { expiresIn: '24h' },
             }),
+            notifications_module_1.NotificationsModule,
         ],
         controllers: [member_auth_controller_1.MemberAuthController],
         providers: [member_auth_service_1.MemberAuthService],

@@ -35,7 +35,6 @@ let RacksController = class RacksController {
 };
 exports.RacksController = RacksController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin', 'staff', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all racks with book summary' }),
@@ -45,7 +44,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RacksController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':rackNumber'),
     (0, roles_decorator_1.Roles)('admin', 'staff', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get rack details by rack number' }),

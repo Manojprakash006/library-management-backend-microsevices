@@ -20,7 +20,9 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_module_1.ConfigModule,
-            mongoose_1.MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_issues'),
+            mongoose_1.MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_members', {
+                dbName: process.env.MONGODB_DB || 'library_members',
+            }),
             issues_module_1.IssuesModule,
             renewals_module_1.RenewalsModule,
             damage_reports_module_1.DamageReportsModule,

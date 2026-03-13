@@ -7,6 +7,7 @@ export declare class ActivityLogsService {
     constructor(activityLogModel: Model<ActivityLogDocument>);
     create(createActivityLogDto: CreateActivityLogDto): Promise<ActivityLog>;
     findAll(limit?: number): Promise<ActivityLog[]>;
+    getRecent(limit?: number): Promise<ActivityLog[]>;
     findByMember(memberId: string, limit?: number): Promise<ActivityLog[]>;
     findByBook(bookId: string, limit?: number): Promise<ActivityLog[]>;
     findOne(id: string): Promise<ActivityLog>;

@@ -1,4 +1,4 @@
-import { BookType, BookCondition } from '../entities/book.entity';
+import { BookType, BookCondition, BookStatus } from '../entities/book.entity';
 export declare class UpdateBookDto {
     title: string;
     author: string;
@@ -13,6 +13,7 @@ export declare class UpdateBookDto {
     shelfNumber: string;
     bookType: BookType;
     condition: BookCondition;
+    status: BookStatus;
     description: string;
     quantity: number;
     coverUrl: string;

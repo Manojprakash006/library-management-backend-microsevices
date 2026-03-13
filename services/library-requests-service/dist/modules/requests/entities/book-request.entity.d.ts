@@ -3,7 +3,8 @@ export type BookRequestDocument = HydratedDocument<BookRequest>;
 export declare enum RequestStatus {
     PENDING = "Pending",
     APPROVED = "Approved",
-    REJECTED = "Rejected"
+    REJECTED = "Rejected",
+    CANCELLED = "Cancelled"
 }
 export declare class BookRequest {
     requestId: string;

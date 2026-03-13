@@ -14,6 +14,7 @@ export declare class BooksService {
     findOne(id: string): Promise<Book>;
     findByBookId(bookId: string): Promise<Book>;
     update(id: string, updateBookDto: UpdateBookDto): Promise<Book>;
+    updateStatus(id: string, status: string): Promise<Book>;
     remove(id: string): Promise<void>;
     search(query: string): Promise<Book[]>;
     findByCategory(category: string): Promise<Book[]>;

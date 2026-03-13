@@ -52,7 +52,6 @@ let DamageReportsController = class DamageReportsController {
 };
 exports.DamageReportsController = DamageReportsController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new damage report' }),
@@ -63,7 +62,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DamageReportsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all damage reports' }),
@@ -74,7 +72,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DamageReportsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Get damage report by ID' }),
@@ -86,7 +83,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DamageReportsController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/approve'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Approve damage report' }),
@@ -98,7 +94,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DamageReportsController.prototype, "approve", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)(':id/reject'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Reject damage report' }),
@@ -110,7 +105,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DamageReportsController.prototype, "reject", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete damage report' }),

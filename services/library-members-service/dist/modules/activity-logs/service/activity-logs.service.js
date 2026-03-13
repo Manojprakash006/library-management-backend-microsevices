@@ -46,6 +46,16 @@ let ActivityLogsService = ActivityLogsService_1 = class ActivityLogsService {
             .limit(limit)
             .exec();
     }
+    async getRecent(limit = 10) {
+        return this.activityLogModel
+            .find()
+            .populate('bookId', 'bookId title')
+            .populate('memberId', 'fullName')
+            .populate('userId', 'name')
+            .sort({ timestamp: -1 })
+            .limit(limit)
+            .exec();
+    }
     async findByMember(memberId, limit = 50) {
         return this.activityLogModel
             .find({ memberId: new mongoose_2.Types.ObjectId(memberId) })

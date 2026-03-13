@@ -34,6 +34,10 @@ export declare class BooksController {
         message: string;
         data: Book;
     }>;
+    updateStatus(id: string, status: string): Promise<{
+        message: string;
+        data: Book;
+    }>;
     remove(id: string): Promise<{
         message: string;
     }>;

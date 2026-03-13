@@ -104,6 +104,12 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateBookDto.prototype, "condition", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Book status', enum: book_entity_1.BookStatus, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(book_entity_1.BookStatus),
+    __metadata("design:type", String)
+], UpdateBookDto.prototype, "status", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ description: 'Book description', required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

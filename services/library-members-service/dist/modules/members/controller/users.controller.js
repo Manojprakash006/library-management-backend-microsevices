@@ -40,7 +40,6 @@ let UsersController = class UsersController {
 };
 exports.UsersController = UsersController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'List all users' }),
@@ -50,7 +49,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "listUsers", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('me'),
     (0, roles_decorator_1.Roles)('admin', 'staff', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Get current user profile' }),
@@ -61,7 +59,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "getProfile", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Put)('me'),
     (0, roles_decorator_1.Roles)('admin', 'staff', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Update current user profile' }),

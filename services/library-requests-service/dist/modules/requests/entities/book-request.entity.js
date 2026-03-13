@@ -17,6 +17,7 @@ var RequestStatus;
     RequestStatus["PENDING"] = "Pending";
     RequestStatus["APPROVED"] = "Approved";
     RequestStatus["REJECTED"] = "Rejected";
+    RequestStatus["CANCELLED"] = "Cancelled";
 })(RequestStatus || (exports.RequestStatus = RequestStatus = {}));
 let BookRequest = class BookRequest {
 };

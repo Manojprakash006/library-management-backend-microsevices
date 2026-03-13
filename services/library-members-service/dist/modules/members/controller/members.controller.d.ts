@@ -8,6 +8,9 @@ export declare class MembersController {
         message: string;
         data: Member;
     }>;
+    getCount(): Promise<{
+        count: number;
+    }>;
     findAll(): Promise<{
         message: string;
         data: Member[];

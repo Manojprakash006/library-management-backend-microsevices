@@ -3,10 +3,12 @@ import { JwtService } from '@nestjs/jwt';
 import { Member } from '../../members/entities/member.entity';
 import { MemberRegisterDto } from '../dto/member-register.dto';
 import { MemberLoginDto } from '../dto/member-login.dto';
+import { EmailService } from '../../notifications/service/email.service';
 export declare class MemberAuthService {
     private memberModel;
     private jwtService;
-    constructor(memberModel: Model<Member>, jwtService: JwtService);
+    private emailService;
+    constructor(memberModel: Model<Member>, jwtService: JwtService, emailService: EmailService);
     register(registerDto: MemberRegisterDto): Promise<{
         token: string;
         user: {
@@ -29,5 +31,12 @@ export declare class MemberAuthService {
         _id: import("mongoose").Types.ObjectId;
     } & {
         __v: number;
+    }>;
+    forgotPassword(email: string): Promise<{
+        message: string;
+        email: string;
+    }>;
+    resetPassword(token: string, newPassword: string): Promise<{
+        message: string;
     }>;
 }

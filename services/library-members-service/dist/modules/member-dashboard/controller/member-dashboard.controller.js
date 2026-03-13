@@ -65,7 +65,6 @@ let MemberDashboardController = class MemberDashboardController {
 };
 exports.MemberDashboardController = MemberDashboardController;
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('stats'),
     (0, swagger_1.ApiOperation)({ summary: 'Get member dashboard stats' }),
     __param(0, (0, common_1.Request)()),
@@ -74,7 +73,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "getMemberStats", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('overdue-books'),
     (0, swagger_1.ApiOperation)({ summary: 'Get overdue books' }),
     __param(0, (0, common_1.Request)()),
@@ -83,7 +81,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "getOverdueBooks", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('recent-requests'),
     (0, swagger_1.ApiOperation)({ summary: 'Get recent book requests' }),
     __param(0, (0, common_1.Request)()),
@@ -92,7 +89,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "getRecentRequests", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('borrowed-books'),
     (0, swagger_1.ApiOperation)({ summary: 'Get currently borrowed books' }),
     __param(0, (0, common_1.Request)()),
@@ -101,7 +97,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "getCurrentlyBorrowedBooks", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('book-details/:issueId'),
     (0, swagger_1.ApiOperation)({ summary: 'Get book details by issue ID' }),
     __param(0, (0, common_1.Param)('issueId')),
@@ -110,7 +105,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "getBookDetails", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Get)('my-books'),
     (0, swagger_1.ApiOperation)({ summary: 'Get my books' }),
     __param(0, (0, common_1.Request)()),
@@ -119,7 +113,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "getMyBooks", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('report-damage'),
     (0, swagger_1.ApiOperation)({ summary: 'Report book damage' }),
     __param(0, (0, common_1.Body)()),
@@ -128,7 +121,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "reportBookDamage", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('renew-book'),
     (0, swagger_1.ApiOperation)({ summary: 'Renew a book' }),
     __param(0, (0, common_1.Body)()),
@@ -137,7 +129,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "renewBook", null);
 __decorate([
-    (0, common_1.Version)('1'),
     (0, common_1.Post)('submit-review'),
     (0, swagger_1.ApiOperation)({ summary: 'Submit a book review' }),
     __param(0, (0, common_1.Request)()),
