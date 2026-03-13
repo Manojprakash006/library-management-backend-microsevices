@@ -1,23 +1,30 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Version, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RequestsService } from '../service/requests.service';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
 import { BookRequest } from '../entities/book-request.entity';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { Roles } from '../../../auth/guards/roles.decorator';
+import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiTags('Book Requests')
 @Controller('requests')
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
+  
    @Post()
   @ApiOperation({ summary: 'Create a new book request' })
   @ApiResponse({ status: 201, description: 'Book request created successfully', type: BookRequest })
-  async create(@Body() createDto: CreateBookRequestDto): Promise<{ message: string; data: BookRequest }> {
+  async create(@Body() createDto: CreateBookRequestDto, @Req() req): Promise<{ message: string; data: BookRequest }> {
     const request = await this.requestsService.create(createDto);
     return { message: 'Book request created successfully', data: request };
   }
 
+   @Roles('admin')
    @Get()
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
@@ -26,6 +33,7 @@ export class RequestsController {
     return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
   }
 
+   @Roles('admin')
    @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
@@ -34,6 +42,7 @@ export class RequestsController {
     return { message: 'Book request retrieved successfully', data: request };
   }
 
+   @Roles('admin')
    @Put(':id')
   @ApiOperation({ summary: 'Update book request' })
   @ApiResponse({ status: 200, description: 'Book request updated successfully', type: BookRequest })
@@ -51,6 +60,7 @@ export class RequestsController {
     return { message: 'Book request cancelled successfully', data: request };
   }
 
+   @Roles('admin')
    @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
@@ -59,6 +69,7 @@ export class RequestsController {
     return { message: 'Book request approved successfully', data: request };
   }
 
+   @Roles('admin')
    @Put(':id/reject')
   @ApiOperation({ summary: 'Reject a book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })
@@ -67,6 +78,7 @@ export class RequestsController {
     return { message: 'Book request rejected successfully', data: request };
   }
 
+   @Roles('admin')
    @Delete(':id')
   @ApiOperation({ summary: 'Delete book request' })
   @ApiResponse({ status: 200, description: 'Book request deleted successfully' })

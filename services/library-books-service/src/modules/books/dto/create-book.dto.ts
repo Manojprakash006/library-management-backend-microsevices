@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsOptional, IsEnum, IsUrl, Min, Max, MinLength, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { BookType, BookCondition } from '../entities/book.entity';
+import { BookType, BookCondition, BookStatus } from '../entities/book.entity';
 
 export class CreateBookDto {
   @ApiProperty({ description: 'Unique book identifier' })
@@ -82,6 +82,11 @@ export class CreateBookDto {
   @IsOptional()
   @IsEnum(BookCondition)
   condition: BookCondition;
+
+  @ApiProperty({ description: 'Book status', enum: BookStatus, default: BookStatus.AVAILABLE })
+  @IsOptional()
+  @IsEnum(BookStatus)
+  status: BookStatus;
 
   @ApiProperty({ description: 'Book description', required: false })
   @IsOptional()

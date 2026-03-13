@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { IssueBook, IssueBookDocument, IssueStatus } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 
@@ -8,7 +10,10 @@ import { CreateIssueDto } from '../dto/create-issue.dto';
 export class IssuesService {
   private readonly logger = new Logger(IssuesService.name);
 
-  constructor(@InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>) {}
+  constructor(
+    @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
+    private readonly httpService: HttpService,
+  ) {}
 
   async create(createIssueDto: CreateIssueDto): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
@@ -25,7 +30,34 @@ export class IssuesService {
       status: IssueStatus.ACTIVE,
     });
 
-    return issuedBook.save();
+    const savedIssue = await issuedBook.save();
+
+    // Update book status to issued
+    await this.updateBookStatus(createIssueDto.bookId, 'issued');
+
+    return savedIssue;
+  }
+
+  private async updateBookStatus(bookId: string, status: string): Promise<void> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+      await firstValueFrom(
+        this.httpService.patch(`${booksServiceUrl}/library/books/${bookId}/status`, { status })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update book status: ${error.message}`);
+    }
+  }
+
+  private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+      await firstValueFrom(
+        this.httpService.patch(`${booksServiceUrl}/library/books/${bookObjectId}/status`, { status })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update book status: ${error.message}`);
+    }
   }
 
   async findAll(): Promise<IssueBook[]> {
@@ -83,7 +115,13 @@ export class IssuesService {
       issuedBook.fine = overdueDays * issuedBook.finePerDay;
     }
 
-    return issuedBook.save();
+    const savedIssue = await issuedBook.save();
+
+    // Update book status back to available
+    const bookId = issuedBook.bookId.toString();
+    await this.updateBookStatus(bookId, 'available');
+
+    return savedIssue;
   }
 
   async update(id: string, updateIssueDto: any): Promise<IssueBook> {

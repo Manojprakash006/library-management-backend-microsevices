@@ -16,6 +16,14 @@ export enum BookCondition {
   DAMAGED = 'Damaged',
 }
 
+export enum BookStatus {
+  AVAILABLE = 'available',
+  ISSUED = 'issued',
+  MAINTENANCE = 'maintenance',
+  LOST = 'lost',
+  DAMAGED = 'damaged',
+}
+
 @Schema({ timestamps: true })
 export class Book {
   @Prop({ required: true, unique: true, trim: true, index: true })
@@ -62,6 +70,9 @@ export class Book {
 
   @Prop({ type: String, enum: BookCondition, default: BookCondition.GOOD })
   condition: BookCondition;
+
+  @Prop({ type: String, enum: BookStatus, default: BookStatus.AVAILABLE })
+  status: BookStatus;
 
   @Prop({ trim: true, maxlength: 2000 })
   description: string;

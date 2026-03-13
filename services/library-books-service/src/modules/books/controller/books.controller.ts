@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Version } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BooksService } from '../service/books.service';
 import { CreateBookDto } from '../dto/create-book.dto';
@@ -6,8 +6,14 @@ import { UpdateBookDto } from '../dto/update-book.dto';
 import { CreateBookReviewDto } from '../dto/create-book-review.dto';
 import { Book } from '../entities/book.entity';
 import { BookReview } from '../entities/book-review.entity';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { Roles } from '../../../auth/guards/roles.decorator';
+import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'staff')
 @ApiTags('Books')
 @Controller('books')
 export class BooksController {
@@ -62,6 +68,16 @@ export class BooksController {
   async update(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto): Promise<{ message: string; data: Book }> {
     const book = await this.booksService.update(id, updateBookDto);
     return { message: 'Book updated successfully', data: book };
+  }
+
+   @Public()
+   @Patch(':id/status')
+  @ApiOperation({ summary: 'Update book status' })
+  @ApiResponse({ status: 200, description: 'Book status updated successfully', type: Book })
+  @ApiResponse({ status: 404, description: 'Book not found' })
+  async updateStatus(@Param('id') id: string, @Body('status') status: string): Promise<{ message: string; data: Book }> {
+    const book = await this.booksService.updateStatus(id, status);
+    return { message: 'Book status updated successfully', data: book };
   }
 
    @Delete(':id')

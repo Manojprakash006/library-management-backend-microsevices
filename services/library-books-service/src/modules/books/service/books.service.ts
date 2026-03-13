@@ -54,6 +54,15 @@ export class BooksService {
     return book;
   }
 
+  async updateStatus(id: string, status: string): Promise<Book> {
+    const book = await this.bookModel.findByIdAndUpdate(id, { status }, { new: true }).exec();
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+    this.logger.log(`Book ${id} status updated to ${status}`);
+    return book;
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.bookModel.findByIdAndDelete(id).exec();
     if (!result) {

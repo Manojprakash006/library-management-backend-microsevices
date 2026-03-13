@@ -1,10 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Version, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IssuesService } from '../service/issues.service';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 import { IssueBook } from '../entities/issue-book.entity';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { Roles } from '../../../auth/guards/roles.decorator';
+import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
 @ApiTags('Issues')
 @Controller('issues')
 export class IssuesController {
@@ -26,6 +32,7 @@ export class IssuesController {
     return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
   }
 
+   @Public()
    @Get('recent')
   @ApiOperation({ summary: 'Get recent issued books' })
   @ApiResponse({ status: 200, description: 'Recent issued books retrieved successfully', type: [IssueBook] })
@@ -34,6 +41,7 @@ export class IssuesController {
     return { message: 'Recent issued books retrieved successfully', issues: recentIssues };
   }
 
+   @Public()
    @Get('overdue/count')
   @ApiOperation({ summary: 'Get count of overdue books' })
   @ApiResponse({ status: 200, description: 'Overdue count retrieved successfully' })
@@ -42,6 +50,7 @@ export class IssuesController {
     return { count };
   }
 
+   @Public()
    @Get('count')
   @ApiOperation({ summary: 'Get count of issues by date' })
   @ApiResponse({ status: 200, description: 'Issue count retrieved successfully' })
@@ -50,6 +59,7 @@ export class IssuesController {
     return { count };
   }
 
+   @Public()
    @Get('overdue')
   @ApiOperation({ summary: 'Get overdue issued books' })
   @ApiResponse({ status: 200, description: 'Overdue books retrieved successfully', type: [IssueBook] })
