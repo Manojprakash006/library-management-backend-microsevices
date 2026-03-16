@@ -65,6 +65,7 @@ services:
       - MONGODB_DB=Authentication
       - JWT_SECRET=your-secret-key
       - KAFKA_BROKER=localhost:9092
+      - ISSUES_SERVICE_URL=http://library-issues-service:3013
     depends_on:
       - mongodb
     networks:
@@ -88,6 +89,9 @@ services:
       - MONGODB_DB=IssueService
       - JWT_SECRET=your-secret-key
       - KAFKA_BROKER=localhost:9092
+      - MEMBERS_SERVICE_URL=http://library-members-service:3012
+      - BOOKS_SERVICE_URL=http://library-books-service:3001
+      
     depends_on:
       - mongodb
     networks:

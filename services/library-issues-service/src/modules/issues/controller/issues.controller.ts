@@ -33,6 +33,33 @@ export class IssuesController {
   }
 
    @Public()
+   @Get('member/:memberId/active')
+  @ApiOperation({ summary: 'Get active issues by member ID' })
+  @ApiResponse({ status: 200, description: 'Active issues retrieved successfully', type: [IssueBook] })
+  async findActiveByMember(
+    @Param('memberId') memberId: string,
+    @Query('issueType') issueType?: string
+  ): Promise<{ message: string; data: IssueBook[]; count: number }> {
+    let issues = await this.issuesService.findActiveByMember(memberId);
+    
+    // Filter by issue type if provided (e.g., 'Taking Home' only)
+    if (issueType) {
+      issues = issues.filter(issue => issue.issueType === issueType);
+    }
+    
+    return { message: 'Active issues retrieved successfully', data: issues, count: issues.length };
+  }
+
+   @Public()
+   @Get('member/:memberId')
+  @ApiOperation({ summary: 'Get issued books by member ID' })
+  @ApiResponse({ status: 200, description: 'Issued books retrieved successfully', type: [IssueBook] })
+  async findIssuedByMember(@Param('memberId') memberId: string): Promise<{ message: string; data: IssueBook[]; count: number }> {
+    const issues = await this.issuesService.findByMember(memberId);
+    return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
+  }
+
+   @Public()
    @Get('recent')
   @ApiOperation({ summary: 'Get recent issued books' })
   @ApiResponse({ status: 200, description: 'Recent issued books retrieved successfully', type: [IssueBook] })
@@ -56,6 +83,24 @@ export class IssuesController {
   @ApiResponse({ status: 200, description: 'Issue count retrieved successfully' })
   async getIssuesCount(@Query('date') date: string): Promise<{ count: number }> {
     const count = await this.issuesService.getIssuesCount(date);
+    return { count };
+  }
+
+   @Public()
+   @Get('returns/count')
+  @ApiOperation({ summary: 'Get count of returned books' })
+  @ApiResponse({ status: 200, description: 'Returns count retrieved successfully' })
+  async getReturnsCount(@Query('date') date: string): Promise<{ count: number }> {
+    const count = await this.issuesService.getReturnsCount(date);
+    return { count };
+  }
+
+   @Public()
+   @Get('count/book/:bookId')
+  @ApiOperation({ summary: 'Get count of active issues for a specific book' })
+  @ApiResponse({ status: 200, description: 'Book issue count retrieved successfully' })
+  async getBookIssueCount(@Param('bookId') bookId: string): Promise<{ count: number }> {
+    const count = await this.issuesService.getBookIssueCount(bookId);
     return { count };
   }
 

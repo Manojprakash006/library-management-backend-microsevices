@@ -3,14 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Member } from '../../members/entities/member.entity';
 import { Staff } from '../../staff/entities/staff.entity';
-import { ActivityLog } from '../../activity-logs/entities/activity-log.entity';
 
 @Injectable()
 export class StaffDashboardService {
   constructor(
     @InjectModel(Member.name) private memberModel: Model<Member>,
     @InjectModel(Staff.name) private staffModel: Model<Staff>,
-    @InjectModel(ActivityLog.name) private activityLogModel: Model<ActivityLog>,
   ) {}
 
   async getStaffStats() {
@@ -54,10 +52,8 @@ export class StaffDashboardService {
   }
 
   async getRecentActivities() {
-    return this.activityLogModel.find()
-      .sort({ timestamp: -1 })
-      .limit(10)
-      .select('-__v');
+    // TODO: Implement when activity logs module is created
+    return [];
   }
 
   async getRackDistribution() {
@@ -69,10 +65,8 @@ export class StaffDashboardService {
   }
 
   async getMyActivityLogs(staffId: string) {
-    return this.activityLogModel.find({ userId: staffId })
-      .sort({ timestamp: -1 })
-      .limit(50)
-      .select('-__v');
+    // TODO: Implement when activity logs module is created
+    return [];
   }
 
   async getMyProfile(staffId: string) {
@@ -80,9 +74,9 @@ export class StaffDashboardService {
   }
 
   async getMyContribution(staffId: string) {
-    const logs = await this.activityLogModel.countDocuments({ userId: staffId });
+    // TODO: Implement when activity logs module is created
     return {
-      totalActivities: logs,
+      totalActivities: 0,
       booksAdded: 0,
       booksIssued: 0,
       booksReturned: 0,

@@ -2,7 +2,8 @@ import { IsString, IsMongoId, IsOptional, IsDateString, IsNumber, Min } from 'cl
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateBookRequestDto {
-  @ApiProperty({ description: 'Unique request identifier' })
+  @ApiProperty({ description: 'Unique request identifier (auto-generated if not provided)', required: false })
+  @IsOptional()
   @IsString()
   requestId: string;
 

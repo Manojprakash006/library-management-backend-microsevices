@@ -34,7 +34,25 @@ export class MembersController {
     return { count };
   }
 
-   @Get()
+   @Public()
+  @Get('count/active')
+  @ApiOperation({ summary: 'Get active members count' })
+  @ApiResponse({ status: 200, description: 'Active members count retrieved successfully' })
+  async getActiveCount(): Promise<{ count: number }> {
+    const count = await this.membersService.getActiveMembersCount();
+    return { count };
+  }
+
+  @Public()
+  @Get('count/inactive')
+  @ApiOperation({ summary: 'Get inactive members count' })
+  @ApiResponse({ status: 200, description: 'Inactive members count retrieved successfully' })
+  async getInactiveCount(): Promise<{ count: number }> {
+    const count = await this.membersService.getInactiveMembersCount();
+    return { count };
+  }
+
+  @Get()
   @ApiOperation({ summary: 'Get all members' })
   @ApiResponse({ status: 200, description: 'Members retrieved successfully', type: [Member] })
   async findAll(): Promise<{ message: string; data: Member[]; count: number }> {
