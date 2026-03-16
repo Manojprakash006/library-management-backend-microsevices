@@ -33,6 +33,15 @@ export class RequestsController {
     return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
   }
 
+   @Public()
+   @Get('count/pending')
+  @ApiOperation({ summary: 'Get count of pending requests' })
+  @ApiResponse({ status: 200, description: 'Pending requests count retrieved successfully' })
+  async getPendingCount(): Promise<{ count: number }> {
+    const count = await this.requestsService.getPendingCount();
+    return { count };
+  }
+
    @Roles('admin')
    @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })

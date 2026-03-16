@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Book, BookDocument } from '../entities/book.entity';
@@ -64,10 +64,16 @@ export class BooksService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.bookModel.findByIdAndDelete(id).exec();
-    if (!result) {
+    const book = await this.bookModel.findById(id).exec();
+    if (!book) {
       throw new NotFoundException('Book not found');
     }
+    
+    if (book.status === 'issued') {
+      throw new BadRequestException('Cannot delete a book that is currently issued. Please return the book first.');
+    }
+    
+    await this.bookModel.findByIdAndDelete(id).exec();
   }
 
   async search(query: string): Promise<Book[]> {

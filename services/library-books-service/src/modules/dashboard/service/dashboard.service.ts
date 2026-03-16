@@ -355,11 +355,10 @@ export class DashboardService {
   private async getPendingRequestsCount(): Promise<number> {
     try {
       const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
-      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
-        this.httpService.get(`${requestsServiceUrl}/requests`)
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${requestsServiceUrl}/requests/count/pending`)
       );
-      const requests = response.data?.data || [];
-      return requests.filter(req => req.status === 'Pending' || req.status === 'PENDING').length;
+      return response.data?.count || 0;
     } catch (error) {
       return 0;
     }

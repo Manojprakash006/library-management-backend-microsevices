@@ -32,6 +32,17 @@ export class StaffController {
     return { message: 'Staff created successfully', data: result };
   }
 
+  @Get('stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get staff statistics' })
+  @ApiResponse({ status: 200, description: 'Staff statistics retrieved successfully' })
+  async getStaffStats() {
+    const stats = await this.staffService.getStats();
+    return { message: 'Staff statistics retrieved successfully', data: stats };
+  }
+
    @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

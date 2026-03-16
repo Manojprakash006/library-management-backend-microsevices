@@ -60,6 +60,29 @@ export class MembersController {
     return { message: 'Member updated successfully', data: member };
   }
 
+   @Post(':id/borrowing-history')
+  @ApiOperation({ summary: 'Add borrowing history entry' })
+  @ApiResponse({ status: 201, description: 'Borrowing history added successfully' })
+  async addBorrowingHistory(
+    @Param('id') id: string,
+    @Body() historyData: { bookId: string; issueId: string; borrowedAt: Date; dueDate: Date; status: 'borrowed' | 'returned' | 'overdue' }
+  ): Promise<{ message: string }> {
+    await this.membersService.addBorrowingHistory(id, historyData);
+    return { message: 'Borrowing history added successfully' };
+  }
+
+   @Put(':id/borrowing-history/:issueId')
+  @ApiOperation({ summary: 'Update borrowing history entry' })
+  @ApiResponse({ status: 200, description: 'Borrowing history updated successfully' })
+  async updateBorrowingHistory(
+    @Param('id') id: string,
+    @Param('issueId') issueId: string,
+    @Body() updateData: { returnedAt: Date; fine: number; status: 'borrowed' | 'returned' | 'overdue' }
+  ): Promise<{ message: string }> {
+    await this.membersService.updateBorrowingHistory(id, issueId, updateData);
+    return { message: 'Borrowing history updated successfully' };
+  }
+
    @Delete(':id')
   @ApiOperation({ summary: 'Delete member' })
   @ApiResponse({ status: 200, description: 'Member deleted successfully' })

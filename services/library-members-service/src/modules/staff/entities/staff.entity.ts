@@ -16,6 +16,9 @@ export enum StaffStatus {
 
 @Schema({ timestamps: true })
 export class Staff {
+  @Prop({ unique: true, trim: true, index: true, sparse: true })
+  staffId: string;
+
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 100 })
   fullName: string;
 
@@ -27,9 +30,6 @@ export class Staff {
 
   @Prop({ required: true, minlength: 6, maxlength: 100, select: false })
   password: string;
-
-  @Prop({ required: true, trim: true, minlength: 2, maxlength: 100, index: true })
-  department: string;
 
   @Prop({ required: true, trim: true })
   shift: string;
@@ -59,6 +59,14 @@ StaffSchema.pre('save', async function (next: () => void) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+StaffSchema.pre('save', async function (next: () => void) {
+  if (this.staffId) return next();
+  
+  const count = await (this.constructor as any).countDocuments();
+  this.staffId = `STF${count + 1}`;
   next();
 });
 

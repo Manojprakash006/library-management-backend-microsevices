@@ -88,4 +88,16 @@ export class StaffService {
     }
     return { message: 'Staff deleted successfully' };
   }
+
+  async getStats(): Promise<{ totalStaff: number; activeStaff: number; inactiveStaff: number }> {
+    const totalStaff = await this.staffModel.countDocuments();
+    const activeStaff = await this.staffModel.countDocuments({ status: 'Active' });
+    const inactiveStaff = await this.staffModel.countDocuments({ status: 'Inactive' });
+
+    return {
+      totalStaff,
+      activeStaff,
+      inactiveStaff,
+    };
+  }
 }

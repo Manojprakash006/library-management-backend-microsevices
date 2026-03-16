@@ -74,6 +74,52 @@ export class MembersService {
     return member;
   }
 
+  async addBorrowingHistory(
+    memberId: string,
+    historyData: { bookId: string; issueId: string; borrowedAt: Date; dueDate: Date; status: 'borrowed' | 'returned' | 'overdue' }
+  ): Promise<void> {
+    const member = await this.memberModel.findById(memberId).exec();
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const borrowingEntry = {
+      bookId: historyData.bookId,
+      issueId: historyData.issueId,
+      borrowedAt: new Date(historyData.borrowedAt),
+      dueDate: new Date(historyData.dueDate),
+      returnedAt: undefined,
+      status: historyData.status,
+      fine: 0,
+    };
+
+    member.borrowingHistory = member.borrowingHistory || [];
+    member.borrowingHistory.push(borrowingEntry);
+    await member.save();
+  }
+
+  async updateBorrowingHistory(
+    memberId: string,
+    issueId: string,
+    updateData: { returnedAt: Date; fine: number; status: 'borrowed' | 'returned' | 'overdue' }
+  ): Promise<void> {
+    const member = await this.memberModel.findById(memberId).exec();
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const historyEntry = member.borrowingHistory?.find(h => h.issueId === issueId);
+    if (!historyEntry) {
+      throw new NotFoundException('Borrowing history entry not found');
+    }
+
+    historyEntry.returnedAt = new Date(updateData.returnedAt);
+    historyEntry.fine = updateData.fine;
+    historyEntry.status = updateData.status;
+
+    await member.save();
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.memberModel.findByIdAndDelete(id).exec();
     if (!result) {

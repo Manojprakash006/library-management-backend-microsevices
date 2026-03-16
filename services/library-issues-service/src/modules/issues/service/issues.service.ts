@@ -34,8 +34,41 @@ export class IssuesService {
 
     // Update book status to issued
     await this.updateBookStatus(createIssueDto.bookId, 'issued');
+    
+    // Add to member's borrowing history
+    await this.addToBorrowingHistory(
+      createIssueDto.memberId,
+      createIssueDto.bookId,
+      savedIssue._id.toString(),
+      startDate,
+      dueDate
+    );
 
     return savedIssue;
+  }
+
+  private async addToBorrowingHistory(
+    memberId: string,
+    bookId: string,
+    issueId: string,
+    borrowedAt: Date,
+    dueDate: Date
+  ): Promise<void> {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
+          bookId,
+          issueId,
+          borrowedAt,
+          dueDate,
+          status: 'borrowed'
+        })
+      );
+      this.logger.log(`Added borrowing history for member ${memberId}`);
+    } catch (error) {
+      this.logger.error(`Failed to add borrowing history: ${error.message}`);
+    }
   }
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
@@ -46,6 +79,27 @@ export class IssuesService {
       );
     } catch (error) {
       this.logger.error(`Failed to update book status: ${error.message}`);
+    }
+  }
+
+  private async updateBorrowingHistory(
+    memberId: string,
+    issueId: string,
+    returnedAt: Date,
+    fine: number
+  ): Promise<void> {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      await firstValueFrom(
+        this.httpService.put(`${membersServiceUrl}/members/${memberId}/borrowing-history/${issueId}`, {
+          returnedAt,
+          fine,
+          status: 'returned'
+        })
+      );
+      this.logger.log(`Updated borrowing history for member ${memberId}`);
+    } catch (error) {
+      this.logger.error(`Failed to update borrowing history: ${error.message}`);
     }
   }
 
@@ -120,6 +174,14 @@ export class IssuesService {
     // Update book status back to available
     const bookId = issuedBook.bookId.toString();
     await this.updateBookStatus(bookId, 'available');
+    
+    // Update member's borrowing history
+    await this.updateBorrowingHistory(
+      issuedBook.memberId.toString(),
+      issuedBook._id.toString(),
+      returnDate,
+      issuedBook.fine || 0
+    );
 
     return savedIssue;
   }

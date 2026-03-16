@@ -46,17 +46,23 @@ export class Member {
 
   @Prop([{
     bookId: { type: String, required: true },
+    issueId: { type: String, required: true },
     bookTitle: { type: String },
     borrowedAt: { type: Date, default: Date.now },
+    dueDate: { type: Date },
     returnedAt: { type: Date },
     status: { type: String, enum: ['borrowed', 'returned', 'overdue'], default: 'borrowed' },
+    fine: { type: Number, default: 0 },
   }])
   borrowingHistory: Array<{
     bookId: string;
+    issueId: string;
     bookTitle?: string;
     borrowedAt: Date;
+    dueDate?: Date;
     returnedAt?: Date;
     status: 'borrowed' | 'returned' | 'overdue';
+    fine: number;
   }>;
 }
 

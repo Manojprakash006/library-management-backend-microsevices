@@ -112,4 +112,8 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
   }
+
+  async getPendingCount(): Promise<number> {
+    return this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING });
+  }
 }
