@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { IssueBook, IssueBookDocument, IssueStatus } from '../entities/issue-book.entity';
+import { IssueBook, IssueBookDocument, IssueStatus, IssueType } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 
 @Injectable()
@@ -17,14 +17,22 @@ export class IssuesService {
 
   async create(createIssueDto: CreateIssueDto): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
-    const dueDate = new Date(startDate);
-    dueDate.setDate(dueDate.getDate() + createIssueDto.numberOfDays);
+    
+    let dueDate = null;
+    let numberOfDays = null;
+    
+    // Only set due date and number of days for Taking Home
+    if (createIssueDto.issueType === IssueType.TAKING_HOME) {
+      numberOfDays = createIssueDto.numberOfDays || 7; // Default 7 days if not provided
+      dueDate = new Date(startDate);
+      dueDate.setDate(dueDate.getDate() + numberOfDays);
+    }
 
     const issuedBook = new this.issueBookModel({
       bookId: new Types.ObjectId(createIssueDto.bookId),
       memberId: new Types.ObjectId(createIssueDto.memberId),
       issueType: createIssueDto.issueType,
-      numberOfDays: createIssueDto.numberOfDays,
+      numberOfDays,
       issueDate: startDate,
       dueDate,
       status: IssueStatus.ACTIVE,
@@ -163,7 +171,8 @@ export class IssuesService {
     issuedBook.returnDate = returnDate;
     issuedBook.status = IssueStatus.RETURNED;
 
-    if (returnDate > issuedBook.dueDate) {
+    // Calculate fine only for Taking Home books that have due date
+    if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate && returnDate > issuedBook.dueDate) {
       const overdueDays = Math.ceil((returnDate.getTime() - issuedBook.dueDate.getTime()) / (1000 * 60 * 60 * 24));
       issuedBook.daysOverdue = overdueDays;
       issuedBook.fine = overdueDays * issuedBook.finePerDay;

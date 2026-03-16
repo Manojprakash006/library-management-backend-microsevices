@@ -25,13 +25,13 @@ export class IssueBook {
   @Prop({ type: String, enum: IssueType, required: true })
   issueType: IssueType;
 
-  @Prop({ required: true, min: 1 })
+  @Prop({ min: 1, required: false })
   numberOfDays: number;
 
   @Prop({ default: Date.now })
   issueDate: Date;
 
-  @Prop({ required: true })
+  @Prop({ required: false })
   dueDate: Date;
 
   @Prop()

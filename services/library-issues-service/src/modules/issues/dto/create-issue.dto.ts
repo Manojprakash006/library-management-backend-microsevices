@@ -15,7 +15,8 @@ export class CreateIssueDto {
   @IsEnum(IssueType)
   issueType: IssueType;
 
-  @ApiProperty({ description: 'Number of days to issue', minimum: 1 })
+  @ApiProperty({ description: 'Number of days to issue (only for Taking Home)', minimum: 1, required: false })
+  @IsOptional()
   @IsNumber()
   @Min(1)
   numberOfDays: number;
