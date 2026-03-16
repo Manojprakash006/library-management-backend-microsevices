@@ -8,7 +8,9 @@ export declare class IssuesService {
     private readonly logger;
     constructor(issueBookModel: Model<IssueBookDocument>, httpService: HttpService);
     create(createIssueDto: CreateIssueDto): Promise<IssueBook>;
+    private addToBorrowingHistory;
     private updateBookStatus;
+    private updateBorrowingHistory;
     private updateBookStatusByObjectId;
     findAll(): Promise<IssueBook[]>;
     findOne(id: string): Promise<IssueBook>;

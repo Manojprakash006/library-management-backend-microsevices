@@ -32,7 +32,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreateIssueDto.prototype, "issueType", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Number of days to issue', minimum: 1 }),
+    (0, swagger_1.ApiProperty)({ description: 'Number of days to issue (only for Taking Home)', minimum: 1, required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(1),
     __metadata("design:type", Number)

@@ -28,20 +28,42 @@ let IssuesService = IssuesService_1 = class IssuesService {
     }
     async create(createIssueDto) {
         const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
-        const dueDate = new Date(startDate);
-        dueDate.setDate(dueDate.getDate() + createIssueDto.numberOfDays);
+        let dueDate = null;
+        let numberOfDays = null;
+        if (createIssueDto.issueType === issue_book_entity_1.IssueType.TAKING_HOME) {
+            numberOfDays = createIssueDto.numberOfDays || 7;
+            dueDate = new Date(startDate);
+            dueDate.setDate(dueDate.getDate() + numberOfDays);
+        }
         const issuedBook = new this.issueBookModel({
             bookId: new mongoose_2.Types.ObjectId(createIssueDto.bookId),
             memberId: new mongoose_2.Types.ObjectId(createIssueDto.memberId),
             issueType: createIssueDto.issueType,
-            numberOfDays: createIssueDto.numberOfDays,
+            numberOfDays,
             issueDate: startDate,
             dueDate,
             status: issue_book_entity_1.IssueStatus.ACTIVE,
         });
         const savedIssue = await issuedBook.save();
         await this.updateBookStatus(createIssueDto.bookId, 'issued');
+        await this.addToBorrowingHistory(createIssueDto.memberId, createIssueDto.bookId, savedIssue._id.toString(), startDate, dueDate);
         return savedIssue;
+    }
+    async addToBorrowingHistory(memberId, bookId, issueId, borrowedAt, dueDate) {
+        try {
+            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
+                bookId,
+                issueId,
+                borrowedAt,
+                dueDate,
+                status: 'borrowed'
+            }));
+            this.logger.log(`Added borrowing history for member ${memberId}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to add borrowing history: ${error.message}`);
+        }
     }
     async updateBookStatus(bookId, status) {
         try {
@@ -50,6 +72,20 @@ let IssuesService = IssuesService_1 = class IssuesService {
         }
         catch (error) {
             this.logger.error(`Failed to update book status: ${error.message}`);
+        }
+    }
+    async updateBorrowingHistory(memberId, issueId, returnedAt, fine) {
+        try {
+            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.put(`${membersServiceUrl}/members/${memberId}/borrowing-history/${issueId}`, {
+                returnedAt,
+                fine,
+                status: 'returned'
+            }));
+            this.logger.log(`Updated borrowing history for member ${memberId}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to update borrowing history: ${error.message}`);
         }
     }
     async updateBookStatusByObjectId(bookObjectId, status) {
@@ -102,7 +138,7 @@ let IssuesService = IssuesService_1 = class IssuesService {
         const returnDate = new Date();
         issuedBook.returnDate = returnDate;
         issuedBook.status = issue_book_entity_1.IssueStatus.RETURNED;
-        if (returnDate > issuedBook.dueDate) {
+        if (issuedBook.issueType === issue_book_entity_1.IssueType.TAKING_HOME && issuedBook.dueDate && returnDate > issuedBook.dueDate) {
             const overdueDays = Math.ceil((returnDate.getTime() - issuedBook.dueDate.getTime()) / (1000 * 60 * 60 * 24));
             issuedBook.daysOverdue = overdueDays;
             issuedBook.fine = overdueDays * issuedBook.finePerDay;
@@ -110,6 +146,7 @@ let IssuesService = IssuesService_1 = class IssuesService {
         const savedIssue = await issuedBook.save();
         const bookId = issuedBook.bookId.toString();
         await this.updateBookStatus(bookId, 'available');
+        await this.updateBorrowingHistory(issuedBook.memberId.toString(), issuedBook._id.toString(), returnDate, issuedBook.fine || 0);
         return savedIssue;
     }
     async update(id, updateIssueDto) {

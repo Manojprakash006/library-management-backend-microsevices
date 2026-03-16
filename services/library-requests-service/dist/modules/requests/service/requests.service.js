@@ -106,6 +106,9 @@ let RequestsService = RequestsService_1 = class RequestsService {
             throw new common_1.NotFoundException('Book request not found');
         }
     }
+    async getPendingCount() {
+        return this.bookRequestModel.countDocuments({ status: book_request_entity_1.RequestStatus.PENDING });
+    }
 };
 exports.RequestsService = RequestsService;
 exports.RequestsService = RequestsService = RequestsService_1 = __decorate([

@@ -14,4 +14,5 @@ export declare class RequestsService {
     approve(id: string): Promise<BookRequest>;
     reject(id: string): Promise<BookRequest>;
     remove(id: string): Promise<void>;
+    getPendingCount(): Promise<number>;
 }

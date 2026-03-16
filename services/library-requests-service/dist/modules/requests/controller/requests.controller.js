@@ -21,6 +21,7 @@ const book_request_entity_1 = require("../entities/book-request.entity");
 const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
 const roles_decorator_1 = require("../../../auth/guards/roles.decorator");
 const roles_guard_1 = require("../../../auth/guards/roles.guard");
+const public_decorator_1 = require("../../../auth/guards/public.decorator");
 let RequestsController = class RequestsController {
     constructor(requestsService) {
         this.requestsService = requestsService;
@@ -32,6 +33,10 @@ let RequestsController = class RequestsController {
     async findAll() {
         const requests = await this.requestsService.findAll();
         return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
+    }
+    async getPendingCount() {
+        const count = await this.requestsService.getPendingCount();
+        return { count };
     }
     async findOne(id) {
         const request = await this.requestsService.findOne(id);
@@ -79,6 +84,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "findAll", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('count/pending'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get count of pending requests' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Pending requests count retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "getPendingCount", null);
 __decorate([
     (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Get)(':id'),
