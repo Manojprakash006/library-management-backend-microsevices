@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { Book, BookDocument } from '../../books/entities/book.entity';
 
 interface RackInfo {
@@ -22,6 +24,7 @@ export class RacksService {
 
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
+    private readonly httpService: HttpService,
   ) {}
 
   async findAll(): Promise<RackInfo[]> {
@@ -45,9 +48,9 @@ export class RacksService {
         };
       }
 
-      // Calculate available count (simplified - assuming quantity is available)
-      const availableCount = book.quantity || 0;
-      const issuedCount = 0; // Would need IssueBook model for accurate count
+      // Fetch actual issued count from Issues service
+      const issuedCount = await this.getIssuedCountForBook(book._id.toString());
+      const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
 
       rackMap[rackNumber].totalBooks += 1;
       rackMap[rackNumber].available += availableCount > 0 ? 1 : 0;
@@ -56,15 +59,28 @@ export class RacksService {
       rackMap[rackNumber].books.push({
         _id: book._id,
         bookId: book.bookId,
+        isbn: book.isbn,
         title: book.title,
         author: book.author,
+        publisher: book.publisher,
+        publishYear: book.publishYear,
         category: book.category,
+        edition: book.edition,
+        language: book.language,
+        pages: book.pages,
+        price: book.price,
+        rackNumber: book.rackNumber,
         shelfNumber: book.shelfNumber,
+        bookType: book.bookType,
+        condition: book.condition,
+        description: book.description,
         quantity: book.quantity,
         available: availableCount,
         issued: issuedCount,
         status: availableCount > 0 ? 'Available' : 'Issued',
         coverUrl: book.coverUrl,
+        createdAt: book.createdAt,
+        updatedAt: book.updatedAt,
       });
     }
 
@@ -74,10 +90,25 @@ export class RacksService {
       rack.recentBooks = rack.books.slice(0, 3).map((b) => ({
         title: b.title,
         status: b.status,
+        available: b.available,
+        issued: b.issued,
       }));
     }
 
     return Object.values(rackMap);
+  }
+
+  private async getIssuedCountForBook(bookId: string): Promise<number> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/count/book/${bookId}`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to fetch issued count for book ${bookId}: ${error.message}`);
+      return 0;
+    }
   }
 
   async findByRackNumber(rackNumber: string): Promise<RackInfo> {
@@ -99,8 +130,8 @@ export class RacksService {
     };
 
     for (const book of books) {
-      const availableCount = book.quantity || 0;
-      const issuedCount = 0; // Would need IssueBook model
+      const issuedCount = await this.getIssuedCountForBook(book._id.toString());
+      const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
 
       rackData.available += availableCount > 0 ? 1 : 0;
       rackData.issued += issuedCount > 0 ? 1 : 0;
@@ -108,15 +139,28 @@ export class RacksService {
       const bookData = {
         _id: book._id,
         bookId: book.bookId,
+        isbn: book.isbn,
         title: book.title,
         author: book.author,
+        publisher: book.publisher,
+        publishYear: book.publishYear,
         category: book.category,
+        edition: book.edition,
+        language: book.language,
+        pages: book.pages,
+        price: book.price,
+        rackNumber: book.rackNumber,
         shelfNumber: book.shelfNumber,
+        bookType: book.bookType,
+        condition: book.condition,
+        description: book.description,
         quantity: book.quantity,
         available: availableCount,
         issued: issuedCount,
         status: availableCount > 0 ? 'Available' : 'Issued',
         coverUrl: book.coverUrl,
+        createdAt: book.createdAt,
+        updatedAt: book.updatedAt,
       };
 
       rackData.books.push(bookData);

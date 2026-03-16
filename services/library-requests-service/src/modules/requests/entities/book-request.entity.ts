@@ -12,7 +12,7 @@ export enum RequestStatus {
 
 @Schema({ timestamps: true })
 export class BookRequest {
-  @Prop({ required: true, unique: true })
+  @Prop({ unique: true, trim: true, index: true, sparse: true })
   requestId: string;
 
   @Prop({ type: Types.ObjectId, required: true, ref: 'Book' })
@@ -44,6 +44,14 @@ export class BookRequest {
 }
 
 export const BookRequestSchema = SchemaFactory.createForClass(BookRequest);
+
+BookRequestSchema.pre('save', async function (next: () => void) {
+  if (this.requestId) return next();
+  
+  const randomStr = Math.random().toString(36).substring(2, 10).toUpperCase();
+  this.requestId = `REQ${randomStr}`;
+  next();
+});
 
 BookRequestSchema.index({ memberId: 1, status: 1 });
 BookRequestSchema.index({ bookId: 1, status: 1 });

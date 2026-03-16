@@ -128,7 +128,11 @@ export class IssuesService {
 
     return issuedBooks.map((issue) => {
       const issueObj = issue.toObject();
-      if (issueObj.status !== IssueStatus.RETURNED && new Date(issueObj.dueDate) < today) {
+      // Skip overdue check for Reading Inside Library (no due date) or returned books
+      if (issueObj.status !== IssueStatus.RETURNED && 
+          issueObj.issueType === IssueType.TAKING_HOME && 
+          issueObj.dueDate && 
+          new Date(issueObj.dueDate) < today) {
         const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
         issueObj.status = IssueStatus.OVERDUE;
         issueObj.daysOverdue = overdueDays;
@@ -224,6 +228,7 @@ export class IssuesService {
     const today = new Date();
     const issues = await this.issueBookModel.find({
       status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
+      issueType: IssueType.TAKING_HOME,
       dueDate: { $lt: today },
     }).exec();
     return issues.length;
@@ -238,6 +243,26 @@ export class IssuesService {
     endOfDay.setDate(endOfDay.getDate() + 1);
     return this.issueBookModel.countDocuments({
       issueDate: { $gte: startOfDay, $lt: endOfDay },
+    });
+  }
+
+  async getReturnsCount(date?: string): Promise<number> {
+    if (!date) {
+      return this.issueBookModel.countDocuments({ status: IssueStatus.RETURNED });
+    }
+    const startOfDay = new Date(date);
+    const endOfDay = new Date(date);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+    return this.issueBookModel.countDocuments({
+      status: IssueStatus.RETURNED,
+      returnDate: { $gte: startOfDay, $lt: endOfDay },
+    });
+  }
+
+  async getBookIssueCount(bookId: string): Promise<number> {
+    return this.issueBookModel.countDocuments({
+      bookId: new Types.ObjectId(bookId),
+      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
     });
   }
 
