@@ -82,6 +82,9 @@ export class Book {
 
   @Prop({ trim: true })
   coverUrl: string;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const BookSchema = SchemaFactory.createForClass(Book);

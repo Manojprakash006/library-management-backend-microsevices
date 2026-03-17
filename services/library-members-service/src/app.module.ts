@@ -3,7 +3,6 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from './config/config.module';
 import { MembersModule } from './modules/members/members.module';
 import { StaffModule } from './modules/staff/staff.module';
-import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MemberAuthModule } from './modules/member-auth/member-auth.module';
@@ -20,7 +19,6 @@ import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.
     }),
     MembersModule,
     StaffModule,
-    ActivityLogsModule,
     NotificationsModule,
     AuthModule,
     MemberAuthModule,

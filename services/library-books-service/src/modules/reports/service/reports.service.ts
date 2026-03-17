@@ -1,7 +1,14 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { AxiosResponse } from 'axios';
 import { Book, BookDocument } from '../../books/entities/book.entity';
+
+interface CountResponse {
+  count: number;
+}
 
 interface DailyIssueReturnReport {
   date: string;
@@ -32,29 +39,42 @@ interface MemberActivityReport {
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
 
-  constructor(@InjectModel(Book.name) private bookModel: Model<BookDocument>) {}
+  constructor(
+    @InjectModel(Book.name) private bookModel: Model<BookDocument>,
+    private readonly httpService: HttpService,
+  ) {}
 
   async getDailyIssueReturnReport(): Promise<DailyIssueReturnReport> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const dateStr = today.toISOString().split('T')[0];
+
+    const [booksIssued, booksReturned] = await Promise.all([
+      this.getTodayIssuesCount(),
+      this.getTodayReturnsCount(),
+    ]);
 
     return {
-      date: today.toISOString().split('T')[0],
-      booksIssued: 0, // Simplified - would need IssueBook model
-      booksReturned: 0,
+      date: dateStr,
+      booksIssued,
+      booksReturned,
     };
   }
 
   async getOverdueReport(): Promise<OverdueReport> {
+    const booksOverdue = await this.getOverdueBooksCount();
     return {
-      overdueStatus: 0,
-      booksOverdue: 0,
+      overdueStatus: booksOverdue > 0 ? 1 : 0,
+      booksOverdue,
     };
   }
 
   async getRackInventoryReport(): Promise<RackInventoryReport[]> {
     const books = await this.bookModel.find().exec();
     const rackMap: Record<string, RackInventoryReport> = {};
+
+    // Get issued book counts per book
+    const bookIssueCounts = await this.getAllBookIssueCounts();
 
     for (const book of books) {
       const rackNumber = book.rackNumber;
@@ -71,8 +91,13 @@ export class ReportsService {
       }
 
       const quantity = book.quantity || 0;
+      const bookId = book._id.toString();
+      const issuedCount = bookIssueCounts[bookId] || 0;
+      const availableCount = Math.max(0, quantity - issuedCount);
+
       rackMap[rackNumber].total += quantity;
-      rackMap[rackNumber].available += quantity; // Simplified
+      rackMap[rackNumber].available += availableCount;
+      rackMap[rackNumber].issued += issuedCount;
     }
 
     for (const rackNumber in rackMap) {
@@ -93,11 +118,17 @@ export class ReportsService {
 
     let total = 0;
     let available = 0;
+    let issued = 0;
 
     for (const book of books) {
       const quantity = book.quantity || 0;
+      const bookId = book._id.toString();
+      const issuedCount = await this.getBookIssueCount(bookId);
+      const availableCount = Math.max(0, quantity - issuedCount);
+
       total += quantity;
-      available += quantity;
+      available += availableCount;
+      issued += issuedCount;
     }
 
     const capacity = 50;
@@ -108,15 +139,20 @@ export class ReportsService {
       location: 'Main Hall',
       total: total,
       available: available,
-      issued: 0,
+      issued: issued,
       capacityPercentage: capacityPercentage,
     };
   }
 
   async getMemberActivityReport(): Promise<MemberActivityReport> {
+    const [activeMembers, inactiveMembers] = await Promise.all([
+      this.getActiveMembersCount(),
+      this.getInactiveMembersCount(),
+    ]);
+
     return {
-      activeMembers: 0,
-      inactiveMembers: 0,
+      activeMembers,
+      inactiveMembers,
     };
   }
 
@@ -124,23 +160,121 @@ export class ReportsService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const rackInventory = await this.getRackInventoryReport();
+    const [dailyIssueReturn, overdue, rackInventory, memberActivity] = await Promise.all([
+      this.getDailyIssueReturnReport(),
+      this.getOverdueReport(),
+      this.getRackInventoryReport(),
+      this.getMemberActivityReport(),
+    ]);
 
     return {
-      dailyIssueReturn: {
-        date: today.toISOString().split('T')[0],
-        booksIssued: 0,
-        booksReturned: 0,
-      },
-      overdue: {
-        overdueStatus: 0,
-        booksOverdue: 0,
-      },
-      rackInventory: rackInventory,
-      memberActivity: {
-        activeMembers: 0,
-        inactiveMembers: 0,
-      },
+      dailyIssueReturn,
+      overdue,
+      rackInventory,
+      memberActivity,
     };
+  }
+
+  // Private helper methods for HTTP calls
+  private async getTodayIssuesCount(): Promise<number> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const today = new Date().toISOString().split('T')[0];
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/count?date=${today}`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get today issues count: ${error.message}`);
+      return 0;
+    }
+  }
+
+  private async getTodayReturnsCount(): Promise<number> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const today = new Date().toISOString().split('T')[0];
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/returns/count?date=${today}`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get today returns count: ${error.message}`);
+      return 0;
+    }
+  }
+
+  private async getOverdueBooksCount(): Promise<number> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/overdue/count`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get overdue books count: ${error.message}`);
+      return 0;
+    }
+  }
+
+  private async getBookIssueCount(bookId: string): Promise<number> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/count/book/${bookId}`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get book issue count for ${bookId}: ${error.message}`);
+      return 0;
+    }
+  }
+
+  private async getAllBookIssueCounts(): Promise<Record<string, number>> {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const response: AxiosResponse<{ issues: any[] }> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues`)
+      );
+      const issues = response.data?.issues || [];
+      
+      const counts: Record<string, number> = {};
+      for (const issue of issues) {
+        if (issue.status !== 'Returned') {
+          const bookId = issue.bookId?.toString() || issue.bookId;
+          counts[bookId] = (counts[bookId] || 0) + 1;
+        }
+      }
+      return counts;
+    } catch (error) {
+      this.logger.error(`Failed to get all book issue counts: ${error.message}`);
+      return {};
+    }
+  }
+
+  private async getActiveMembersCount(): Promise<number> {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/count/active`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get active members count: ${error.message}`);
+      return 0;
+    }
+  }
+
+  private async getInactiveMembersCount(): Promise<number> {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const response: AxiosResponse<CountResponse> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/count/inactive`)
+      );
+      return response.data?.count || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get inactive members count: ${error.message}`);
+      return 0;
+    }
   }
 }

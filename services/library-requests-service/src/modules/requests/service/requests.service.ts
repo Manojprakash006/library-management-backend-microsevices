@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { AxiosResponse } from 'axios';
 import { BookRequest, BookRequestDocument, RequestStatus } from '../entities/book-request.entity';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
 
@@ -8,13 +11,22 @@ import { CreateBookRequestDto } from '../dto/create-book-request.dto';
 export class RequestsService {
   private readonly logger = new Logger(RequestsService.name);
 
-  constructor(@InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>) {}
+  constructor(
+    @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
+    private readonly httpService: HttpService,
+  ) {}
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
-    const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
-    if (existingRequest) {
-      throw new ConflictException('Request ID already exists');
+    // Check for duplicate requestId only if provided
+    if (createDto.requestId) {
+      const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
+      if (existingRequest) {
+        throw new ConflictException('Request ID already exists');
+      }
     }
+
+    // Fetch member borrowing statistics
+    const { currentlyBorrowed, totalHistory } = await this.getMemberBorrowingStats(createDto.memberId);
 
     const bookRequest = new this.bookRequestModel({
       ...createDto,
@@ -22,9 +34,31 @@ export class RequestsService {
       memberId: new Types.ObjectId(createDto.memberId),
       requestDate: createDto.requestDate || new Date(),
       status: RequestStatus.PENDING,
+      currentlyBorrowed,
+      totalHistory,
     });
 
     return bookRequest.save();
+  }
+
+  private async getMemberBorrowingStats(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number }> {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const response: AxiosResponse<any> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/${memberId}`)
+      );
+      
+      const member = response.data?.data || response.data;
+      const borrowingHistory = member.borrowingHistory || [];
+      
+      const currentlyBorrowed = borrowingHistory.filter((h: any) => h.status === 'borrowed').length;
+      const totalHistory = borrowingHistory.length;
+      
+      return { currentlyBorrowed, totalHistory };
+    } catch (error) {
+      this.logger.error(`Failed to fetch member borrowing stats: ${error.message}`);
+      return { currentlyBorrowed: 0, totalHistory: 0 };
+    }
   }
 
   async findAll(): Promise<BookRequest[]> {
