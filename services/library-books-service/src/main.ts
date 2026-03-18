@@ -20,7 +20,7 @@ async function bootstrap() {
     transport: Transport.GRPC,
     options: {
       package: 'library.books',
-      protoPath: process.env.PROTO_PATH || protoPath,
+      protoPath: process.env.PROTO_PATH || join(process.cwd(), 'proto/books.proto'),
       url: process.env.GRPC_URL || '0.0.0.0:5001',
     },
   });

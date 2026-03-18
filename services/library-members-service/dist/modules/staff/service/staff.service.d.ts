@@ -64,4 +64,9 @@ export declare class StaffService {
     delete(id: string): Promise<{
         message: string;
     }>;
+    getStats(): Promise<{
+        totalStaff: number;
+        activeStaff: number;
+        inactiveStaff: number;
+    }>;
 }

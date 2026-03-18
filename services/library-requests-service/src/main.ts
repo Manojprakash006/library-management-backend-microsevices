@@ -14,7 +14,7 @@ async function bootstrap() {
     transport: Transport.GRPC,
     options: {
       package: 'library.requests',
-      protoPath: join(__dirname, './proto/requests.proto'),
+      protoPath: join(process.cwd(), 'proto/requests.proto'),
       url: process.env.GRPC_URL || '0.0.0.0:5004',
     },
   });

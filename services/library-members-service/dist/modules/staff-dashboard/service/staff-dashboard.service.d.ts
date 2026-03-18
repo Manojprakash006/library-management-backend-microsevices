@@ -1,12 +1,10 @@
 import { Model } from 'mongoose';
 import { Member } from '../../members/entities/member.entity';
 import { Staff } from '../../staff/entities/staff.entity';
-import { ActivityLog } from '../../activity-logs/entities/activity-log.entity';
 export declare class StaffDashboardService {
     private memberModel;
     private staffModel;
-    private activityLogModel;
-    constructor(memberModel: Model<Member>, staffModel: Model<Staff>, activityLogModel: Model<ActivityLog>);
+    constructor(memberModel: Model<Member>, staffModel: Model<Staff>);
     getStaffStats(): Promise<{
         totalMembers: number;
         totalBooks: number;
@@ -27,21 +25,13 @@ export declare class StaffDashboardService {
         pendingRequests: number;
     }>;
     getBooksAddedToday(): Promise<any[]>;
-    getRecentActivities(): Promise<(import("mongoose").Document<unknown, {}, ActivityLog, {}, {}> & ActivityLog & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    })[]>;
+    getRecentActivities(): Promise<any[]>;
     getRackDistribution(): Promise<any[]>;
     createBook(bookData: any): Promise<{
         message: string;
         data: any;
     }>;
-    getMyActivityLogs(staffId: string): Promise<(import("mongoose").Document<unknown, {}, ActivityLog, {}, {}> & ActivityLog & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    })[]>;
+    getMyActivityLogs(staffId: string): Promise<any[]>;
     getMyProfile(staffId: string): Promise<import("mongoose").Document<unknown, {}, Staff, {}, {}> & Staff & {
         _id: import("mongoose").Types.ObjectId;
     } & {

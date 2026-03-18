@@ -9,11 +9,11 @@ export declare enum StaffStatus {
     INACTIVE = "Inactive"
 }
 export declare class Staff {
+    staffId: string;
     fullName: string;
     email: string;
     phone: string;
     password: string;
-    department: string;
     shift: string;
     status: StaffStatus;
     role: StaffRole;

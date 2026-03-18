@@ -12,7 +12,6 @@ const mongoose_1 = require("@nestjs/mongoose");
 const config_module_1 = require("./config/config.module");
 const members_module_1 = require("./modules/members/members.module");
 const staff_module_1 = require("./modules/staff/staff.module");
-const activity_logs_module_1 = require("./modules/activity-logs/activity-logs.module");
 const notifications_module_1 = require("./modules/notifications/notifications.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const member_auth_module_1 = require("./modules/member-auth/member-auth.module");
@@ -32,7 +31,6 @@ exports.AppModule = AppModule = __decorate([
             }),
             members_module_1.MembersModule,
             staff_module_1.StaffModule,
-            activity_logs_module_1.ActivityLogsModule,
             notifications_module_1.NotificationsModule,
             auth_module_1.AuthModule,
             member_auth_module_1.MemberAuthModule,

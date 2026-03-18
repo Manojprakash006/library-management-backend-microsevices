@@ -31,6 +31,14 @@ export declare class StaffController {
             _id: import("mongoose").Types.ObjectId;
         }>;
     }>;
+    getStaffStats(): Promise<{
+        message: string;
+        data: {
+            totalStaff: number;
+            activeStaff: number;
+            inactiveStaff: number;
+        };
+    }>;
     getAllStaff(): Promise<{
         message: string;
         data: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("../entities/staff.entity").Staff, {}, {}> & import("../entities/staff.entity").Staff & {

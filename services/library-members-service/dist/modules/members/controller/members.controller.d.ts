@@ -11,6 +11,12 @@ export declare class MembersController {
     getCount(): Promise<{
         count: number;
     }>;
+    getActiveCount(): Promise<{
+        count: number;
+    }>;
+    getInactiveCount(): Promise<{
+        count: number;
+    }>;
     findAll(): Promise<{
         message: string;
         data: Member[];
@@ -23,6 +29,22 @@ export declare class MembersController {
     update(id: string, updateData: Partial<CreateMemberDto>): Promise<{
         message: string;
         data: Member;
+    }>;
+    addBorrowingHistory(id: string, historyData: {
+        bookId: string;
+        issueId: string;
+        borrowedAt: Date;
+        dueDate: Date;
+        status: 'borrowed' | 'returned' | 'overdue';
+    }): Promise<{
+        message: string;
+    }>;
+    updateBorrowingHistory(id: string, issueId: string, updateData: {
+        returnedAt: Date;
+        fine: number;
+        status: 'borrowed' | 'returned' | 'overdue';
+    }): Promise<{
+        message: string;
     }>;
     remove(id: string): Promise<{
         message: string;

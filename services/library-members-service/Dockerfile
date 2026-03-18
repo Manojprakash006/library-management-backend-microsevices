@@ -3,14 +3,19 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm config set fetch-retry-maxtimeout 600000
+RUN npm ci
 
 COPY . .
+
 RUN npm run build
 
-# Copy proto files for gRPC (from parent microservice folder)
+RUN npm prune --production
+
 COPY proto/ dist/proto/
 
 EXPOSE 3012
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]

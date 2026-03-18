@@ -9,10 +9,13 @@ export declare class MemberHistoryController {
         message: string;
         data: {
             bookId: string;
+            issueId: string;
             bookTitle?: string;
             borrowedAt: Date;
+            dueDate?: Date;
             returnedAt?: Date;
             status: "borrowed" | "returned" | "overdue";
+            fine: number;
         }[];
     }>;
     requestBookAgain(req: any, requestDto: RequestBookAgainDto): Promise<{

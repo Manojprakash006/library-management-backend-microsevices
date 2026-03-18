@@ -26,6 +26,10 @@ let Staff = class Staff {
 };
 exports.Staff = Staff;
 __decorate([
+    (0, mongoose_1.Prop)({ unique: true, trim: true, index: true, sparse: true }),
+    __metadata("design:type", String)
+], Staff.prototype, "staffId", void 0);
+__decorate([
     (0, mongoose_1.Prop)({ required: true, trim: true, minlength: 2, maxlength: 100 }),
     __metadata("design:type", String)
 ], Staff.prototype, "fullName", void 0);
@@ -41,10 +45,6 @@ __decorate([
     (0, mongoose_1.Prop)({ required: true, minlength: 6, maxlength: 100, select: false }),
     __metadata("design:type", String)
 ], Staff.prototype, "password", void 0);
-__decorate([
-    (0, mongoose_1.Prop)({ required: true, trim: true, minlength: 2, maxlength: 100, index: true }),
-    __metadata("design:type", String)
-], Staff.prototype, "department", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ required: true, trim: true }),
     __metadata("design:type", String)
@@ -82,6 +82,13 @@ exports.StaffSchema.pre('save', async function (next) {
         return next();
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    next();
+});
+exports.StaffSchema.pre('save', async function (next) {
+    if (this.staffId)
+        return next();
+    const count = await this.constructor.countDocuments();
+    this.staffId = `STF${count + 1}`;
     next();
 });
 exports.StaffSchema.index({ email: 1, isActive: 1 });

@@ -82,6 +82,16 @@ let StaffService = class StaffService {
         }
         return { message: 'Staff deleted successfully' };
     }
+    async getStats() {
+        const totalStaff = await this.staffModel.countDocuments();
+        const activeStaff = await this.staffModel.countDocuments({ status: 'Active' });
+        const inactiveStaff = await this.staffModel.countDocuments({ status: 'Inactive' });
+        return {
+            totalStaff,
+            activeStaff,
+            inactiveStaff,
+        };
+    }
 };
 exports.StaffService = StaffService;
 exports.StaffService = StaffService = __decorate([
