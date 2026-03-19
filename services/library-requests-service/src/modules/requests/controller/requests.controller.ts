@@ -13,10 +13,10 @@ import { Public } from '../../../auth/guards/public.decorator';
 @ApiTags('Book Requests')
 @Controller('requests')
 export class RequestsController {
-  constructor(private readonly requestsService: RequestsService) {}
+  constructor(private readonly requestsService: RequestsService) { }
 
-  
-   @Post()
+
+  @Post()
   @ApiOperation({ summary: 'Create a new book request' })
   @ApiResponse({ status: 201, description: 'Book request created successfully', type: BookRequest })
   async create(@Body() createDto: CreateBookRequestDto, @Req() req): Promise<{ message: string; data: BookRequest }> {
@@ -24,8 +24,8 @@ export class RequestsController {
     return { message: 'Book request created successfully', data: request };
   }
 
-   @Roles('admin')
-   @Get()
+  @Roles('admin')
+  @Get()
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
   async findAll(): Promise<{ message: string; data: BookRequest[]; count: number }> {
@@ -33,8 +33,8 @@ export class RequestsController {
     return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
   }
 
-   @Public()
-   @Get('count/pending')
+  @Public()
+  @Get('count/pending')
   @ApiOperation({ summary: 'Get count of pending requests' })
   @ApiResponse({ status: 200, description: 'Pending requests count retrieved successfully' })
   async getPendingCount(): Promise<{ count: number }> {
@@ -42,8 +42,8 @@ export class RequestsController {
     return { count };
   }
 
-   @Roles('admin')
-   @Get(':id')
+  @Roles('admin')
+  @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
   async findOne(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
@@ -51,8 +51,8 @@ export class RequestsController {
     return { message: 'Book request retrieved successfully', data: request };
   }
 
-   @Roles('admin')
-   @Put(':id')
+  @Roles('admin')
+  @Put(':id')
   @ApiOperation({ summary: 'Update book request' })
   @ApiResponse({ status: 200, description: 'Book request updated successfully', type: BookRequest })
   async update(@Param('id') id: string, @Body() updateDto: Partial<CreateBookRequestDto>): Promise<{ message: string; data: BookRequest }> {
@@ -60,7 +60,7 @@ export class RequestsController {
     return { message: 'Book request updated successfully', data: request };
   }
 
-   @Put(':id/cancel')
+  @Put(':id/cancel')
   @ApiOperation({ summary: 'Cancel book request' })
   @ApiResponse({ status: 200, description: 'Book request cancelled successfully', type: BookRequest })
   async cancel(@Param('id') id: string, @Req() req): Promise<{ message: string; data: BookRequest }> {
@@ -69,8 +69,8 @@ export class RequestsController {
     return { message: 'Book request cancelled successfully', data: request };
   }
 
-   @Roles('admin')
-   @Put(':id/approve')
+  @Roles('admin')
+  @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
   async approve(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
@@ -78,8 +78,8 @@ export class RequestsController {
     return { message: 'Book request approved successfully', data: request };
   }
 
-   @Roles('admin')
-   @Put(':id/reject')
+  @Roles('admin')
+  @Put(':id/reject')
   @ApiOperation({ summary: 'Reject a book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })
   async reject(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
@@ -87,8 +87,8 @@ export class RequestsController {
     return { message: 'Book request rejected successfully', data: request };
   }
 
-   @Roles('admin')
-   @Delete(':id')
+  @Roles('admin')
+  @Delete(':id')
   @ApiOperation({ summary: 'Delete book request' })
   @ApiResponse({ status: 200, description: 'Book request deleted successfully' })
   async remove(@Param('id') id: string): Promise<{ message: string }> {

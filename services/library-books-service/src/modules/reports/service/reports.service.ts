@@ -178,7 +178,7 @@ export class ReportsService {
   // Private helper methods for HTTP calls
   private async getTodayIssuesCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const today = new Date().toISOString().split('T')[0];
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count?date=${today}`)
@@ -192,7 +192,7 @@ export class ReportsService {
 
   private async getTodayReturnsCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const today = new Date().toISOString().split('T')[0];
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/returns/count?date=${today}`)
@@ -206,7 +206,7 @@ export class ReportsService {
 
   private async getOverdueBooksCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/overdue/count`)
       );
@@ -219,7 +219,7 @@ export class ReportsService {
 
   private async getBookIssueCount(bookId: string): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count/book/${bookId}`)
       );
@@ -232,11 +232,12 @@ export class ReportsService {
 
   private async getAllBookIssueCounts(): Promise<Record<string, number>> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
-      const response: AxiosResponse<{ issues: any[] }> = await firstValueFrom(
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues`)
       );
-      const issues = response.data?.issues || [];
+      const issues = response.data?.data || [];
       
       const counts: Record<string, number> = {};
       for (const issue of issues) {

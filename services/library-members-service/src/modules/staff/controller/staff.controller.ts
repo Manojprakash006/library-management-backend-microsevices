@@ -11,9 +11,9 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 @ApiTags('Staff')
 @Controller('staff')
 export class StaffController {
-  constructor(private readonly staffService: StaffService) {}
+  constructor(private readonly staffService: StaffService) { }
 
-   @Post('login')
+  @Post('login')
   @ApiOperation({ summary: 'Staff login' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   async staffLogin(@Body() loginDto: StaffLoginDto) {
@@ -43,7 +43,7 @@ export class StaffController {
     return { message: 'Staff statistics retrieved successfully', data: stats };
   }
 
-   @Get()
+  @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
@@ -54,7 +54,7 @@ export class StaffController {
     return { message: 'Staff retrieved successfully', data: result, count: result.length };
   }
 
-   @Get(':id')
+  @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
@@ -65,7 +65,7 @@ export class StaffController {
     return { message: 'Staff retrieved successfully', data: result };
   }
 
-   @Put(':id')
+  @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
@@ -76,7 +76,7 @@ export class StaffController {
     return { message: 'Staff updated successfully', data: result };
   }
 
-   @Delete(':id')
+  @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()

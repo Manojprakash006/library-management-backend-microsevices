@@ -16,4 +16,4 @@ import { BookReview, BookReviewSchema } from './entities/book-review.entity';
   providers: [BooksService],
   exports: [BooksService],
 })
-export class BooksModule {}
+export class BooksModule { }

@@ -14,7 +14,7 @@ export class BooksService {
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookReview.name) private bookReviewModel: Model<BookReviewDocument>,
-  ) {}
+  ) { }
 
   async create(createBookDto: CreateBookDto): Promise<Book> {
     const existingBook = await this.bookModel.findOne({ bookId: createBookDto.bookId }).exec();
@@ -68,11 +68,11 @@ export class BooksService {
     if (!book) {
       throw new NotFoundException('Book not found');
     }
-    
+
     if (book.status === 'issued') {
       throw new BadRequestException('Cannot delete a book that is currently issued. Please return the book first.');
     }
-    
+
     await this.bookModel.findByIdAndDelete(id).exec();
   }
 

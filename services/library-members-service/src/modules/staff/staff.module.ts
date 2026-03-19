@@ -17,4 +17,4 @@ import { Staff, StaffSchema } from './entities/staff.entity';
   providers: [StaffService],
   exports: [StaffService],
 })
-export class StaffModule {}
+export class StaffModule { }

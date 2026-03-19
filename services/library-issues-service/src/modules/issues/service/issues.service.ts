@@ -13,14 +13,14 @@ export class IssuesService {
   constructor(
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async create(createIssueDto: CreateIssueDto): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
-    
+
     let dueDate = null;
     let numberOfDays = null;
-    
+
     // Only set due date and number of days for Taking Home
     if (createIssueDto.issueType === IssueType.TAKING_HOME) {
       numberOfDays = createIssueDto.numberOfDays || 7; // Default 7 days if not provided
@@ -42,7 +42,7 @@ export class IssuesService {
 
     // Update book status to issued
     await this.updateBookStatus(createIssueDto.bookId, 'issued');
-    
+
     // Add to member's borrowing history
     await this.addToBorrowingHistory(
       createIssueDto.memberId,
@@ -129,10 +129,10 @@ export class IssuesService {
     return issuedBooks.map((issue) => {
       const issueObj = issue.toObject();
       // Skip overdue check for Reading Inside Library (no due date) or returned books
-      if (issueObj.status !== IssueStatus.RETURNED && 
-          issueObj.issueType === IssueType.TAKING_HOME && 
-          issueObj.dueDate && 
-          new Date(issueObj.dueDate) < today) {
+      if (issueObj.status !== IssueStatus.RETURNED &&
+        issueObj.issueType === IssueType.TAKING_HOME &&
+        issueObj.dueDate &&
+        new Date(issueObj.dueDate) < today) {
         const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
         issueObj.status = IssueStatus.OVERDUE;
         issueObj.daysOverdue = overdueDays;
@@ -187,7 +187,7 @@ export class IssuesService {
     // Update book status back to available
     const bookId = issuedBook.bookId.toString();
     await this.updateBookStatus(bookId, 'available');
-    
+
     // Update member's borrowing history
     await this.updateBorrowingHistory(
       issuedBook.memberId.toString(),

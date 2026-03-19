@@ -14,4 +14,4 @@ import { Member, MemberSchema } from './entities/member.entity';
   providers: [MembersService],
   exports: [MembersService],
 })
-export class MembersModule {}
+export class MembersModule { }

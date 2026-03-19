@@ -10,7 +10,7 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async login(loginDto: LoginDto): Promise<{ token: string; user: any }> {
     const { email, password } = loginDto;

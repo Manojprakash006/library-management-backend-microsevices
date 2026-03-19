@@ -14,9 +14,9 @@ import { Public } from '../../../auth/guards/public.decorator';
 @ApiTags('Members')
 @Controller('members')
 export class MembersController {
-  constructor(private readonly membersService: MembersService) {}
+  constructor(private readonly membersService: MembersService) { }
 
-   @Post()
+  @Post()
   @ApiOperation({ summary: 'Create a new member' })
   @ApiResponse({ status: 201, description: 'Member created successfully', type: Member })
   @ApiResponse({ status: 409, description: 'Member ID or email already exists' })
@@ -25,8 +25,8 @@ export class MembersController {
     return { message: 'Member created successfully', data: member };
   }
 
-   @Public()
-   @Get('count')
+  @Public()
+  @Get('count')
   @ApiOperation({ summary: 'Get total members count' })
   @ApiResponse({ status: 200, description: 'Members count retrieved successfully' })
   async getCount(): Promise<{ count: number }> {
@@ -34,7 +34,7 @@ export class MembersController {
     return { count };
   }
 
-   @Public()
+  @Public()
   @Get('count/active')
   @ApiOperation({ summary: 'Get active members count' })
   @ApiResponse({ status: 200, description: 'Active members count retrieved successfully' })
@@ -60,7 +60,7 @@ export class MembersController {
     return { message: 'Members retrieved successfully', data: members, count: members.length };
   }
 
-   @Get(':id')
+  @Get(':id')
   @ApiOperation({ summary: 'Get member by ID' })
   @ApiResponse({ status: 200, description: 'Member retrieved successfully', type: Member })
   @ApiResponse({ status: 404, description: 'Member not found' })
@@ -69,7 +69,7 @@ export class MembersController {
     return { message: 'Member retrieved successfully', data: member };
   }
 
-   @Put(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update member' })
   @ApiResponse({ status: 200, description: 'Member updated successfully', type: Member })
   @ApiResponse({ status: 404, description: 'Member not found' })
@@ -78,7 +78,7 @@ export class MembersController {
     return { message: 'Member updated successfully', data: member };
   }
 
-   @Post(':id/borrowing-history')
+  @Post(':id/borrowing-history')
   @ApiOperation({ summary: 'Add borrowing history entry' })
   @ApiResponse({ status: 201, description: 'Borrowing history added successfully' })
   async addBorrowingHistory(
@@ -89,7 +89,7 @@ export class MembersController {
     return { message: 'Borrowing history added successfully' };
   }
 
-   @Put(':id/borrowing-history/:issueId')
+  @Put(':id/borrowing-history/:issueId')
   @ApiOperation({ summary: 'Update borrowing history entry' })
   @ApiResponse({ status: 200, description: 'Borrowing history updated successfully' })
   async updateBorrowingHistory(
@@ -101,7 +101,7 @@ export class MembersController {
     return { message: 'Borrowing history updated successfully' };
   }
 
-   @Delete(':id')
+  @Delete(':id')
   @ApiOperation({ summary: 'Delete member' })
   @ApiResponse({ status: 200, description: 'Member deleted successfully' })
   @ApiResponse({ status: 404, description: 'Member not found' })

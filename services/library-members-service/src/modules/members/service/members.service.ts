@@ -11,6 +11,7 @@ import { CreateMemberDto } from '../dto/create-member.dto';
 type MemberWithStats = Member & {
   booksHeld: number;
   booksAtHome: number;
+  readingInsideLibrary: number;
   totalFines: number;
   hasActiveIssues: boolean;
 };
@@ -22,7 +23,7 @@ export class MembersService {
   constructor(
     @InjectModel(Member.name) private memberModel: Model<MemberDocument>,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async create(createMemberDto: CreateMemberDto): Promise<Member> {
     // Validation: Check required fields
@@ -62,23 +63,25 @@ export class MembersService {
 
   async findAll(): Promise<MemberWithStats[]> {
     const members = await this.memberModel.find().select('-password').exec();
-    
+
     // Fetch real-time stats from issues service for each member
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
         const memberObj = member.toObject();
-        const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
-        
+        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+
         return {
           ...memberObj,
+          borrowingHistory: memberObj.borrowingHistory || [],
           booksHeld,
-          booksAtHome: booksHeld,
+          booksAtHome,
+          readingInsideLibrary,
           totalFines,
           hasActiveIssues: booksHeld > 0,
         };
       })
     );
-    
+
     return membersWithStats;
   }
 
@@ -87,16 +90,18 @@ export class MembersService {
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-    
+
     const memberObj = member.toObject();
-    
+
     // Get real-time stats from issues service
-    const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(id);
-    
+    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(id);
+
     return {
       ...memberObj,
+      borrowingHistory: memberObj.borrowingHistory || [],
       booksHeld,
-      booksAtHome: booksHeld,
+      booksAtHome,
+      readingInsideLibrary,
       totalFines,
       hasActiveIssues: booksHeld > 0,
     };
@@ -107,16 +112,18 @@ export class MembersService {
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-    
+
     const memberObj = member.toObject();
-    
+
     // Get real-time stats from issues service
-    const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
-    
+    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+
     return {
       ...memberObj,
+      borrowingHistory: memberObj.borrowingHistory || [],
       booksHeld,
-      booksAtHome: booksHeld,
+      booksAtHome,
+      readingInsideLibrary,
       totalFines,
       hasActiveIssues: booksHeld > 0,
     };
@@ -195,29 +202,40 @@ export class MembersService {
     return this.memberModel.countDocuments();
   }
 
-  private async getMemberStatsFromIssues(memberId: string): Promise<{ booksHeld: number; totalFines: number }> {
+  private async getMemberStatsFromIssues(memberId: string): Promise<{
+    booksHeld: number;
+    booksAtHome: number;
+    readingInsideLibrary: number;
+    totalFines: number
+  }> {
     try {
       const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
-      
-      // Get only "Taking Home" active issues for booksHeld count
-      const takingHomeIssuesResponse = await firstValueFrom(
-        this.httpService.get<{ count: number }>(
-          `${issuesServiceUrl}/issues/member/${memberId}/active?issueType=Taking%20Home`
+
+      // Get detailed stats from new endpoint
+      const statsResponse = await firstValueFrom(
+        this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
+          `${issuesServiceUrl}/issues/member/${memberId}/stats`
         )
       );
-      const booksHeld = takingHomeIssuesResponse.data?.count || 0;
-      
+
+      const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
+
       // Get all issues to calculate total fines
       const allIssuesResponse = await firstValueFrom(
         this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
       const allIssues = allIssuesResponse.data?.data || [];
       const totalFines = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
-      
-      return { booksHeld, totalFines };
+
+      return {
+        booksHeld: stats.totalActive,
+        booksAtHome: stats.booksAtHome,
+        readingInsideLibrary: stats.readingInsideLibrary,
+        totalFines
+      };
     } catch (error) {
       this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
-      return { booksHeld: 0, totalFines: 0 };
+      return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
     }
   }
 }

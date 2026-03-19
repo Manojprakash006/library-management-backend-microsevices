@@ -13,12 +13,12 @@ export class StaffService {
   constructor(
     @InjectModel(Staff.name) private staffModel: Model<StaffDocument>,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async login(loginDto: StaffLoginDto) {
     const { email, password } = loginDto;
     const staff = await this.staffModel.findOne({ email }).select('+password');
-    
+
     if (!staff) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -74,7 +74,7 @@ export class StaffService {
       { $set: updateDto },
       { new: true, runValidators: true },
     ).select('-password');
-    
+
     if (!staff) {
       throw new NotFoundException('Staff not found');
     }

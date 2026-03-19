@@ -17,9 +17,9 @@ import { Public } from '../../../auth/guards/public.decorator';
 @ApiTags('Books')
 @Controller('books')
 export class BooksController {
-  constructor(private readonly booksService: BooksService) {}
+  constructor(private readonly booksService: BooksService) { }
 
-   @Post()
+  @Post()
   @ApiOperation({ summary: 'Create a new book' })
   @ApiResponse({ status: 201, description: 'Book created successfully', type: Book })
   @ApiResponse({ status: 409, description: 'Book ID already exists' })
@@ -28,7 +28,7 @@ export class BooksController {
     return { message: 'Book created successfully', data: book };
   }
 
-   @Get()
+  @Get()
   @ApiOperation({ summary: 'Get all books' })
   @ApiResponse({ status: 200, description: 'Books retrieved successfully', type: [Book] })
   async findAll(): Promise<{ message: string; data: Book[]; count: number }> {
@@ -36,7 +36,7 @@ export class BooksController {
     return { message: 'Books retrieved successfully', data: books, count: books.length };
   }
 
-   @Get('search')
+  @Get('search')
   @ApiOperation({ summary: 'Search books by text' })
   @ApiResponse({ status: 200, description: 'Search results', type: [Book] })
   async search(@Query('q') query: string): Promise<{ message: string; data: Book[]; count: number }> {
@@ -44,7 +44,7 @@ export class BooksController {
     return { message: 'Search results', data: books, count: books.length };
   }
 
-   @Get('category/:category')
+  @Get('category/:category')
   @ApiOperation({ summary: 'Get books by category' })
   @ApiResponse({ status: 200, description: 'Books by category', type: [Book] })
   async findByCategory(@Param('category') category: string): Promise<{ message: string; data: Book[]; count: number }> {
@@ -52,7 +52,7 @@ export class BooksController {
     return { message: 'Books by category retrieved successfully', data: books, count: books.length };
   }
 
-   @Get(':id')
+  @Get(':id')
   @ApiOperation({ summary: 'Get book by ID' })
   @ApiResponse({ status: 200, description: 'Book retrieved successfully', type: Book })
   @ApiResponse({ status: 404, description: 'Book not found' })
@@ -61,7 +61,7 @@ export class BooksController {
     return { message: 'Book retrieved successfully', data: book };
   }
 
-   @Put(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update book' })
   @ApiResponse({ status: 200, description: 'Book updated successfully', type: Book })
   @ApiResponse({ status: 404, description: 'Book not found' })
@@ -70,8 +70,8 @@ export class BooksController {
     return { message: 'Book updated successfully', data: book };
   }
 
-   @Public()
-   @Patch(':id/status')
+  @Public()
+  @Patch(':id/status')
   @ApiOperation({ summary: 'Update book status' })
   @ApiResponse({ status: 200, description: 'Book status updated successfully', type: Book })
   @ApiResponse({ status: 404, description: 'Book not found' })
@@ -80,7 +80,7 @@ export class BooksController {
     return { message: 'Book status updated successfully', data: book };
   }
 
-   @Delete(':id')
+  @Delete(':id')
   @ApiOperation({ summary: 'Delete book' })
   @ApiResponse({ status: 200, description: 'Book deleted successfully' })
   @ApiResponse({ status: 404, description: 'Book not found' })
@@ -89,7 +89,7 @@ export class BooksController {
     return { message: 'Book deleted successfully' };
   }
 
-   @Post('reviews')
+  @Post('reviews')
   @ApiOperation({ summary: 'Create a book review' })
   @ApiResponse({ status: 201, description: 'Review created successfully', type: BookReview })
   @ApiResponse({ status: 409, description: 'Review already exists' })
@@ -98,7 +98,7 @@ export class BooksController {
     return { message: 'Review created successfully', data: review };
   }
 
-   @Get('reviews/:bookId')
+  @Get('reviews/:bookId')
   @ApiOperation({ summary: 'Get reviews by book ID' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully', type: [BookReview] })
   async findReviewsByBook(@Param('bookId') bookId: string): Promise<{ message: string; data: BookReview[]; count: number }> {

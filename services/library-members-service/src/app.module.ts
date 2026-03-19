@@ -28,4 +28,4 @@ import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.
     StaffDashboardModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

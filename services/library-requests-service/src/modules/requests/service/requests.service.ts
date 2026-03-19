@@ -14,10 +14,9 @@ export class RequestsService {
   constructor(
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
-    // Check for duplicate requestId only if provided
     if (createDto.requestId) {
       const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
       if (existingRequest) {
@@ -26,7 +25,7 @@ export class RequestsService {
     }
 
     // Fetch member borrowing statistics
-    const { currentlyBorrowed, totalHistory } = await this.getMemberBorrowingStats(createDto.memberId);
+    const { currentlyBorrowed, totalHistory } = await this.getMemberBorrowingDetails(createDto.memberId);
 
     const bookRequest = new this.bookRequestModel({
       ...createDto,
@@ -41,28 +40,62 @@ export class RequestsService {
     return bookRequest.save();
   }
 
-  private async getMemberBorrowingStats(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number }> {
+  private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+
+      // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
-        this.httpService.get(`${membersServiceUrl}/members/${memberId}`)
+        this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
-      
-      const member = response.data?.data || response.data;
-      const borrowingHistory = member.borrowingHistory || [];
-      
-      const currentlyBorrowed = borrowingHistory.filter((h: any) => h.status === 'borrowed').length;
-      const totalHistory = borrowingHistory.length;
-      
-      return { currentlyBorrowed, totalHistory };
+
+      const allIssues = response.data?.data || [];
+
+      // Get active (not returned) issues - Active or Overdue status
+      const activeIssues = allIssues.filter((issue: any) =>
+        issue.status === 'Active' || issue.status === 'Overdue'
+      );
+
+      const currentlyBorrowed = activeIssues.length;
+      const totalHistory = allIssues.length;
+
+      // Extract active book IDs as ObjectIds
+      const activeBookIds = activeIssues
+        .map((issue: any) => issue.bookId)
+        .filter((id: string) => id)
+        .map((id: string) => new Types.ObjectId(id));
+
+      // Create booklistBorrowed with issue details
+      const booklistBorrowed = activeIssues.map((issue: any) => {
+        const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : 'N/A';
+        return `${issue.bookId} - ${issue.issueType} - ${issue.status} - Due: ${dueDate}`;
+      });
+
+      return { currentlyBorrowed, totalHistory, activeBookIds, booklistBorrowed };
     } catch (error) {
-      this.logger.error(`Failed to fetch member borrowing stats: ${error.message}`);
-      return { currentlyBorrowed: 0, totalHistory: 0 };
+      this.logger.error(`Failed to fetch member borrowing details from issues service: ${error.message}`);
+      return { currentlyBorrowed: 0, totalHistory: 0, activeBookIds: [], booklistBorrowed: [] };
     }
   }
 
-  async findAll(): Promise<BookRequest[]> {
-    return this.bookRequestModel.find().sort({ requestDate: -1 }).exec();
+  async findAll(): Promise<any[]> {
+    const requests = await this.bookRequestModel.find().sort({ requestDate: -1 }).exec();
+
+    // Enrich each request with real-time member borrowing data
+    const enrichedRequests = await Promise.all(
+      requests.map(async (request) => {
+        const memberStats = await this.getMemberBorrowingDetails(request.memberId.toString());
+        return {
+          ...request.toObject(),
+          currentlyBorrowed: memberStats.currentlyBorrowed,
+          totalHistory: memberStats.totalHistory,
+          activeBookIds: memberStats.activeBookIds,
+          booklistBorrowed: memberStats.booklistBorrowed,
+        };
+      })
+    );
+
+    return enrichedRequests;
   }
 
   async findOne(id: string): Promise<BookRequest> {
@@ -73,8 +106,22 @@ export class RequestsService {
     return request;
   }
 
-  async findByMember(memberId: string): Promise<BookRequest[]> {
-    return this.bookRequestModel.find({ memberId: new Types.ObjectId(memberId) }).sort({ requestDate: -1 }).exec();
+  async findByMember(memberId: string): Promise<any[]> {
+    const requests = await this.bookRequestModel.find({ memberId: new Types.ObjectId(memberId) }).sort({ requestDate: -1 }).exec();
+
+    // Get real-time member borrowing data once
+    const memberStats = await this.getMemberBorrowingDetails(memberId);
+
+    // Enrich all requests with the same member data
+    const enrichedRequests = requests.map((request) => ({
+      ...request.toObject(),
+      currentlyBorrowed: memberStats.currentlyBorrowed,
+      totalHistory: memberStats.totalHistory,
+      activeBookIds: memberStats.activeBookIds,
+      booklistBorrowed: memberStats.booklistBorrowed,
+    }));
+
+    return enrichedRequests;
   }
 
   async update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<BookRequest> {
