@@ -41,7 +41,7 @@ export class JwtAuthGuard implements CanActivate {
       request['user'] = { id: decoded.id, role: decoded.role };
       return true;
     } catch (error) {
-      throw new UnauthorizedException('Not authorized, token failed');
+      throw new UnauthorizedException('Not authorized, token Invalid');
     }
   }
 }

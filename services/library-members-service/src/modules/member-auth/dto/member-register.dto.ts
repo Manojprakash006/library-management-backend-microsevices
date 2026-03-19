@@ -15,8 +15,12 @@ export class MemberRegisterDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Member phone', required: false })
-  @IsOptional()
+  @ApiProperty({ description: 'Member phone Number'})
   @IsString()
-  phone?: string;
+  @MinLength(10)
+  phone: string;
+
+  @ApiProperty({ description: 'Member Address'})
+  @IsString()
+  address: string;
 }
