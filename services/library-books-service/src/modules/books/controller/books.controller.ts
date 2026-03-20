@@ -53,6 +53,7 @@ export class BooksController {
     return { message: 'Books by category retrieved successfully', data: books, count: books.length };
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get book by ID' })
   @ApiResponse({ status: 200, description: 'Book retrieved successfully', type: Book })

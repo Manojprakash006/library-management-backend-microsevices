@@ -45,6 +45,39 @@ export class IssuesService {
       dueDate.setDate(dueDate.getDate() + numberOfDays);
     }
 
+    // Check book availability first before issuing
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
+      );
+      const bookData = bookResponse.data?.data;
+      if (!bookData) {
+        throw new BadRequestException('Book not found');
+      }
+
+      const currentIssuesCount = await this.getBookIssueCount(createIssueDto.bookId);
+      const maxQuantity = bookData.quantity || 1;
+
+      if (currentIssuesCount >= maxQuantity) {
+        throw new BadRequestException('Book is out of stock and cannot be issued (all copies are currently issued)');
+      }
+
+      // Check if this specific member already has this exact book actively issued
+      const existingIssue = await this.issueBookModel.findOne({
+        bookId: new Types.ObjectId(createIssueDto.bookId),
+        memberId: new Types.ObjectId(createIssueDto.memberId),
+        status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+      }).exec();
+
+      if (existingIssue) {
+        throw new ConflictException('This member already has an active issue for this book.');
+      }
+    } catch (error) {
+       if (error instanceof BadRequestException) throw error;
+       throw new BadRequestException('Failed to verify book availability. Book may not exist.');
+    }
+
     const issuedBook = new this.issueBookModel({
       bookId: new Types.ObjectId(createIssueDto.bookId),
       memberId: new Types.ObjectId(createIssueDto.memberId),
@@ -57,7 +90,7 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
-    // Update book status to issued
+    // Update book status to issued (decrements available locally)
     await this.updateBookStatus(createIssueDto.bookId, 'issued');
 
     // Add to member's borrowing history
@@ -105,12 +138,13 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       await firstValueFrom(
-        this.httpService.patch(`${booksServiceUrl}/library/books/${bookId}/status`, { status })
+        this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
     } catch (error) {
       this.logger.error(`Failed to update book status: ${error.message}`);
+      // Rollback might be needed here in a strict system, but let's log for now.
     }
   }
 
@@ -137,9 +171,9 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       await firstValueFrom(
-        this.httpService.patch(`${booksServiceUrl}/library/books/${bookObjectId}/status`, { status })
+        this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
     } catch (error) {
       this.logger.error(`Failed to update book status: ${error.message}`);
