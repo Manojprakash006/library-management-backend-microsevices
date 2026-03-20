@@ -11,6 +11,7 @@ import { MemberHistoryModule } from './modules/member-history/member-history.mod
 import { MemberDashboardModule } from './modules/member-dashboard/member-dashboard.module';
 import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ActivityLogModule } from './modules/activity-log/activity-log.module';
     MemberDashboardModule,
     StaffDashboardModule,
     ActivityLogModule,
+    AdminModule,
   ],
 })
 export class AppModule { }
