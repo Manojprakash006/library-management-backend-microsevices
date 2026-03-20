@@ -90,8 +90,23 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
-    // Update book status to issued (decrements available locally)
-    await this.updateBookStatus(createIssueDto.bookId, 'issued');
+    // Update book status: if all copies are issued, mark as 'issued' (out of stock), else keep it 'available'
+    let newBookStatus = 'available';
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
+      );
+      const bookData = bookResponse.data?.data;
+      const maxQuantity = bookData?.quantity || 1;
+      const currentIssuesCountAfterThis = await this.getBookIssueCount(createIssueDto.bookId);
+      if (currentIssuesCountAfterThis >= maxQuantity) {
+        newBookStatus = 'issued';
+      }
+    } catch (e) {
+      newBookStatus = 'issued'; // fallback
+    }
+    await this.updateBookStatus(createIssueDto.bookId, newBookStatus);
 
     // Add to member's borrowing history
     await this.addToBorrowingHistory(

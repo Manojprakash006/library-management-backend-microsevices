@@ -41,8 +41,25 @@ export class RequestsService {
       }
     }
 
+    // 1. Check if member already has a pending request for this book
+    const existingPendingRequest = await this.bookRequestModel.findOne({
+      memberId: new Types.ObjectId(createDto.memberId),
+      bookId: new Types.ObjectId(createDto.bookId),
+      status: RequestStatus.PENDING
+    }).exec();
+
+    if (existingPendingRequest) {
+      throw new ConflictException('You have already requested this book and it is pending approval.');
+    }
+
     // Fetch member borrowing statistics
-    const { currentlyBorrowed, totalHistory } = await this.getMemberBorrowingDetails(createDto.memberId);
+    const { currentlyBorrowed, totalHistory, activeBookIds } = await this.getMemberBorrowingDetails(createDto.memberId);
+
+    // 2. Check if member already has this book actively borrowed
+    const alreadyBorrowed = activeBookIds.some(id => id.toString() === createDto.bookId.toString());
+    if (alreadyBorrowed) {
+      throw new ConflictException('You have already borrowed this book. Please return it before requesting again.');
+    }
 
     const bookRequest = new this.bookRequestModel({
       ...createDto,
