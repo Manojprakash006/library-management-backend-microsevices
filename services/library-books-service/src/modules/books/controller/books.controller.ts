@@ -13,11 +13,11 @@ import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'staff')
+@Roles('admin', 'staff', 'member')
 @ApiTags('Books')
 @Controller('books')
 export class BooksController {
-  constructor(private readonly booksService: BooksService) {}
+  constructor(private readonly booksService: BooksService) {}   
 
    @Post()
   @ApiOperation({ summary: 'Create a new book' })

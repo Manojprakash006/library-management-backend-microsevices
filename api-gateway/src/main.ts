@@ -20,6 +20,11 @@ async function bootstrap() {
       pathRewrite: {
         '^/library/books': '',
       },
+      onProxyReq: (proxyReq, req) => {
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+      },
     }),
   );
 
@@ -30,6 +35,11 @@ async function bootstrap() {
       changeOrigin: true,
       pathRewrite: {
         '^/library/members': '',
+      },
+      onProxyReq: (proxyReq, req) => {
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
       },
     }),
   );
@@ -42,6 +52,11 @@ async function bootstrap() {
       pathRewrite: {
         '^/library/issues': '',
       },
+      onProxyReq: (proxyReq, req) => {
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+      },
     }),
   );
 
@@ -52,6 +67,11 @@ async function bootstrap() {
       changeOrigin: true,
       pathRewrite: {
         '^/library/requests': '',
+      },
+      onProxyReq: (proxyReq, req) => {
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
       },
     }),
   );
