@@ -16,6 +16,23 @@ export class RequestsService {
     private readonly httpService: HttpService,
   ) { }
 
+  private async logActivity(adminId: string, action: string, entityId: string, details: any) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/activities/logs`, {
+          adminId,
+          action,
+          entityType: 'REQUEST',
+          entityId,
+          details
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to log activity to member service: ${error.message}`);
+    }
+  }
+
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
     if (createDto.requestId) {
       const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
@@ -157,7 +174,7 @@ export class RequestsService {
     return request.save();
   }
 
-  async approve(id: string): Promise<BookRequest> {
+  async approve(id: string, adminId?: string): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
@@ -169,10 +186,16 @@ export class RequestsService {
 
     request.status = RequestStatus.APPROVED;
     request.processedDate = new Date();
-    return request.save();
+    const savedRequest = await request.save();
+
+    if (adminId) {
+      await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
+    }
+
+    return savedRequest;
   }
 
-  async reject(id: string): Promise<BookRequest> {
+  async reject(id: string, adminId?: string): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
@@ -184,7 +207,13 @@ export class RequestsService {
 
     request.status = RequestStatus.REJECTED;
     request.processedDate = new Date();
-    return request.save();
+    const savedRequest = await request.save();
+
+    if (adminId) {
+      await this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
+    }
+
+    return savedRequest;
   }
 
   async remove(id: string): Promise<void> {

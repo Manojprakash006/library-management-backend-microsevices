@@ -7,12 +7,14 @@ import { Staff, StaffDocument } from '../entities/staff.entity';
 import { CreateStaffDto } from '../dto/create-staff.dto';
 import { UpdateStaffDto } from '../dto/update-staff.dto';
 import { StaffLoginDto } from '../dto/staff-login.dto';
+import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
 @Injectable()
 export class StaffService {
   constructor(
     @InjectModel(Staff.name) private staffModel: Model<StaffDocument>,
     private jwtService: JwtService,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
   async login(loginDto: StaffLoginDto) {
@@ -45,15 +47,26 @@ export class StaffService {
     };
   }
 
-  async create(createDto: CreateStaffDto) {
+  async create(createDto: CreateStaffDto, adminId?: string) {
     const existingStaff = await this.staffModel.findOne({ email: createDto.email });
     if (existingStaff) {
       throw new ConflictException('Email already registered');
     }
 
     const staff = new this.staffModel(createDto);
-    await staff.save();
-    return staff;
+    const savedStaff = await staff.save();
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'CREATE',
+        entityType: 'STAFF',
+        entityId: savedStaff._id.toString(),
+        details: { email: savedStaff.email, fullName: savedStaff.fullName }
+      });
+    }
+
+    return savedStaff;
   }
 
   async findAll() {
@@ -68,7 +81,7 @@ export class StaffService {
     return staff;
   }
 
-  async update(id: string, updateDto: UpdateStaffDto) {
+  async update(id: string, updateDto: UpdateStaffDto, adminId?: string) {
     const staff = await this.staffModel.findByIdAndUpdate(
       id,
       { $set: updateDto },
@@ -78,14 +91,36 @@ export class StaffService {
     if (!staff) {
       throw new NotFoundException('Staff not found');
     }
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'UPDATE',
+        entityType: 'STAFF',
+        entityId: id,
+        details: { updatedFields: Object.keys(updateDto) }
+      });
+    }
+
     return staff;
   }
 
-  async delete(id: string) {
+  async delete(id: string, adminId?: string) {
     const staff = await this.staffModel.findByIdAndDelete(id);
     if (!staff) {
       throw new NotFoundException('Staff not found');
     }
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'DELETE',
+        entityType: 'STAFF',
+        entityId: id,
+        details: { email: staff.email }
+      });
+    }
+
     return { message: 'Staff deleted successfully' };
   }
 

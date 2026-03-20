@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BooksService } from '../service/books.service';
 import { CreateBookDto } from '../dto/create-book.dto';
@@ -23,8 +23,9 @@ export class BooksController {
   @ApiOperation({ summary: 'Create a new book' })
   @ApiResponse({ status: 201, description: 'Book created successfully', type: Book })
   @ApiResponse({ status: 409, description: 'Book ID already exists' })
-  async create(@Body() createBookDto: CreateBookDto): Promise<{ message: string; data: Book }> {
-    const book = await this.booksService.create(createBookDto);
+  async create(@Body() createBookDto: CreateBookDto, @Req() req: any): Promise<{ message: string; data: Book }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const book = await this.booksService.create(createBookDto, adminId);
     return { message: 'Book created successfully', data: book };
   }
 
@@ -65,8 +66,9 @@ export class BooksController {
   @ApiOperation({ summary: 'Update book' })
   @ApiResponse({ status: 200, description: 'Book updated successfully', type: Book })
   @ApiResponse({ status: 404, description: 'Book not found' })
-  async update(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto): Promise<{ message: string; data: Book }> {
-    const book = await this.booksService.update(id, updateBookDto);
+  async update(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto, @Req() req: any): Promise<{ message: string; data: Book }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const book = await this.booksService.update(id, updateBookDto, adminId);
     return { message: 'Book updated successfully', data: book };
   }
 
@@ -84,8 +86,9 @@ export class BooksController {
   @ApiOperation({ summary: 'Delete book' })
   @ApiResponse({ status: 200, description: 'Book deleted successfully' })
   @ApiResponse({ status: 404, description: 'Book not found' })
-  async remove(@Param('id') id: string): Promise<{ message: string }> {
-    await this.booksService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any): Promise<{ message: string }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    await this.booksService.remove(id, adminId);
     return { message: 'Book deleted successfully' };
   }
 

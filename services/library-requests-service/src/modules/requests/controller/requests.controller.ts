@@ -73,8 +73,9 @@ export class RequestsController {
   @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
-  async approve(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
-    const request = await this.requestsService.approve(id);
+  async approve(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const request = await this.requestsService.approve(id, adminId);
     return { message: 'Book request approved successfully', data: request };
   }
 
@@ -82,8 +83,9 @@ export class RequestsController {
   @Put(':id/reject')
   @ApiOperation({ summary: 'Reject a book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })
-  async reject(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
-    const request = await this.requestsService.reject(id);
+  async reject(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const request = await this.requestsService.reject(id, adminId);
     return { message: 'Book request rejected successfully', data: request };
   }
 

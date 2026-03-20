@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from '../service/staff.service';
 import { CreateStaffDto } from '../dto/create-staff.dto';
@@ -27,8 +27,9 @@ export class StaffController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create new staff' })
   @ApiResponse({ status: 201, description: 'Staff created successfully' })
-  async createStaff(@Body() createDto: CreateStaffDto) {
-    const result = await this.staffService.create(createDto);
+  async createStaff(@Body() createDto: CreateStaffDto, @Req() req: any) {
+    const adminId = req.user?.id;
+    const result = await this.staffService.create(createDto, adminId);
     return { message: 'Staff created successfully', data: result };
   }
 
@@ -71,8 +72,9 @@ export class StaffController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update staff' })
   @ApiResponse({ status: 200, description: 'Staff updated successfully' })
-  async updateStaff(@Param('id') id: string, @Body() updateDto: UpdateStaffDto) {
-    const result = await this.staffService.update(id, updateDto);
+  async updateStaff(@Param('id') id: string, @Body() updateDto: UpdateStaffDto, @Req() req: any) {
+    const adminId = req.user?.id;
+    const result = await this.staffService.update(id, updateDto, adminId);
     return { message: 'Staff updated successfully', data: result };
   }
 
@@ -82,8 +84,9 @@ export class StaffController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete staff' })
   @ApiResponse({ status: 200, description: 'Staff deleted successfully' })
-  async deleteStaff(@Param('id') id: string) {
-    await this.staffService.delete(id);
+  async deleteStaff(@Param('id') id: string, @Req() req: any) {
+    const adminId = req.user?.id;
+    await this.staffService.delete(id, adminId);
     return { message: 'Staff deleted successfully' };
   }
 }

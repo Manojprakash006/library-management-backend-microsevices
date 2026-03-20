@@ -6,6 +6,8 @@ import { BookReview, BookReviewDocument } from '../entities/book-review.entity';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { CreateBookReviewDto } from '../dto/create-book-review.dto';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class BooksService {
@@ -14,16 +16,40 @@ export class BooksService {
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookReview.name) private bookReviewModel: Model<BookReviewDocument>,
+    private readonly httpService: HttpService,
   ) { }
 
-  async create(createBookDto: CreateBookDto): Promise<Book> {
+  private async logActivity(adminId: string, action: string, entityId: string, details: any) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/activities/logs`, {
+          adminId,
+          action,
+          entityType: 'BOOK',
+          entityId,
+          details
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to log activity to member service: ${error.message}`);
+    }
+  }
+
+  async create(createBookDto: CreateBookDto, adminId?: string): Promise<Book> {
     const existingBook = await this.bookModel.findOne({ bookId: createBookDto.bookId }).exec();
     if (existingBook) {
       throw new ConflictException('Book ID already exists');
     }
 
     const createdBook = new this.bookModel(createBookDto);
-    return createdBook.save();
+    const savedBook = await createdBook.save();
+
+    if (adminId) {
+      await this.logActivity(adminId, 'CREATE', savedBook.bookId, { title: savedBook.title });
+    }
+
+    return savedBook;
   }
 
   async findAll(): Promise<Book[]> {
@@ -46,11 +72,16 @@ export class BooksService {
     return book;
   }
 
-  async update(id: string, updateBookDto: UpdateBookDto): Promise<Book> {
+  async update(id: string, updateBookDto: UpdateBookDto, adminId?: string): Promise<Book> {
     const book = await this.bookModel.findByIdAndUpdate(id, updateBookDto, { new: true }).exec();
     if (!book) {
       throw new NotFoundException('Book not found');
     }
+
+    if (adminId) {
+      await this.logActivity(adminId, 'UPDATE', book.bookId, { updatedFields: Object.keys(updateBookDto) });
+    }
+
     return book;
   }
 
@@ -63,7 +94,7 @@ export class BooksService {
     return book;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, adminId?: string): Promise<void> {
     const book = await this.bookModel.findById(id).exec();
     if (!book) {
       throw new NotFoundException('Book not found');
@@ -74,6 +105,10 @@ export class BooksService {
     }
 
     await this.bookModel.findByIdAndDelete(id).exec();
+
+    if (adminId) {
+      await this.logActivity(adminId, 'DELETE', book.bookId, { title: book.title });
+    }
   }
 
   async search(query: string): Promise<Book[]> {

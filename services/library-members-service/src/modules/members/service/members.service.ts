@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
+import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
 // Type that includes computed fields for member responses
 type MemberWithStats = Member & {
@@ -23,9 +24,10 @@ export class MembersService {
   constructor(
     @InjectModel(Member.name) private memberModel: Model<MemberDocument>,
     private readonly httpService: HttpService,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
-  async create(createMemberDto: CreateMemberDto): Promise<Member> {
+  async create(createMemberDto: CreateMemberDto, adminId?: string): Promise<Member> {
     // Validation: Check required fields
     if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
       throw new ConflictException('Full name is required and must be at least 2 characters');
@@ -58,7 +60,19 @@ export class MembersService {
     };
 
     const createdMember = new this.memberModel(memberData);
-    return createdMember.save();
+    const savedMember = await createdMember.save();
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'CREATE',
+        entityType: 'MEMBER',
+        entityId: savedMember.memberId || savedMember._id.toString(),
+        details: { email: savedMember.email, name: savedMember.name }
+      });
+    }
+
+    return savedMember;
   }
 
   async findAll(): Promise<MemberWithStats[]> {
@@ -129,11 +143,22 @@ export class MembersService {
     };
   }
 
-  async update(id: string, updateData: Partial<CreateMemberDto>): Promise<Member> {
+  async update(id: string, updateData: Partial<CreateMemberDto>, adminId?: string): Promise<Member> {
     const member = await this.memberModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
     if (!member) {
       throw new NotFoundException('Member not found');
     }
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'UPDATE',
+        entityType: 'MEMBER',
+        entityId: member.memberId || id,
+        details: { updatedFields: Object.keys(updateData) }
+      });
+    }
+
     return member;
   }
 
@@ -183,10 +208,20 @@ export class MembersService {
     await member.save();
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, adminId?: string): Promise<void> {
     const result = await this.memberModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException('Member not found');
+    }
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'DELETE',
+        entityType: 'MEMBER',
+        entityId: result.memberId || id,
+        details: { email: result.email }
+      });
     }
   }
 

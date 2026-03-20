@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './controller/auth.controller';
 import { AuthService } from './service/auth.service';
 import { User, UserSchema } from './entities/user.entity';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { User, UserSchema } from './entities/user.entity';
       secret: process.env.JWT_SECRET || 'defaultsecret',
       signOptions: { expiresIn: '24h' },
     }),
+    ActivityLogModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

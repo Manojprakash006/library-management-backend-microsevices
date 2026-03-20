@@ -15,7 +15,24 @@ export class IssuesService {
     private readonly httpService: HttpService,
   ) { }
 
-  async create(createIssueDto: CreateIssueDto): Promise<IssueBook> {
+  private async logActivity(adminId: string, action: string, entityId: string, details: any) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/activities/logs`, {
+          adminId,
+          action,
+          entityType: 'ISSUE',
+          entityId,
+          details
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to log activity to member service: ${error.message}`);
+    }
+  }
+
+  async create(createIssueDto: CreateIssueDto, adminId?: string): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
 
     let dueDate = null;
@@ -51,6 +68,13 @@ export class IssuesService {
       startDate,
       dueDate
     );
+
+    if (adminId) {
+      await this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), { 
+        bookId: createIssueDto.bookId, 
+        memberId: createIssueDto.memberId 
+      });
+    }
 
     return savedIssue;
   }
@@ -161,7 +185,7 @@ export class IssuesService {
     }).exec();
   }
 
-  async returnBook(id: string): Promise<IssueBook> {
+  async returnBook(id: string, adminId?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -196,10 +220,17 @@ export class IssuesService {
       issuedBook.fine || 0
     );
 
+    if (adminId) {
+      await this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), { 
+        bookId: issuedBook.bookId, 
+        memberId: issuedBook.memberId 
+      });
+    }
+
     return savedIssue;
   }
 
-  async update(id: string, updateIssueDto: any): Promise<IssueBook> {
+  async update(id: string, updateIssueDto: any, adminId?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -213,7 +244,13 @@ export class IssuesService {
     }
 
     Object.assign(issuedBook, updateIssueDto);
-    return issuedBook.save();
+    const savedIssue = await issuedBook.save();
+
+    if (adminId) {
+      await this.logActivity(adminId, 'UPDATE', savedIssue._id.toString(), { updatedFields: Object.keys(updateIssueDto) });
+    }
+
+    return savedIssue;
   }
 
   async findRecent(limit: number = 5): Promise<IssueBook[]> {
@@ -266,10 +303,14 @@ export class IssuesService {
     });
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, adminId?: string): Promise<void> {
     const result = await this.issueBookModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException('Issued book record not found');
+    }
+
+    if (adminId) {
+      await this.logActivity(adminId, 'DELETE', id, { bookId: result.bookId });
     }
   }
 }

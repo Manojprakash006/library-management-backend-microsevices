@@ -10,6 +10,7 @@ import { UsersModule } from './modules/users/users.module';
 import { MemberHistoryModule } from './modules/member-history/member-history.module';
 import { MemberDashboardModule } from './modules/member-dashboard/member-dashboard.module';
 import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.
     MemberHistoryModule,
     MemberDashboardModule,
     StaffDashboardModule,
+    ActivityLogModule,
   ],
 })
 export class AppModule { }

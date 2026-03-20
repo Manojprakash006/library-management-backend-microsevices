@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MembersService } from '../service/members.service';
 import { CreateMemberDto } from '../dto/create-member.dto';
@@ -20,8 +20,9 @@ export class MembersController {
   @ApiOperation({ summary: 'Create a new member' })
   @ApiResponse({ status: 201, description: 'Member created successfully', type: Member })
   @ApiResponse({ status: 409, description: 'Member ID or email already exists' })
-  async create(@Body() createMemberDto: CreateMemberDto): Promise<{ message: string; data: Member }> {
-    const member = await this.membersService.create(createMemberDto);
+  async create(@Body() createMemberDto: CreateMemberDto, @Req() req: any): Promise<{ message: string; data: Member }> {
+    const adminId = req.user?.id;
+    const member = await this.membersService.create(createMemberDto, adminId);
     return { message: 'Member created successfully', data: member };
   }
 
@@ -73,8 +74,9 @@ export class MembersController {
   @ApiOperation({ summary: 'Update member' })
   @ApiResponse({ status: 200, description: 'Member updated successfully', type: Member })
   @ApiResponse({ status: 404, description: 'Member not found' })
-  async update(@Param('id') id: string, @Body() updateData: Partial<CreateMemberDto>): Promise<{ message: string; data: Member }> {
-    const member = await this.membersService.update(id, updateData);
+  async update(@Param('id') id: string, @Body() updateData: Partial<CreateMemberDto>, @Req() req: any): Promise<{ message: string; data: Member }> {
+    const adminId = req.user?.id;
+    const member = await this.membersService.update(id, updateData, adminId);
     return { message: 'Member updated successfully', data: member };
   }
 
@@ -105,8 +107,9 @@ export class MembersController {
   @ApiOperation({ summary: 'Delete member' })
   @ApiResponse({ status: 200, description: 'Member deleted successfully' })
   @ApiResponse({ status: 404, description: 'Member not found' })
-  async remove(@Param('id') id: string): Promise<{ message: string }> {
-    await this.membersService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any): Promise<{ message: string }> {
+    const adminId = req.user?.id;
+    await this.membersService.remove(id, adminId);
     return { message: 'Member deleted successfully' };
   }
 }
