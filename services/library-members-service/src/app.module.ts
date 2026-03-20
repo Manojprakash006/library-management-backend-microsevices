@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import { MembersModule } from './modules/members/members.module';
 import { StaffModule } from './modules/staff/staff.module';
@@ -16,6 +17,7 @@ import { AdminModule } from './modules/admin/admin.module';
 @Module({
   imports: [
     ConfigModule,
+    ScheduleModule.forRoot(),
     MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_members', {
       dbName: process.env.MONGODB_DB || 'library_members',
     }),

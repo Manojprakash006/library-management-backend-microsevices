@@ -17,7 +17,7 @@ export class IssuesService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -29,6 +29,22 @@ export class IssuesService {
       );
     } catch (error) {
       this.logger.error(`Failed to log activity to member service: ${error.message}`);
+    }
+  }
+
+  private async sendNotification(memberId: string, type: string, title: string, message: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/notifications`, {
+          memberId,
+          type,
+          title,
+          message
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to send notification to member service: ${error.message}`);
     }
   }
 
@@ -123,6 +139,14 @@ export class IssuesService {
         memberId: createIssueDto.memberId 
       });
     }
+
+    // Send generic notification to the member about their new book
+    await this.sendNotification(
+      createIssueDto.memberId,
+      'BOOK_ISSUED',
+      'Book Issued Successfully',
+      `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`
+    );
 
     return savedIssue;
   }
@@ -275,6 +299,14 @@ export class IssuesService {
         memberId: issuedBook.memberId 
       });
     }
+
+    // Send generic notification to the member about their book return
+    await this.sendNotification(
+      issuedBook.memberId.toString(),
+      'BOOK_RETURNED',
+      'Book Returned Successfully',
+      `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`
+    );
 
     return savedIssue;
   }

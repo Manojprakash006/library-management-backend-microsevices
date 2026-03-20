@@ -36,6 +36,21 @@ export class BooksService {
     }
   }
 
+  private async notifyAdmins(type: string, title: string, message: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
+          type,
+          title,
+          message
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to broadcast to admins: ${error.message}`);
+    }
+  }
+
   async create(createBookDto: CreateBookDto, adminId?: string): Promise<Book> {
     const existingBook = await this.bookModel.findOne({ bookId: createBookDto.bookId }).exec();
     if (existingBook) {
@@ -47,6 +62,13 @@ export class BooksService {
 
     if (adminId) {
       await this.logActivity(adminId, 'CREATE', savedBook.bookId, { title: savedBook.title });
+      
+      // Notify all admins that a requested action (book creation) happened
+      await this.notifyAdmins(
+        'NEW_BOOK_ADDED',
+        'New Book Added to Library',
+        `A new book "${savedBook.title}" (ID: ${savedBook.bookId}) has been successfully added to the catalog.`
+      );
     }
 
     return savedBook;

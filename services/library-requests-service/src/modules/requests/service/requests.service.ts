@@ -33,6 +33,37 @@ export class RequestsService {
     }
   }
 
+  private async sendNotification(memberId: string, type: string, title: string, message: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/notifications`, {
+          memberId,
+          type,
+          title,
+          message
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to send notification to member service: ${error.message}`);
+    }
+  }
+
+  private async notifyAdmins(type: string, title: string, message: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
+          type,
+          title,
+          message
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to broadcast to admins: ${error.message}`);
+    }
+  }
+
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
     if (createDto.requestId) {
       const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
@@ -71,7 +102,16 @@ export class RequestsService {
       totalHistory,
     });
 
-    return bookRequest.save();
+    const savedRequest = await bookRequest.save();
+
+    // Notify admins about the new request
+    await this.notifyAdmins(
+      'NEW_BOOK_REQUEST',
+      'New Book Request Received',
+      `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}. Please review it in the pending requests dashboard.`
+    );
+
+    return savedRequest;
   }
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
@@ -209,6 +249,14 @@ export class RequestsService {
       await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
+    // Send notification to member
+    await this.sendNotification(
+      request.memberId.toString(),
+      'REQUEST_APPROVED',
+      'Book Request Approved',
+      `Your request for book (ID: ${request.bookId}) has been approved. You can now collect the book from the library.`
+    );
+
     return savedRequest;
   }
 
@@ -229,6 +277,14 @@ export class RequestsService {
     if (adminId) {
       await this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
     }
+
+    // Send notification to member
+    await this.sendNotification(
+      request.memberId.toString(),
+      'REQUEST_REJECTED',
+      'Book Request Rejected',
+      `Unfortunately, your request for book (ID: ${request.bookId}) has been rejected. Please contact the librarian for more details.`
+    );
 
     return savedRequest;
   }
