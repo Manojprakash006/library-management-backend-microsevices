@@ -49,3 +49,9 @@ export const NotificationSchema = SchemaFactory.createForClass(Notification);
 NotificationSchema.index({ memberId: 1, isRead: 1 });
 NotificationSchema.index({ memberId: 1, sentAt: -1 });
 NotificationSchema.index({ type: 1 });
+
+NotificationSchema.virtual('read').get(function() {
+  return this.isRead;
+});
+NotificationSchema.set('toJSON', { virtuals: true });
+NotificationSchema.set('toObject', { virtuals: true });

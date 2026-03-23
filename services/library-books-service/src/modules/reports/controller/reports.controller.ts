@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Version, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from '../service/reports.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -16,8 +16,9 @@ export class ReportsController {
   @Roles('admin')
   @ApiOperation({ summary: 'Get all reports summary' })
   @ApiResponse({ status: 200, description: 'All reports retrieved successfully' })
-  async getAllReports(): Promise<{ message: string; data: any }> {
-    const reports = await this.reportsService.getAllReports();
+  async getAllReports(@Req() req: any): Promise<{ message: string; data: any }> {
+    const authHeader = req.headers['authorization'];
+    const reports = await this.reportsService.getAllReports(authHeader as string);
     return { message: 'All reports retrieved successfully', data: reports };
   }
 
@@ -63,8 +64,9 @@ export class ReportsController {
   @Roles('admin')
   @ApiOperation({ summary: 'Get member activity report' })
   @ApiResponse({ status: 200, description: 'Member activity report retrieved successfully' })
-  async getMemberActivityReport(): Promise<{ message: string; data: any }> {
-    const report = await this.reportsService.getMemberActivityReport();
+  async getMemberActivityReport(@Req() req: any): Promise<{ message: string; data: any }> {
+    const authHeader = req.headers['authorization'];
+    const report = await this.reportsService.getMemberActivityReport(authHeader as string);
     return { message: 'Member activity report retrieved successfully', data: report };
   }
 }
