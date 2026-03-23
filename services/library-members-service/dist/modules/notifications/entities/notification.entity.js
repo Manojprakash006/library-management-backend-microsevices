@@ -19,6 +19,10 @@ var NotificationType;
     NotificationType["RETURN_CONFIRMATION"] = "RETURN_CONFIRMATION";
     NotificationType["REQUEST_APPROVED"] = "REQUEST_APPROVED";
     NotificationType["REQUEST_REJECTED"] = "REQUEST_REJECTED";
+    NotificationType["NEW_BOOK_REQUEST"] = "NEW_BOOK_REQUEST";
+    NotificationType["NEW_BOOK_ADDED"] = "NEW_BOOK_ADDED";
+    NotificationType["BOOK_ISSUED"] = "BOOK_ISSUED";
+    NotificationType["BOOK_RETURNED"] = "BOOK_RETURNED";
     NotificationType["GENERAL"] = "GENERAL";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 let Notification = class Notification {

@@ -17,10 +17,13 @@ export declare class Member {
     }>;
     borrowingHistory: Array<{
         bookId: string;
+        issueId: string;
         bookTitle?: string;
         borrowedAt: Date;
+        dueDate?: Date;
         returnedAt?: Date;
         status: 'borrowed' | 'returned' | 'overdue';
+        fine: number;
     }>;
 }
 export declare const MemberSchema: import("mongoose").Schema<Member, import("mongoose").Model<Member, any, any, any, import("mongoose").Document<unknown, any, Member, any, {}> & Member & {

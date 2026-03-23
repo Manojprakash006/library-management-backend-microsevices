@@ -19,10 +19,12 @@ const mongoose_2 = require("mongoose");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcrypt");
 const staff_entity_1 = require("../entities/staff.entity");
+const activity_log_service_1 = require("../../activity-log/service/activity-log.service");
 let StaffService = class StaffService {
-    constructor(staffModel, jwtService) {
+    constructor(staffModel, jwtService, activityLogService) {
         this.staffModel = staffModel;
         this.jwtService = jwtService;
+        this.activityLogService = activityLogService;
     }
     async login(loginDto) {
         const { email, password } = loginDto;
@@ -49,14 +51,23 @@ let StaffService = class StaffService {
             },
         };
     }
-    async create(createDto) {
+    async create(createDto, adminId) {
         const existingStaff = await this.staffModel.findOne({ email: createDto.email });
         if (existingStaff) {
             throw new common_1.ConflictException('Email already registered');
         }
         const staff = new this.staffModel(createDto);
-        await staff.save();
-        return staff;
+        const savedStaff = await staff.save();
+        if (adminId) {
+            await this.activityLogService.logAction({
+                adminId,
+                action: 'CREATE',
+                entityType: 'STAFF',
+                entityId: savedStaff._id.toString(),
+                details: { email: savedStaff.email, fullName: savedStaff.fullName }
+            });
+        }
+        return savedStaff;
     }
     async findAll() {
         return this.staffModel.find().select('-password');
@@ -68,19 +79,47 @@ let StaffService = class StaffService {
         }
         return staff;
     }
-    async update(id, updateDto) {
+    async update(id, updateDto, adminId) {
         const staff = await this.staffModel.findByIdAndUpdate(id, { $set: updateDto }, { new: true, runValidators: true }).select('-password');
         if (!staff) {
             throw new common_1.NotFoundException('Staff not found');
         }
+        if (adminId) {
+            await this.activityLogService.logAction({
+                adminId,
+                action: 'UPDATE',
+                entityType: 'STAFF',
+                entityId: id,
+                details: { updatedFields: Object.keys(updateDto) }
+            });
+        }
         return staff;
     }
-    async delete(id) {
+    async delete(id, adminId) {
         const staff = await this.staffModel.findByIdAndDelete(id);
         if (!staff) {
             throw new common_1.NotFoundException('Staff not found');
         }
+        if (adminId) {
+            await this.activityLogService.logAction({
+                adminId,
+                action: 'DELETE',
+                entityType: 'STAFF',
+                entityId: id,
+                details: { email: staff.email }
+            });
+        }
         return { message: 'Staff deleted successfully' };
+    }
+    async getStats() {
+        const totalStaff = await this.staffModel.countDocuments();
+        const activeStaff = await this.staffModel.countDocuments({ status: 'Active' });
+        const inactiveStaff = await this.staffModel.countDocuments({ status: 'Inactive' });
+        return {
+            totalStaff,
+            activeStaff,
+            inactiveStaff,
+        };
     }
 };
 exports.StaffService = StaffService;
@@ -88,6 +127,7 @@ exports.StaffService = StaffService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(staff_entity_1.Staff.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        activity_log_service_1.ActivityLogService])
 ], StaffService);
 //# sourceMappingURL=staff.service.js.map

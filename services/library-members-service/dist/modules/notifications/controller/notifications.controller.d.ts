@@ -8,6 +8,14 @@ export declare class NotificationsController {
         message: string;
         data: Notification;
     }>;
+    notifyAdmins(payload: {
+        title: string;
+        message: string;
+        type: string;
+        issueId?: string;
+    }): Promise<{
+        message: string;
+    }>;
     findAll(): Promise<{
         message: string;
         data: Notification[];

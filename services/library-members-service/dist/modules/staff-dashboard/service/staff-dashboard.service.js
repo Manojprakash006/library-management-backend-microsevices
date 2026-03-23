@@ -18,12 +18,10 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const member_entity_1 = require("../../members/entities/member.entity");
 const staff_entity_1 = require("../../staff/entities/staff.entity");
-const activity_log_entity_1 = require("../../activity-logs/entities/activity-log.entity");
 let StaffDashboardService = class StaffDashboardService {
-    constructor(memberModel, staffModel, activityLogModel) {
+    constructor(memberModel, staffModel) {
         this.memberModel = memberModel;
         this.staffModel = staffModel;
-        this.activityLogModel = activityLogModel;
     }
     async getStaffStats() {
         return {
@@ -60,10 +58,7 @@ let StaffDashboardService = class StaffDashboardService {
         return [];
     }
     async getRecentActivities() {
-        return this.activityLogModel.find()
-            .sort({ timestamp: -1 })
-            .limit(10)
-            .select('-__v');
+        return [];
     }
     async getRackDistribution() {
         return [];
@@ -72,18 +67,14 @@ let StaffDashboardService = class StaffDashboardService {
         return { message: 'Book created', data: bookData };
     }
     async getMyActivityLogs(staffId) {
-        return this.activityLogModel.find({ userId: staffId })
-            .sort({ timestamp: -1 })
-            .limit(50)
-            .select('-__v');
+        return [];
     }
     async getMyProfile(staffId) {
         return this.staffModel.findById(staffId).select('-password -__v');
     }
     async getMyContribution(staffId) {
-        const logs = await this.activityLogModel.countDocuments({ userId: staffId });
         return {
-            totalActivities: logs,
+            totalActivities: 0,
             booksAdded: 0,
             booksIssued: 0,
             booksReturned: 0,
@@ -109,9 +100,7 @@ exports.StaffDashboardService = StaffDashboardService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(member_entity_1.Member.name)),
     __param(1, (0, mongoose_1.InjectModel)(staff_entity_1.Staff.name)),
-    __param(2, (0, mongoose_1.InjectModel)(activity_log_entity_1.ActivityLog.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        mongoose_2.Model,
         mongoose_2.Model])
 ], StaffDashboardService);
 //# sourceMappingURL=staff-dashboard.service.js.map

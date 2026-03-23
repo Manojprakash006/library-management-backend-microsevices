@@ -9,10 +9,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
+const schedule_1 = require("@nestjs/schedule");
 const config_module_1 = require("./config/config.module");
 const members_module_1 = require("./modules/members/members.module");
 const staff_module_1 = require("./modules/staff/staff.module");
-const activity_logs_module_1 = require("./modules/activity-logs/activity-logs.module");
 const notifications_module_1 = require("./modules/notifications/notifications.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const member_auth_module_1 = require("./modules/member-auth/member-auth.module");
@@ -20,6 +20,8 @@ const users_module_1 = require("./modules/users/users.module");
 const member_history_module_1 = require("./modules/member-history/member-history.module");
 const member_dashboard_module_1 = require("./modules/member-dashboard/member-dashboard.module");
 const staff_dashboard_module_1 = require("./modules/staff-dashboard/staff-dashboard.module");
+const activity_log_module_1 = require("./modules/activity-log/activity-log.module");
+const admin_module_1 = require("./modules/admin/admin.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,12 +29,12 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_module_1.ConfigModule,
+            schedule_1.ScheduleModule.forRoot(),
             mongoose_1.MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_members', {
                 dbName: process.env.MONGODB_DB || 'library_members',
             }),
             members_module_1.MembersModule,
             staff_module_1.StaffModule,
-            activity_logs_module_1.ActivityLogsModule,
             notifications_module_1.NotificationsModule,
             auth_module_1.AuthModule,
             member_auth_module_1.MemberAuthModule,
@@ -40,6 +42,8 @@ exports.AppModule = AppModule = __decorate([
             member_history_module_1.MemberHistoryModule,
             member_dashboard_module_1.MemberDashboardModule,
             staff_dashboard_module_1.StaffDashboardModule,
+            activity_log_module_1.ActivityLogModule,
+            admin_module_1.AdminModule,
         ],
     })
 ], AppModule);

@@ -13,6 +13,7 @@ const jwt_1 = require("@nestjs/jwt");
 const staff_controller_1 = require("./controller/staff.controller");
 const staff_service_1 = require("./service/staff.service");
 const staff_entity_1 = require("./entities/staff.entity");
+const activity_log_module_1 = require("../activity-log/activity-log.module");
 let StaffModule = class StaffModule {
 };
 exports.StaffModule = StaffModule;
@@ -24,6 +25,7 @@ exports.StaffModule = StaffModule = __decorate([
                 secret: process.env.JWT_SECRET || 'defaultsecret',
                 signOptions: { expiresIn: '24h' },
             }),
+            activity_log_module_1.ActivityLogModule,
         ],
         controllers: [staff_controller_1.StaffController],
         providers: [staff_service_1.StaffService],

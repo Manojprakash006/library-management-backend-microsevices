@@ -21,6 +21,7 @@ const notification_entity_1 = require("../entities/notification.entity");
 const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
 const roles_decorator_1 = require("../../../auth/guards/roles.decorator");
 const roles_guard_1 = require("../../../auth/guards/roles.guard");
+const public_decorator_1 = require("../../../auth/guards/public.decorator");
 let NotificationsController = class NotificationsController {
     constructor(notificationsService) {
         this.notificationsService = notificationsService;
@@ -29,6 +30,10 @@ let NotificationsController = class NotificationsController {
         const notification = await this.notificationsService.create(createNotificationDto);
         return { message: 'Notification created successfully', data: notification };
     }
+    async notifyAdmins(payload) {
+        await this.notificationsService.notifyAdmins(payload);
+        return { message: 'Admins notified successfully' };
+    }
     async findAll() {
         const notifications = await this.notificationsService.findAll();
         return { message: 'Notifications retrieved successfully', data: notifications, count: notifications.length };
@@ -36,7 +41,7 @@ let NotificationsController = class NotificationsController {
     async getMemberNotifications(req) {
         const memberId = req.user.id;
         const notifications = await this.notificationsService.findByMember(memberId);
-        return { message: 'Member notifications retrieved successfully', data: notifications, count: notifications.length };
+        return { message: 'Notifications retrieved successfully', data: notifications, count: notifications.length };
     }
     async getUnreadNotifications(req) {
         const memberId = req.user.id;
@@ -66,8 +71,8 @@ let NotificationsController = class NotificationsController {
 };
 exports.NotificationsController = NotificationsController;
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new notification' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Notification created successfully', type: notification_entity_1.Notification }),
     __param(0, (0, common_1.Body)()),
@@ -75,6 +80,16 @@ __decorate([
     __metadata("design:paramtypes", [create_notification_dto_1.CreateNotificationDto]),
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "create", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Post)('admin'),
+    (0, swagger_1.ApiOperation)({ summary: 'Notify all admins' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Admins notified successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "notifyAdmins", null);
 __decorate([
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),
@@ -86,9 +101,9 @@ __decorate([
 ], NotificationsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('member/my-notifications'),
-    (0, roles_decorator_1.Roles)('member'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get member notifications' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Member notifications retrieved successfully', type: [notification_entity_1.Notification] }),
+    (0, roles_decorator_1.Roles)('member', 'admin', 'staff'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get member/admin notifications' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Notifications retrieved successfully', type: [notification_entity_1.Notification] }),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -96,8 +111,8 @@ __decorate([
 ], NotificationsController.prototype, "getMemberNotifications", null);
 __decorate([
     (0, common_1.Get)('member/unread'),
-    (0, roles_decorator_1.Roles)('member'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get unread notifications for member' }),
+    (0, roles_decorator_1.Roles)('member', 'admin', 'staff'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get unread notifications' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Unread notifications retrieved successfully', type: [notification_entity_1.Notification] }),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
@@ -106,7 +121,7 @@ __decorate([
 ], NotificationsController.prototype, "getUnreadNotifications", null);
 __decorate([
     (0, common_1.Post)(':id/read'),
-    (0, roles_decorator_1.Roles)('member'),
+    (0, roles_decorator_1.Roles)('member', 'admin', 'staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Mark notification as read' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Notification marked as read', type: notification_entity_1.Notification }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Notification not found' }),
@@ -118,7 +133,7 @@ __decorate([
 ], NotificationsController.prototype, "markAsRead", null);
 __decorate([
     (0, common_1.Post)('mark-all-read'),
-    (0, roles_decorator_1.Roles)('member'),
+    (0, roles_decorator_1.Roles)('member', 'admin', 'staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Mark all notifications as read' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'All notifications marked as read' }),
     __param(0, (0, common_1.Req)()),

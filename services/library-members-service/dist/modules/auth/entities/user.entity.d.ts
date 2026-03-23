@@ -6,6 +6,7 @@ export declare class User {
     name: string;
     email: string;
     address: string;
+    phone: string;
     password: string;
     role: string;
 }
