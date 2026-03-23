@@ -209,6 +209,12 @@ export class MembersService {
   }
 
   async remove(id: string, adminId?: string): Promise<void> {
+    // Check if the member has active issues before deleting
+    const stats = await this.getMemberStatsFromIssues(id);
+    if (stats.booksHeld > 0) {
+      throw new ConflictException('Cannot delete member: Member has active issued books that must be returned first.');
+    }
+
     const result = await this.memberModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException('Member not found');
