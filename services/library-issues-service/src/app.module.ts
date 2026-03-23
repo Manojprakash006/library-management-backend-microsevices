@@ -8,12 +8,12 @@ import { DamageReportsModule } from './modules/damage-reports/damage-reports.mod
 @Module({
   imports: [
     ConfigModule,
- MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_members', {
+    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_members', {
       dbName: process.env.MONGODB_DB || 'library_members',
-    }), 
+    }),
     IssuesModule,
     RenewalsModule,
     DamageReportsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { StaffController } from './controller/staff.controller';
 import { StaffService } from './service/staff.service';
 import { Staff, StaffSchema } from './entities/staff.entity';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -12,9 +13,10 @@ import { Staff, StaffSchema } from './entities/staff.entity';
       secret: process.env.JWT_SECRET || 'defaultsecret',
       signOptions: { expiresIn: '24h' },
     }),
+    ActivityLogModule,
   ],
   controllers: [StaffController],
   providers: [StaffService],
   exports: [StaffService],
 })
-export class StaffModule {}
+export class StaffModule { }

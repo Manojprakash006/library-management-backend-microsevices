@@ -6,6 +6,7 @@ import { Notification } from '../entities/notification.entity';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
 @ApiTags('Notifications')
@@ -14,13 +15,22 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+   @Public()
    @Post()
-  @Roles('admin')
   @ApiOperation({ summary: 'Create a new notification' })
   @ApiResponse({ status: 201, description: 'Notification created successfully', type: Notification })
   async create(@Body() createNotificationDto: CreateNotificationDto): Promise<{ message: string; data: Notification }> {
     const notification = await this.notificationsService.create(createNotificationDto);
     return { message: 'Notification created successfully', data: notification };
+  }
+
+   @Public()
+   @Post('admin')
+  @ApiOperation({ summary: 'Notify all admins' })
+  @ApiResponse({ status: 201, description: 'Admins notified successfully' })
+  async notifyAdmins(@Body() payload: { title: string; message: string; type: string; issueId?: string }): Promise<{ message: string }> {
+    await this.notificationsService.notifyAdmins(payload);
+    return { message: 'Admins notified successfully' };
   }
 
    @Get()
@@ -33,18 +43,18 @@ export class NotificationsController {
   }
 
    @Get('member/my-notifications')
-  @Roles('member')
-  @ApiOperation({ summary: 'Get member notifications' })
-  @ApiResponse({ status: 200, description: 'Member notifications retrieved successfully', type: [Notification] })
+  @Roles('member', 'admin', 'staff')
+  @ApiOperation({ summary: 'Get member/admin notifications' })
+  @ApiResponse({ status: 200, description: 'Notifications retrieved successfully', type: [Notification] })
   async getMemberNotifications(@Req() req): Promise<{ message: string; data: Notification[]; count: number }> {
     const memberId = req.user.id;
     const notifications = await this.notificationsService.findByMember(memberId);
-    return { message: 'Member notifications retrieved successfully', data: notifications, count: notifications.length };
+    return { message: 'Notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
    @Get('member/unread')
-  @Roles('member')
-  @ApiOperation({ summary: 'Get unread notifications for member' })
+  @Roles('member', 'admin', 'staff')
+  @ApiOperation({ summary: 'Get unread notifications' })
   @ApiResponse({ status: 200, description: 'Unread notifications retrieved successfully', type: [Notification] })
   async getUnreadNotifications(@Req() req): Promise<{ message: string; data: Notification[]; count: number }> {
     const memberId = req.user.id;
@@ -53,7 +63,7 @@ export class NotificationsController {
   }
 
    @Post(':id/read')
-  @Roles('member')
+  @Roles('member', 'admin', 'staff')
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read', type: Notification })
   @ApiResponse({ status: 404, description: 'Notification not found' })
@@ -64,7 +74,7 @@ export class NotificationsController {
   }
 
    @Post('mark-all-read')
-  @Roles('member')
+  @Roles('member', 'admin', 'staff')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
   async markAllAsRead(@Req() req): Promise<{ message: string }> {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Version, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IssuesService } from '../service/issues.service';
 import { CreateIssueDto } from '../dto/create-issue.dto';
@@ -14,17 +14,19 @@ import { Public } from '../../../auth/guards/public.decorator';
 @ApiTags('Issues')
 @Controller('issues')
 export class IssuesController {
-  constructor(private readonly issuesService: IssuesService) {}
+  constructor(private readonly issuesService: IssuesService) { }
 
-   @Post()
+  @Post()
   @ApiOperation({ summary: 'Issue a book' })
   @ApiResponse({ status: 201, description: 'Book issued successfully', type: IssueBook })
-  async create(@Body() createIssueDto: CreateIssueDto): Promise<{ message: string; data: IssueBook }> {
-    const issue = await this.issuesService.create(createIssueDto);
+  async create(@Body() createIssueDto: CreateIssueDto, @Req() req: any): Promise<{ message: string; data: IssueBook }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const issue = await this.issuesService.create(createIssueDto, adminId);
     return { message: 'Book issued successfully', data: issue };
   }
 
-   @Get()
+  @Public()
+  @Get()
   @ApiOperation({ summary: 'Get all issued books' })
   @ApiResponse({ status: 200, description: 'Issued books retrieved successfully', type: [IssueBook] })
   async findAll(): Promise<{ message: string; data: IssueBook[]; count: number }> {
@@ -32,26 +34,35 @@ export class IssuesController {
     return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
   }
 
-   @Public()
-   @Get('member/:memberId/active')
-  @ApiOperation({ summary: 'Get active issues by member ID' })
-  @ApiResponse({ status: 200, description: 'Active issues retrieved successfully', type: [IssueBook] })
-  async findActiveByMember(
-    @Param('memberId') memberId: string,
-    @Query('issueType') issueType?: string
-  ): Promise<{ message: string; data: IssueBook[]; count: number }> {
-    let issues = await this.issuesService.findActiveByMember(memberId);
-    
-    // Filter by issue type if provided (e.g., 'Taking Home' only)
-    if (issueType) {
-      issues = issues.filter(issue => issue.issueType === issueType);
+  @Public()
+  @Get('member/:memberId/stats')
+  @ApiOperation({ summary: 'Get member issue stats by type' })
+  @ApiResponse({ status: 200, description: 'Member stats retrieved successfully' })
+  async getMemberStats(@Param('memberId') memberId: string): Promise<{
+    message: string;
+    data: {
+      booksAtHome: number;
+      readingInsideLibrary: number;
+      totalActive: number;
     }
-    
-    return { message: 'Active issues retrieved successfully', data: issues, count: issues.length };
+  }> {
+    const issues = await this.issuesService.findActiveByMember(memberId);
+
+    const booksAtHome = issues.filter(issue => issue.issueType === 'Taking Home').length;
+    const readingInsideLibrary = issues.filter(issue => issue.issueType === 'Reading Inside Library').length;
+
+    return {
+      message: 'Member stats retrieved successfully',
+      data: {
+        booksAtHome,
+        readingInsideLibrary,
+        totalActive: issues.length
+      }
+    };
   }
 
-   @Public()
-   @Get('member/:memberId')
+  @Public()
+  @Get('member/:memberId')
   @ApiOperation({ summary: 'Get issued books by member ID' })
   @ApiResponse({ status: 200, description: 'Issued books retrieved successfully', type: [IssueBook] })
   async findIssuedByMember(@Param('memberId') memberId: string): Promise<{ message: string; data: IssueBook[]; count: number }> {
@@ -59,8 +70,8 @@ export class IssuesController {
     return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
   }
 
-   @Public()
-   @Get('recent')
+  @Public()
+  @Get('recent')
   @ApiOperation({ summary: 'Get recent issued books' })
   @ApiResponse({ status: 200, description: 'Recent issued books retrieved successfully', type: [IssueBook] })
   async findRecent(@Query('limit') limit: string): Promise<{ message: string; issues: IssueBook[] }> {
@@ -68,8 +79,8 @@ export class IssuesController {
     return { message: 'Recent issued books retrieved successfully', issues: recentIssues };
   }
 
-   @Public()
-   @Get('overdue/count')
+  @Public()
+  @Get('overdue/count')
   @ApiOperation({ summary: 'Get count of overdue books' })
   @ApiResponse({ status: 200, description: 'Overdue count retrieved successfully' })
   async getOverdueCount(): Promise<{ count: number }> {
@@ -77,8 +88,8 @@ export class IssuesController {
     return { count };
   }
 
-   @Public()
-   @Get('count')
+  @Public()
+  @Get('count')
   @ApiOperation({ summary: 'Get count of issues by date' })
   @ApiResponse({ status: 200, description: 'Issue count retrieved successfully' })
   async getIssuesCount(@Query('date') date: string): Promise<{ count: number }> {
@@ -86,8 +97,8 @@ export class IssuesController {
     return { count };
   }
 
-   @Public()
-   @Get('returns/count')
+  @Public()
+  @Get('returns/count')
   @ApiOperation({ summary: 'Get count of returned books' })
   @ApiResponse({ status: 200, description: 'Returns count retrieved successfully' })
   async getReturnsCount(@Query('date') date: string): Promise<{ count: number }> {
@@ -95,8 +106,8 @@ export class IssuesController {
     return { count };
   }
 
-   @Public()
-   @Get('count/book/:bookId')
+  @Public()
+  @Get('count/book/:bookId')
   @ApiOperation({ summary: 'Get count of active issues for a specific book' })
   @ApiResponse({ status: 200, description: 'Book issue count retrieved successfully' })
   async getBookIssueCount(@Param('bookId') bookId: string): Promise<{ count: number }> {
@@ -104,8 +115,8 @@ export class IssuesController {
     return { count };
   }
 
-   @Public()
-   @Get('overdue')
+  @Public()
+  @Get('overdue')
   @ApiOperation({ summary: 'Get overdue issued books' })
   @ApiResponse({ status: 200, description: 'Overdue books retrieved successfully', type: [IssueBook] })
   async findOverdue(): Promise<{ message: string; data: IssueBook[]; count: number }> {
@@ -114,7 +125,7 @@ export class IssuesController {
     return { message: 'Overdue books retrieved successfully', data: overdueIssues, count: overdueIssues.length };
   }
 
-   @Get(':id')
+  @Get(':id')
   @ApiOperation({ summary: 'Get issued book by ID' })
   @ApiResponse({ status: 200, description: 'Issued book retrieved successfully', type: IssueBook })
   @ApiResponse({ status: 404, description: 'Issued book not found' })
@@ -123,22 +134,24 @@ export class IssuesController {
     return { message: 'Issued book retrieved successfully', data: issue };
   }
 
-   @Put(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update issued book' })
   @ApiResponse({ status: 200, description: 'Issued book updated successfully', type: IssueBook })
   @ApiResponse({ status: 404, description: 'Issued book not found' })
-  async update(@Param('id') id: string, @Body() updateIssueDto: any): Promise<{ message: string; data: IssueBook }> {
-    const issue = await this.issuesService.update(id, updateIssueDto);
+  async update(@Param('id') id: string, @Body() updateIssueDto: any, @Req() req: any): Promise<{ message: string; data: IssueBook }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const issue = await this.issuesService.update(id, updateIssueDto, adminId);
     return { message: 'Issued book updated successfully', data: issue };
   }
 
-   @Put(':id/return')
+  @Put(':id/return')
   @ApiOperation({ summary: 'Return a book' })
   @ApiResponse({ status: 200, description: 'Book returned successfully', type: IssueBook })
   @ApiResponse({ status: 400, description: 'Book already returned' })
   @ApiResponse({ status: 404, description: 'Issued book not found' })
-  async returnBook(@Param('id') id: string): Promise<{ message: string; data: IssueBook; fine: any }> {
-    const issue = await this.issuesService.returnBook(id);
+  async returnBook(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: IssueBook; fine: any }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    const issue = await this.issuesService.returnBook(id, adminId);
     return {
       message: 'Book returned successfully',
       data: issue,
@@ -146,12 +159,13 @@ export class IssuesController {
     };
   }
 
-   @Delete(':id')
+  @Delete(':id')
   @ApiOperation({ summary: 'Delete issued book record' })
   @ApiResponse({ status: 200, description: 'Issued book record deleted successfully' })
   @ApiResponse({ status: 404, description: 'Issued book not found' })
-  async remove(@Param('id') id: string): Promise<{ message: string }> {
-    await this.issuesService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any): Promise<{ message: string }> {
+    const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    await this.issuesService.remove(id, adminId);
     return { message: 'Issued book record deleted successfully' };
   }
 }

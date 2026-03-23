@@ -45,7 +45,8 @@ export class ReportsController {
   @ApiResponse({ status: 200, description: 'Rack inventory report retrieved successfully' })
   async getRackInventoryReport(): Promise<{ message: string; data: any[]; count: number }> {
     const report = await this.reportsService.getRackInventoryReport();
-    return { message: 'Rack inventory report retrieved successfully', data: report, count: report.length };
+    const totalBooks = report.reduce((sum, rack) => sum + rack.total, 0);
+    return { message: 'Rack inventory report retrieved successfully', data: report, count: totalBooks };
   }
 
    @Get('rack-inventory/:rackNumber')

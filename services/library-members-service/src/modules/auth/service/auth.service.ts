@@ -4,13 +4,15 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../entities/user.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
+import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
-  ) {}
+    private readonly activityLogService: ActivityLogService,
+  ) { }
 
   async login(loginDto: LoginDto): Promise<{ token: string; user: any }> {
     const { email, password } = loginDto;
@@ -28,6 +30,16 @@ export class AuthService {
     }
 
     const token = this.jwtService.sign({ id: user._id, role: user.role });
+
+    if (user.role === 'admin') {
+      await this.activityLogService.logAction({
+        adminId: user._id.toString(),
+        action: 'ADMIN_LOGIN',
+        entityType: 'AUTH',
+        entityId: user._id.toString(),
+        details: { email: user.email }
+      });
+    }
 
     return {
       token,

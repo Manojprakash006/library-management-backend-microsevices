@@ -6,11 +6,13 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
+import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
 // Type that includes computed fields for member responses
 type MemberWithStats = Member & {
   booksHeld: number;
   booksAtHome: number;
+  readingInsideLibrary: number;
   totalFines: number;
   hasActiveIssues: boolean;
 };
@@ -22,9 +24,10 @@ export class MembersService {
   constructor(
     @InjectModel(Member.name) private memberModel: Model<MemberDocument>,
     private readonly httpService: HttpService,
-  ) {}
+    private readonly activityLogService: ActivityLogService,
+  ) { }
 
-  async create(createMemberDto: CreateMemberDto): Promise<Member> {
+  async create(createMemberDto: CreateMemberDto, adminId?: string): Promise<Member> {
     // Validation: Check required fields
     if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
       throw new ConflictException('Full name is required and must be at least 2 characters');
@@ -57,28 +60,42 @@ export class MembersService {
     };
 
     const createdMember = new this.memberModel(memberData);
-    return createdMember.save();
+    const savedMember = await createdMember.save();
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'CREATE',
+        entityType: 'MEMBER',
+        entityId: savedMember.memberId || savedMember._id.toString(),
+        details: { email: savedMember.email, name: savedMember.name }
+      });
+    }
+
+    return savedMember;
   }
 
   async findAll(): Promise<MemberWithStats[]> {
     const members = await this.memberModel.find().select('-password').exec();
-    
+
     // Fetch real-time stats from issues service for each member
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
         const memberObj = member.toObject();
-        const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
-        
+        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+
         return {
           ...memberObj,
+          borrowingHistory: memberObj.borrowingHistory || [],
           booksHeld,
-          booksAtHome: booksHeld,
+          booksAtHome,
+          readingInsideLibrary,
           totalFines,
           hasActiveIssues: booksHeld > 0,
         };
       })
     );
-    
+
     return membersWithStats;
   }
 
@@ -87,16 +104,18 @@ export class MembersService {
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-    
+
     const memberObj = member.toObject();
-    
+
     // Get real-time stats from issues service
-    const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(id);
-    
+    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(id);
+
     return {
       ...memberObj,
+      borrowingHistory: memberObj.borrowingHistory || [],
       booksHeld,
-      booksAtHome: booksHeld,
+      booksAtHome,
+      readingInsideLibrary,
       totalFines,
       hasActiveIssues: booksHeld > 0,
     };
@@ -107,26 +126,39 @@ export class MembersService {
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-    
+
     const memberObj = member.toObject();
-    
+
     // Get real-time stats from issues service
-    const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
-    
+    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+
     return {
       ...memberObj,
+      borrowingHistory: memberObj.borrowingHistory || [],
       booksHeld,
-      booksAtHome: booksHeld,
+      booksAtHome,
+      readingInsideLibrary,
       totalFines,
       hasActiveIssues: booksHeld > 0,
     };
   }
 
-  async update(id: string, updateData: Partial<CreateMemberDto>): Promise<Member> {
+  async update(id: string, updateData: Partial<CreateMemberDto>, adminId?: string): Promise<Member> {
     const member = await this.memberModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
     if (!member) {
       throw new NotFoundException('Member not found');
     }
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'UPDATE',
+        entityType: 'MEMBER',
+        entityId: member.memberId || id,
+        details: { updatedFields: Object.keys(updateData) }
+      });
+    }
+
     return member;
   }
 
@@ -176,10 +208,20 @@ export class MembersService {
     await member.save();
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, adminId?: string): Promise<void> {
     const result = await this.memberModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException('Member not found');
+    }
+
+    if (adminId) {
+      await this.activityLogService.logAction({
+        adminId,
+        action: 'DELETE',
+        entityType: 'MEMBER',
+        entityId: result.memberId || id,
+        details: { email: result.email }
+      });
     }
   }
 
@@ -195,29 +237,40 @@ export class MembersService {
     return this.memberModel.countDocuments();
   }
 
-  private async getMemberStatsFromIssues(memberId: string): Promise<{ booksHeld: number; totalFines: number }> {
+  private async getMemberStatsFromIssues(memberId: string): Promise<{
+    booksHeld: number;
+    booksAtHome: number;
+    readingInsideLibrary: number;
+    totalFines: number
+  }> {
     try {
       const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
-      
-      // Get only "Taking Home" active issues for booksHeld count
-      const takingHomeIssuesResponse = await firstValueFrom(
-        this.httpService.get<{ count: number }>(
-          `${issuesServiceUrl}/issues/member/${memberId}/active?issueType=Taking%20Home`
+
+      // Get detailed stats from new endpoint
+      const statsResponse = await firstValueFrom(
+        this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
+          `${issuesServiceUrl}/issues/member/${memberId}/stats`
         )
       );
-      const booksHeld = takingHomeIssuesResponse.data?.count || 0;
-      
+
+      const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
+
       // Get all issues to calculate total fines
       const allIssuesResponse = await firstValueFrom(
         this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
       const allIssues = allIssuesResponse.data?.data || [];
       const totalFines = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
-      
-      return { booksHeld, totalFines };
+
+      return {
+        booksHeld: stats.totalActive,
+        booksAtHome: stats.booksAtHome,
+        readingInsideLibrary: stats.readingInsideLibrary,
+        totalFines
+      };
     } catch (error) {
       this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
-      return { booksHeld: 0, totalFines: 0 };
+      return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
     }
   }
 }
