@@ -28,6 +28,10 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "address", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ trim: true, maxlength: 20 }),
+    __metadata("design:type", String)
+], User.prototype, "phone", void 0);
+__decorate([
     (0, mongoose_1.Prop)({ required: true, minlength: 6, maxlength: 100, select: false }),
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);

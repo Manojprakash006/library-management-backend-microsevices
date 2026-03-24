@@ -21,6 +21,9 @@ export class BookRequest {
   @Prop({ type: Types.ObjectId, required: true, ref: 'Member' })
   memberId: Types.ObjectId;
 
+  @Prop({ type: String, required: true })
+  requestType: string
+
   @Prop({ default: Date.now })
   requestDate: Date;
 

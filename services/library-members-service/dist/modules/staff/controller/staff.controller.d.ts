@@ -17,7 +17,7 @@ export declare class StaffController {
             };
         };
     }>;
-    createStaff(createDto: CreateStaffDto): Promise<{
+    createStaff(createDto: CreateStaffDto, req: any): Promise<{
         message: string;
         data: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("../entities/staff.entity").Staff, {}, {}> & import("../entities/staff.entity").Staff & {
             _id: import("mongoose").Types.ObjectId;
@@ -30,6 +30,14 @@ export declare class StaffController {
         } & Required<{
             _id: import("mongoose").Types.ObjectId;
         }>;
+    }>;
+    getStaffStats(): Promise<{
+        message: string;
+        data: {
+            totalStaff: number;
+            activeStaff: number;
+            inactiveStaff: number;
+        };
     }>;
     getAllStaff(): Promise<{
         message: string;
@@ -60,7 +68,7 @@ export declare class StaffController {
             _id: import("mongoose").Types.ObjectId;
         }>;
     }>;
-    updateStaff(id: string, updateDto: UpdateStaffDto): Promise<{
+    updateStaff(id: string, updateDto: UpdateStaffDto, req: any): Promise<{
         message: string;
         data: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("../entities/staff.entity").Staff, {}, {}> & import("../entities/staff.entity").Staff & {
             _id: import("mongoose").Types.ObjectId;
@@ -74,7 +82,7 @@ export declare class StaffController {
             _id: import("mongoose").Types.ObjectId;
         }>;
     }>;
-    deleteStaff(id: string): Promise<{
+    deleteStaff(id: string, req: any): Promise<{
         message: string;
     }>;
 }

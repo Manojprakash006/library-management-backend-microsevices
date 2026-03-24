@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const config_1 = require("@nestjs/config");
 const jwt_1 = require("@nestjs/jwt");
+const axios_1 = require("@nestjs/axios");
 const notifications_controller_1 = require("./controller/notifications.controller");
 const notifications_service_1 = require("./service/notifications.service");
 const notifications_gateway_1 = require("./gateway/notifications.gateway");
@@ -23,6 +24,7 @@ exports.NotificationsModule = NotificationsModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule,
+            axios_1.HttpModule,
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_SECRET || 'defaultsecret',
                 signOptions: { expiresIn: '24h' },

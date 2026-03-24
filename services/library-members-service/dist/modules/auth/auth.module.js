@@ -13,6 +13,7 @@ const jwt_1 = require("@nestjs/jwt");
 const auth_controller_1 = require("./controller/auth.controller");
 const auth_service_1 = require("./service/auth.service");
 const user_entity_1 = require("./entities/user.entity");
+const activity_log_module_1 = require("../activity-log/activity-log.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -24,6 +25,7 @@ exports.AuthModule = AuthModule = __decorate([
                 secret: process.env.JWT_SECRET || 'defaultsecret',
                 signOptions: { expiresIn: '24h' },
             }),
+            activity_log_module_1.ActivityLogModule,
         ],
         controllers: [auth_controller_1.AuthController],
         providers: [auth_service_1.AuthService],

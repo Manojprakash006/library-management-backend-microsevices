@@ -8,10 +8,13 @@ export declare class MemberHistoryService {
     constructor(memberModel: Model<Member>);
     getMemberHistory(userId: string): Promise<{
         bookId: string;
+        issueId: string;
         bookTitle?: string;
         borrowedAt: Date;
+        dueDate?: Date;
         returnedAt?: Date;
         status: "borrowed" | "returned" | "overdue";
+        fine: number;
     }[]>;
     requestBookAgain(userId: string, requestDto: RequestBookAgainDto): Promise<{
         message: string;

@@ -42,11 +42,7 @@ export declare class StaffDashboardController {
     }>;
     getRecentActivities(): Promise<{
         message: string;
-        data: (import("mongoose").Document<unknown, {}, import("../../activity-logs/entities/activity-log.entity").ActivityLog, {}, {}> & import("../../activity-logs/entities/activity-log.entity").ActivityLog & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        })[];
+        data: any[];
     }>;
     getRackDistribution(): Promise<{
         message: string;
@@ -61,11 +57,7 @@ export declare class StaffDashboardController {
     }>;
     getMyActivityLogs(req: any): Promise<{
         message: string;
-        data: (import("mongoose").Document<unknown, {}, import("../../activity-logs/entities/activity-log.entity").ActivityLog, {}, {}> & import("../../activity-logs/entities/activity-log.entity").ActivityLog & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        })[];
+        data: any[];
     }>;
     getMyProfile(req: any): Promise<{
         message: string;

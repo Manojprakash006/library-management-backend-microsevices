@@ -60,10 +60,13 @@ __decorate([
 __decorate([
     (0, mongoose_1.Prop)([{
             bookId: { type: String, required: true },
+            issueId: { type: String, required: true },
             bookTitle: { type: String },
             borrowedAt: { type: Date, default: Date.now },
+            dueDate: { type: Date },
             returnedAt: { type: Date },
             status: { type: String, enum: ['borrowed', 'returned', 'overdue'], default: 'borrowed' },
+            fine: { type: Number, default: 0 },
         }]),
     __metadata("design:type", Array)
 ], Member.prototype, "borrowingHistory", void 0);
