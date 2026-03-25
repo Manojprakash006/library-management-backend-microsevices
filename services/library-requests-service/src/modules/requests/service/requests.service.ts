@@ -116,7 +116,7 @@ export class RequestsService {
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = 'http://localhost:3013/library/issues';
 
       // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
@@ -170,6 +170,19 @@ export class RequestsService {
     );
 
     return enrichedRequests;
+  }
+
+  async getByMember(memberId: string): Promise<BookRequest[]> {
+
+    console.log("Incoming memberId:", memberId);
+    console.log("Converted ObjectId:", new Types.ObjectId(memberId));
+
+    const data = await this.bookRequestModel.find({ 
+      memberId: new Types.ObjectId(memberId) }).lean();
+
+    console.log("Found Requests:", data);
+
+    return data;
   }
 
   async findOne(id: string): Promise<BookRequest> {
@@ -244,6 +257,25 @@ export class RequestsService {
     request.status = RequestStatus.APPROVED;
     request.processedDate = new Date();
     const savedRequest = await request.save();
+
+    const membersServiceUrl = 'http://localhost:3012';
+
+    try {
+      await firstValueFrom(
+        this.httpService.post(
+          `${membersServiceUrl}/library/members/members/${request.memberId}/borrow`,
+          {
+            bookId: request.bookId.toString(),
+            issueId: request._id.toString(),
+            borrowedAt: new Date(),
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            status: 'borrowed',
+          }
+        )
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update borrowing history: ${error.message}`);
+    }
 
     if (adminId) {
       await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });

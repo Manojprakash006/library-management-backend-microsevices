@@ -121,28 +121,6 @@ export class MembersService {
     };
   }
 
-  async findByMemberId(memberId: string): Promise<MemberWithStats> {
-    const member = await this.memberModel.findOne({ memberId }).select('-password').exec();
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-
-    const memberObj = member.toObject();
-
-    // Get real-time stats from issues service
-    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
-
-    return {
-      ...memberObj,
-      borrowingHistory: memberObj.borrowingHistory || [],
-      booksHeld,
-      booksAtHome,
-      readingInsideLibrary,
-      totalFines,
-      hasActiveIssues: booksHeld > 0,
-    };
-  }
-
   async update(id: string, updateData: Partial<CreateMemberDto>, adminId?: string): Promise<Member> {
     const member = await this.memberModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
     if (!member) {
@@ -273,4 +251,84 @@ export class MembersService {
       return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
     }
   }
+
+  async getMyStats(userId: string) {
+    const member = await this.memberModel.findById(userId).exec();
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const borrowingHistory = member.borrowingHistory || [];
+
+    const totalRequests = borrowingHistory.length;
+
+    const booksRead = borrowingHistory.filter(
+      (b) => b.status === 'returned'
+    ).length;
+
+    return {
+      name: member.name,
+      email: member.email,
+      memberSince: member.membershipDate,
+      totalRequests,
+      booksRead,
+    };
+  }
+
+  async getDashboardStats(userId: string) {
+    const member = await this.memberModel.findById(userId).exec();
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    let booksHeld = 0;
+    let readingInsideLibrary = 0;
+    let totalFines = 0;
+
+    try {
+      const stats = await this.getMemberStatsFromIssues(userId);
+      booksHeld = stats.booksHeld;
+      readingInsideLibrary = stats.readingInsideLibrary;
+      totalFines = stats.totalFines;
+    } catch (e) {
+      console.log("ISSUE SERVICE FAILED :", e);
+    }
+
+    let pendingRequests = 0;
+
+    try {
+      const requestServiceUrl = "http://library-requests-service:3014";
+
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${requestServiceUrl}/requests/member/${userId}`
+          
+        )
+      );
+      console.log("Calling:", `${requestServiceUrl}/requests/member/${userId}`);
+      console.log("Response from getDashboardStats:", response.data);
+
+      const requests = response.data?.data || [];
+
+      pendingRequests = requests.filter(
+        (req: any) => req.status === "Pending").length;
+
+    } catch (e) {
+      console.log("REQUEST SERVICE FAILED :", e.message);
+    }
+
+    const overdueBooks = member.borrowingHistory.filter(
+      (b) => b.status === "overdue").length;
+
+    return {
+      issuedBooks: booksHeld,
+      pendingRequests,
+      activeReservations: readingInsideLibrary,
+      overdueBooks,
+      totalFines,
+    };
+  }
+
 }

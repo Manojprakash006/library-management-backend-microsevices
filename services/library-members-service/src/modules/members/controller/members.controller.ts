@@ -54,6 +54,32 @@ export class MembersController {
     return { message: 'Members retrieved successfully', data: members, count: members.length };
   }
 
+  @Get('me')
+  @Roles('member', 'admin', 'staff')
+  @ApiOperation({ summary: 'Get logged-in member stats' })
+  async getMyStats(@Req() req: any) {
+    const userId = req.user?.userId || req.user?.id;
+    const data = await this.membersService.getMyStats(userId);
+
+    return {
+      message: 'Member stats fetched',
+      data,
+    };
+  }
+  
+  @Get('dashboard')
+  @Roles('member', 'admin', 'staff')
+    async getDashboard(@Req() req: any) {
+      const userId = req.user?.userId || req.user?.id;
+
+      const data = await this.membersService.getDashboardStats(userId);
+
+      return {
+        message: 'Dashboard stats fetched',
+        data,
+      };  
+  }
+  
   @Get(':id')
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Get a member by ID' })
@@ -62,13 +88,6 @@ export class MembersController {
     return { message: 'Member retrieved successfully', data: member };
   }
 
-  @Get('memberId/:memberId')
-  @Roles('admin', 'staff', 'member')
-  @ApiOperation({ summary: 'Get a member by Member ID' })
-  async findByMemberId(@Param('memberId') memberId: string) {
-    const member = await this.membersService.findByMemberId(memberId);
-    return { message: 'Member retrieved successfully', data: member };
-  }
 
   @Put(':id')
   @Roles('admin', 'staff', 'member')
@@ -86,5 +105,15 @@ export class MembersController {
     const adminId = req.user?.id || req.user?.userId;
     await this.membersService.remove(id, adminId);
     return { message: 'Member deleted successfully' };
+  }
+
+  @Post(':id/borrow')
+  @Roles('admin', 'staff')
+    async addBorrowHistory(
+      @Param('id') memberId: string,
+      @Body() body: any
+    ) {
+      await this.membersService.addBorrowingHistory(memberId, body);
+      return { message: 'Borrow history added' };
   }
 }
