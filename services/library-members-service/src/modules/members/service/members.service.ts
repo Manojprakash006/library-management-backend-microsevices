@@ -8,7 +8,6 @@ import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
-// Type that includes computed fields for member responses
 type MemberWithStats = Member & {
   booksHeld: number;
   booksAtHome: number;
@@ -28,7 +27,7 @@ export class MembersService {
   ) { }
 
   async create(createMemberDto: CreateMemberDto, adminId?: string): Promise<Member> {
-    // Validation: Check required fields
+    
     if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
       throw new ConflictException('Full name is required and must be at least 2 characters');
     }
@@ -49,7 +48,6 @@ export class MembersService {
       throw new ConflictException('Email already registered');
     }
 
-    // Map DTO fields to entity fields
     const memberData = {
       memberId: createMemberDto.memberId,
       name: createMemberDto.fullName,
@@ -78,7 +76,6 @@ export class MembersService {
   async findAll(): Promise<MemberWithStats[]> {
     const members = await this.memberModel.find().select('-password').exec();
 
-    // Fetch real-time stats from issues service for each member
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
         const memberObj = member.toObject();
@@ -107,7 +104,6 @@ export class MembersService {
 
     const memberObj = member.toObject();
 
-    // Get real-time stats from issues service
     const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(id);
 
     return {
@@ -224,7 +220,6 @@ export class MembersService {
     try {
       const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
 
-      // Get detailed stats from new endpoint
       const statsResponse = await firstValueFrom(
         this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
           `${issuesServiceUrl}/issues/member/${memberId}/stats`
@@ -233,7 +228,6 @@ export class MembersService {
 
       const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
 
-      // Get all issues to calculate total fines
       const allIssuesResponse = await firstValueFrom(
         this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
@@ -273,61 +267,6 @@ export class MembersService {
       memberSince: member.membershipDate,
       totalRequests,
       booksRead,
-    };
-  }
-
-  async getDashboardStats(userId: string) {
-    const member = await this.memberModel.findById(userId).exec();
-
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-
-    let booksHeld = 0;
-    let readingInsideLibrary = 0;
-    let totalFines = 0;
-
-    try {
-      const stats = await this.getMemberStatsFromIssues(userId);
-      booksHeld = stats.booksHeld;
-      readingInsideLibrary = stats.readingInsideLibrary;
-      totalFines = stats.totalFines;
-    } catch (e) {
-      console.log("ISSUE SERVICE FAILED :", e);
-    }
-
-    let pendingRequests = 0;
-
-    try {
-      const requestServiceUrl = "http://library-requests-service:3014";
-
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${requestServiceUrl}/requests/member/${userId}`
-          
-        )
-      );
-      console.log("Calling:", `${requestServiceUrl}/requests/member/${userId}`);
-      console.log("Response from getDashboardStats:", response.data);
-
-      const requests = response.data?.data || [];
-
-      pendingRequests = requests.filter(
-        (req: any) => req.status === "Pending").length;
-
-    } catch (e) {
-      console.log("REQUEST SERVICE FAILED :", e.message);
-    }
-
-    const overdueBooks = member.borrowingHistory.filter(
-      (b) => b.status === "overdue").length;
-
-    return {
-      issuedBooks: booksHeld,
-      pendingRequests,
-      activeReservations: readingInsideLibrary,
-      overdueBooks,
-      totalFines,
     };
   }
 

@@ -67,19 +67,6 @@ export class MembersController {
     };
   }
   
-  @Get('dashboard')
-  @Roles('member', 'admin', 'staff')
-    async getDashboard(@Req() req: any) {
-      const userId = req.user?.userId || req.user?.id;
-
-      const data = await this.membersService.getDashboardStats(userId);
-
-      return {
-        message: 'Dashboard stats fetched',
-        data,
-      };  
-  }
-  
   @Get(':id')
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Get a member by ID' })
