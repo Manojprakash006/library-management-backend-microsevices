@@ -218,7 +218,7 @@ export class MembersService {
     totalFines: number
   }> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
       const statsResponse = await firstValueFrom(
         this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(

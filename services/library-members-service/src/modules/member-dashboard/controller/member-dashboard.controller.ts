@@ -35,6 +35,7 @@ export class MemberDashboardController {
   @ApiOperation({ summary: 'Get recent book requests' })
   async getRecentRequests(@Request() req: any) {
     const result = await this.memberDashboardService.getRecentRequests(req.user.id);
+    console.log("REQ USER ID:", req.user.id); 
     return { message: 'Recent requests retrieved', data: result };
   }
 

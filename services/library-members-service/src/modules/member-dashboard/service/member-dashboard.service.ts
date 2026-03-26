@@ -27,7 +27,7 @@ export class MemberDashboardService {
       totalFines: number
     }> {
       try {
-        const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+        const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
   
         const statsResponse = await firstValueFrom(
           this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
@@ -141,12 +141,21 @@ export class MemberDashboardService {
   }
 
   async getRecentRequests(userId: string) {
-    return this.requestModel
-      .find({ memberId: new Types.ObjectId(userId) })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('bookId')
-      .lean();
+    try {
+      const requestServiceUrl = "http://library-api-gateway:3000/library/requests";
+
+      const response = await firstValueFrom(
+        this.httpService.get(`${requestServiceUrl}/requests/member/${userId}`));
+
+      const requests = response.data?.data || [];
+
+      return requests.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+
+    } catch (error) {
+      console.log("FAILED TO FETCH RECENT REQUESTS:", error.message);
+      return [];
+    }
   }
 
   async getCurrentlyBorrowedBooks(userId: string) {

@@ -18,7 +18,8 @@ export class RequestsService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -35,7 +36,7 @@ export class RequestsService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -51,7 +52,7 @@ export class RequestsService {
 
   private async notifyAdmins(type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
@@ -258,7 +259,7 @@ export class RequestsService {
     request.processedDate = new Date();
     const savedRequest = await request.save();
 
-    const membersServiceUrl = 'http://localhost:3012';
+    const membersServiceUrl = "http://library-api-gateway:3000/library/members";
 
     try {
       await firstValueFrom(

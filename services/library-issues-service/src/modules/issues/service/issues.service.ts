@@ -17,7 +17,8 @@ export class IssuesService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -34,7 +35,8 @@ export class IssuesService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -63,7 +65,7 @@ export class IssuesService {
 
     // Check book availability first before issuing
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -109,7 +111,7 @@ export class IssuesService {
     // Update book status: if all copies are issued, mark as 'issued' (out of stock), else keep it 'available'
     let newBookStatus = 'available';
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -159,7 +161,7 @@ export class IssuesService {
     dueDate: Date
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
@@ -177,7 +179,7 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
@@ -194,9 +196,9 @@ export class IssuesService {
     fine: number
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
-        this.httpService.put(`${membersServiceUrl}/members/${memberId}/borrowing-history/${issueId}`, {
+        this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrow`, {
           returnedAt,
           fine,
           status: 'returned'
@@ -210,7 +212,7 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
