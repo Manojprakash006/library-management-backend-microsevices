@@ -2,11 +2,6 @@ import { IsString, IsEmail, IsOptional, MinLength, MaxLength, Matches } from 'cl
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMemberDto {
-  @ApiProperty({ description: 'Unique member identifier (auto-generated if not provided)', required: false })
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  memberId?: string;
 
   @ApiProperty({ description: 'Full name of the member' })
   @IsString()

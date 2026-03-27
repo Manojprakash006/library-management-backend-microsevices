@@ -39,10 +39,10 @@ export class MembersService {
       throw new ConflictException('Password is required and must be at least 6 characters');
     }
 
-    const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
-    if (existingMember) {
-      throw new ConflictException('Member ID already exists');
-    }
+    // const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
+    // if (existingMember) {
+    //   throw new ConflictException('Member ID already exists');
+    // }
 
     const existingEmail = await this.memberModel.findOne({ email: createMemberDto.email }).exec();
     if (existingEmail) {
@@ -51,7 +51,6 @@ export class MembersService {
 
     // Map DTO fields to entity fields
     const memberData = {
-      memberId: createMemberDto.memberId,
       name: createMemberDto.fullName,
       email: createMemberDto.email,
       phoneNumber: createMemberDto.phoneNumber,

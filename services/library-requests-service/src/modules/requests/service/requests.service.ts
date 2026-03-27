@@ -65,12 +65,7 @@ export class RequestsService {
   }
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
-    if (createDto.requestId) {
-      const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
-      if (existingRequest) {
-        throw new ConflictException('Request ID already exists');
-      }
-    }
+    // 1. Check if member already has a pending request for this book
 
     // 1. Check if member already has a pending request for this book
     const existingPendingRequest = await this.bookRequestModel.findOne({
