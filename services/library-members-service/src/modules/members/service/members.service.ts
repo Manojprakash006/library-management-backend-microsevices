@@ -267,12 +267,20 @@ export class MembersService {
       const allIssues = allIssuesResponse.data?.data || [];
       const totalFines = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
 
-      return {
+      const computedStats = {
         booksHeld: stats.totalActive,
         booksAtHome: stats.booksAtHome,
         readingInsideLibrary: stats.readingInsideLibrary,
         totalFines
       };
+
+      // Asynchronously sync the stats to MongoDB so they appear in DB queries
+      this.memberModel.findByIdAndUpdate(memberId, {
+        ...computedStats,
+        hasActiveIssues: computedStats.booksHeld > 0
+      }).catch(err => this.logger.error(`Failed to sync stats to DB for member ${memberId}: ${err.message}`));
+
+      return computedStats;
     } catch (error) {
       this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
       return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };

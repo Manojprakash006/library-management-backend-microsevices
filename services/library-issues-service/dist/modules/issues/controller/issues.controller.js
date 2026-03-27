@@ -26,12 +26,30 @@ let IssuesController = class IssuesController {
     constructor(issuesService) {
         this.issuesService = issuesService;
     }
-    async create(createIssueDto) {
-        const issue = await this.issuesService.create(createIssueDto);
+    async create(createIssueDto, req) {
+        const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+        const issue = await this.issuesService.create(createIssueDto, adminId);
         return { message: 'Book issued successfully', data: issue };
     }
     async findAll() {
         const issues = await this.issuesService.findAll();
+        return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
+    }
+    async getMemberStats(memberId) {
+        const issues = await this.issuesService.findActiveByMember(memberId);
+        const booksAtHome = issues.filter(issue => issue.issueType === 'Taking Home').length;
+        const readingInsideLibrary = issues.filter(issue => issue.issueType === 'Reading Inside Library').length;
+        return {
+            message: 'Member stats retrieved successfully',
+            data: {
+                booksAtHome,
+                readingInsideLibrary,
+                totalActive: issues.length
+            }
+        };
+    }
+    async findIssuedByMember(memberId) {
+        const issues = await this.issuesService.findByMember(memberId);
         return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
     }
     async findRecent(limit) {
@@ -46,6 +64,14 @@ let IssuesController = class IssuesController {
         const count = await this.issuesService.getIssuesCount(date);
         return { count };
     }
+    async getReturnsCount(date) {
+        const count = await this.issuesService.getReturnsCount(date);
+        return { count };
+    }
+    async getBookIssueCount(bookId) {
+        const count = await this.issuesService.getBookIssueCount(bookId);
+        return { count };
+    }
     async findOverdue() {
         const issues = await this.issuesService.findAll();
         const overdueIssues = issues.filter(issue => issue.status === 'Overdue');
@@ -55,20 +81,23 @@ let IssuesController = class IssuesController {
         const issue = await this.issuesService.findOne(id);
         return { message: 'Issued book retrieved successfully', data: issue };
     }
-    async update(id, updateIssueDto) {
-        const issue = await this.issuesService.update(id, updateIssueDto);
+    async update(id, updateIssueDto, req) {
+        const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+        const issue = await this.issuesService.update(id, updateIssueDto, adminId);
         return { message: 'Issued book updated successfully', data: issue };
     }
-    async returnBook(id) {
-        const issue = await this.issuesService.returnBook(id);
+    async returnBook(id, req) {
+        const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+        const issue = await this.issuesService.returnBook(id, adminId);
         return {
             message: 'Book returned successfully',
             data: issue,
             fine: issue.fine > 0 ? { amount: issue.fine, daysOverdue: issue.daysOverdue, finePerDay: issue.finePerDay } : null,
         };
     }
-    async remove(id) {
-        await this.issuesService.remove(id);
+    async remove(id, req) {
+        const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+        await this.issuesService.remove(id, adminId);
         return { message: 'Issued book record deleted successfully' };
     }
 };
@@ -78,11 +107,13 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Issue a book' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Book issued successfully', type: issue_book_entity_1.IssueBook }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_issue_dto_1.CreateIssueDto]),
+    __metadata("design:paramtypes", [create_issue_dto_1.CreateIssueDto, Object]),
     __metadata("design:returntype", Promise)
 ], IssuesController.prototype, "create", null);
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get all issued books' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Issued books retrieved successfully', type: [issue_book_entity_1.IssueBook] }),
@@ -90,6 +121,26 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], IssuesController.prototype, "findAll", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('member/:memberId/stats'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get member issue stats by type' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Member stats retrieved successfully' }),
+    __param(0, (0, common_1.Param)('memberId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], IssuesController.prototype, "getMemberStats", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('member/:memberId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get issued books by member ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Issued books retrieved successfully', type: [issue_book_entity_1.IssueBook] }),
+    __param(0, (0, common_1.Param)('memberId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], IssuesController.prototype, "findIssuedByMember", null);
 __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Get)('recent'),
@@ -121,6 +172,26 @@ __decorate([
 ], IssuesController.prototype, "getIssuesCount", null);
 __decorate([
     (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('returns/count'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get count of returned books' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Returns count retrieved successfully' }),
+    __param(0, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], IssuesController.prototype, "getReturnsCount", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('count/book/:bookId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get count of active issues for a specific book' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book issue count retrieved successfully' }),
+    __param(0, (0, common_1.Param)('bookId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], IssuesController.prototype, "getBookIssueCount", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Get)('overdue'),
     (0, swagger_1.ApiOperation)({ summary: 'Get overdue issued books' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Overdue books retrieved successfully', type: [issue_book_entity_1.IssueBook] }),
@@ -145,8 +216,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Issued book not found' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], IssuesController.prototype, "update", null);
 __decorate([
@@ -156,8 +228,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Book already returned' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Issued book not found' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], IssuesController.prototype, "returnBook", null);
 __decorate([
@@ -166,8 +239,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Issued book record deleted successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Issued book not found' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], IssuesController.prototype, "remove", null);
 exports.IssuesController = IssuesController = __decorate([

@@ -252,7 +252,22 @@ export class IssuesService {
   }
 
   async findByMember(memberId: string): Promise<IssueBook[]> {
-    return this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+    const today = new Date();
+
+    return issuedBooks.map((issue) => {
+      const issueObj = issue.toObject();
+      if (issueObj.status !== IssueStatus.RETURNED &&
+        issueObj.issueType === IssueType.TAKING_HOME &&
+        issueObj.dueDate &&
+        new Date(issueObj.dueDate) < today) {
+        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        issueObj.status = IssueStatus.OVERDUE;
+        issueObj.daysOverdue = overdueDays;
+        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
+      }
+      return issueObj as IssueBook;
+    });
   }
 
   async findActiveByMember(memberId: string): Promise<IssueBook[]> {
