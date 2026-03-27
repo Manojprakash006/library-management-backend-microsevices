@@ -16,11 +16,6 @@ class CreateBookRequestDto {
 }
 exports.CreateBookRequestDto = CreateBookRequestDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Unique request identifier' }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateBookRequestDto.prototype, "requestId", void 0);
-__decorate([
     (0, swagger_1.ApiProperty)({ description: 'Book ID' }),
     (0, class_validator_1.IsMongoId)(),
     __metadata("design:type", String)

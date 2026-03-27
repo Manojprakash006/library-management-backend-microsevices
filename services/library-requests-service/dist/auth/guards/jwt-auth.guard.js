@@ -44,6 +44,9 @@ let JwtAuthGuard = class JwtAuthGuard {
             return true;
         }
         catch (error) {
+            if (error.name === 'TokenExpiredError') {
+                throw new common_1.UnauthorizedException({ message: 'Token expired', status: 'session_expired', error: 'Unauthorized' });
+            }
             throw new common_1.UnauthorizedException('Not authorized, token failed');
         }
     }
