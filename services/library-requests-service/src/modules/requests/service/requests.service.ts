@@ -181,9 +181,29 @@ export class RequestsService {
     const data = await this.bookRequestModel.find({ 
       memberId: new Types.ObjectId(memberId) }).lean();
 
-    console.log("Found Requests:", data);
+      const getBookDetails = await Promise.all(
 
-    return data;
+        data.map( async (req) => {
+
+          try {
+            const bookResponse = await firstValueFrom( this.httpService.get(
+            `http://library-api-gateway:3000/library/books/${req.bookId}`)
+        );
+
+        return {
+          ...req, bookId: bookResponse.data?.data,
+        };
+          } catch (error) {
+              console.log("BOOK FETCH FAILED:", error.message);
+
+              return {
+                ...req, bookId: null,
+              };
+            }
+        })
+      )
+      console.log("AFTER BOOK FETCH:", getBookDetails);
+    return getBookDetails;
   }
 
   async findOne(id: string): Promise<BookRequest> {
