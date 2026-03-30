@@ -66,12 +66,7 @@ export class RequestsService {
   }
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
-    if (createDto.requestId) {
-      const existingRequest = await this.bookRequestModel.findOne({ requestId: createDto.requestId }).exec();
-      if (existingRequest) {
-        throw new ConflictException('Request ID already exists');
-      }
-    }
+    // 1. Check if member already has a pending request for this book
 
     // 1. Check if member already has a pending request for this book
     const existingPendingRequest = await this.bookRequestModel.findOne({
@@ -117,7 +112,7 @@ export class RequestsService {
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const issuesServiceUrl = 'http://localhost:3013/library/issues';
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
       // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
@@ -175,36 +170,46 @@ export class RequestsService {
 
   async getByMember(memberId: string): Promise<BookRequest[]> {
 
-    console.log("Incoming memberId:", memberId);
-    console.log("Converted ObjectId:", new Types.ObjectId(memberId));
+  const data = await this.bookRequestModel.find({ 
+    memberId: new Types.ObjectId(memberId) 
+  }).lean();
 
-    const data = await this.bookRequestModel.find({ 
-      memberId: new Types.ObjectId(memberId) }).lean();
 
-      const getBookDetails = await Promise.all(
+  const enriched = await Promise.all(
+    data.map(async (req) => {
 
-        data.map( async (req) => {
+      const bookId = req.bookId.toString();
 
-          try {
-            const bookResponse = await firstValueFrom( this.httpService.get(
-            `http://library-api-gateway:3000/library/books/${req.bookId}`)
+      if (!bookId) {
+        return { ...req, bookId: null };
+      }
+
+      try {
+        const bookServiceURL = "http://library-api-gateway:3000/library/books";
+        const bookResponse = await firstValueFrom(
+          this.httpService.get(`${bookServiceURL}/books/${bookId}`)
         );
 
+        const book = bookResponse.data?.data;
         return {
-          ...req, bookId: bookResponse.data?.data,
+          ...req,
+          bookId: book, 
         };
-          } catch (error) {
-              console.log("BOOK FETCH FAILED:", error.message);
 
-              return {
-                ...req, bookId: null,
-              };
-            }
-        })
-      )
-      console.log("AFTER BOOK FETCH:", getBookDetails);
-    return getBookDetails;
-  }
+      } catch (error) {
+        console.log("❌ BOOK FETCH FAILED:", error.message);
+
+        return {
+          ...req,
+          bookId: null,
+        };
+      }
+    })
+  );
+
+
+  return enriched;
+}
 
   async findOne(id: string): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();
@@ -212,24 +217,6 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
     return request;
-  }
-
-  async findByMember(memberId: string): Promise<any[]> {
-    const requests = await this.bookRequestModel.find({ memberId: new Types.ObjectId(memberId) }).sort({ requestDate: -1 }).exec();
-
-    // Get real-time member borrowing data once
-    const memberStats = await this.getMemberBorrowingDetails(memberId);
-
-    // Enrich all requests with the same member data
-    const enrichedRequests = requests.map((request) => ({
-      ...request.toObject(),
-      currentlyBorrowed: memberStats.currentlyBorrowed,
-      totalHistory: memberStats.totalHistory,
-      activeBookIds: memberStats.activeBookIds,
-      booklistBorrowed: memberStats.booklistBorrowed,
-    }));
-
-    return enrichedRequests;
   }
 
   async update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<BookRequest> {

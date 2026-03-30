@@ -51,7 +51,7 @@ export class BooksService {
     }
   }
 
-  async create(createBookDto: CreateBookDto, adminId?: string): Promise<Book> {
+  async create(createBookDto: CreateBookDto, adminId?: string, role?: string): Promise<Book> {
     const existingBook = await this.bookModel.findOne({ bookId: createBookDto.bookId }).exec();
     if (existingBook) {
       throw new ConflictException('Book ID already exists');
@@ -63,12 +63,14 @@ export class BooksService {
     if (adminId) {
       await this.logActivity(adminId, 'CREATE', savedBook.bookId, { title: savedBook.title });
       
-      // Notify all admins that a requested action (book creation) happened
-      await this.notifyAdmins(
-        'NEW_BOOK_ADDED',
-        'New Book Added to Library',
-        `A new book "${savedBook.title}" (ID: ${savedBook.bookId}) has been successfully added to the catalog.`
-      );
+      if (role === 'staff') {
+        // Notify all admins that a requested action (book creation) happened
+        await this.notifyAdmins(
+          'NEW_BOOK_ADDED',
+          'New Book Added to Library',
+          `A new book "${savedBook.title}" (ID: ${savedBook.bookId}) has been successfully added to the catalog by staff.`
+        );
+      }
     }
 
     return savedBook;

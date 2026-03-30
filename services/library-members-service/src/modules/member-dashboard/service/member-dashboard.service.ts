@@ -85,8 +85,6 @@ export class MemberDashboardService {
         const response = await firstValueFrom(
           this.httpService.get(url)
         );
-        console.log("Calling:", url);
-        console.log("Response from getDashboardStats:", response.data);
   
         const requests = response.data?.data || [];
   
@@ -110,8 +108,6 @@ export class MemberDashboardService {
   }
 
   async getOverdueBooks(userId: string) {
-
-    console.log('User ID :', userId)
 
     if (!Types.ObjectId.isValid(userId)) {
       throw new Error('Invalid userId');
@@ -148,33 +144,9 @@ export class MemberDashboardService {
         this.httpService.get(`${requestServiceUrl}/requests/member/${userId}`));
 
       const requests = response.data?.data || [];
-      console.log("DASHBOARD RECEIVED from req-service:", requests);
 
-      const enriched = await Promise.all( requests.map(async (req: any) => {
-      if (typeof req.bookId === "object") {
-        return req;
-      }
-
-      try {
-        const bookResponse = await firstValueFrom( this.httpService.get(
-          `http://library-api-gateway:3000/library/books/${req.bookId}`
-        )
-      );
-
-      return {
-        ...req, bookId: bookResponse.data?.data || null,
-      };
-
-      } catch (error) {
-          console.log("BOOK FETCH FAILED:", error.message);
-          return { ...req, bookId: null };
-        }
-      })
-      );
-
-        return enriched.sort((a: any, b: any) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ).slice(0, 3);
+    return requests.sort((a: any, b: any) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
 
     } catch (error) {
       console.log("FAILED TO FETCH RECENT REQUESTS:", error.message);

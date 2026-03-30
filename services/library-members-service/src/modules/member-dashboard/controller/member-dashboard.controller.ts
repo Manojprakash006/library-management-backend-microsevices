@@ -19,7 +19,6 @@ export class MemberDashboardController {
    @Get('stats')
   @ApiOperation({ summary: 'Get member dashboard stats' })
   async getMemberStats(@Request() req: any) {
-    console.log('REquest User :', req.user);
     const result = await this.memberDashboardService.getDashboardStats(req.user.id);
     return { message: 'Stats retrieved successfully', data: result };
   }
@@ -35,7 +34,6 @@ export class MemberDashboardController {
   @ApiOperation({ summary: 'Get recent book requests' })
   async getRecentRequests(@Request() req: any) {
     const result = await this.memberDashboardService.getRecentRequests(req.user.id);
-    console.log("REQ USER ID:", req.user.id); 
     return { message: 'Recent requests retrieved', data: result };
   }
 

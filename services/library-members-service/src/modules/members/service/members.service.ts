@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
@@ -38,10 +38,10 @@ export class MembersService {
       throw new ConflictException('Password is required and must be at least 6 characters');
     }
 
-    const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
-    if (existingMember) {
-      throw new ConflictException('Member ID already exists');
-    }
+    // const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
+    // if (existingMember) {
+    //   throw new ConflictException('Member ID already exists');
+    // }
 
     const existingEmail = await this.memberModel.findOne({ email: createMemberDto.email }).exec();
     if (existingEmail) {
@@ -49,7 +49,6 @@ export class MembersService {
     }
 
     const memberData = {
-      memberId: createMemberDto.memberId,
       name: createMemberDto.fullName,
       email: createMemberDto.email,
       phoneNumber: createMemberDto.phoneNumber,
@@ -183,6 +182,12 @@ export class MembersService {
   }
 
   async remove(id: string, adminId?: string): Promise<void> {
+    // Check if the member has active issues before deleting
+    const stats = await this.getMemberStatsFromIssues(id);
+    if (stats.booksHeld > 0) {
+      throw new ConflictException('Cannot delete member: Member has active issued books that must be returned first.');
+    }
+
     const result = await this.memberModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException('Member not found');
@@ -247,6 +252,11 @@ export class MembersService {
   }
 
   async getMyStats(userId: string) {
+
+    if (!userId) {
+      throw new BadRequestException('User ID is missing');
+    }
+    
     const member = await this.memberModel.findById(userId).exec();
 
     if (!member) {
@@ -257,13 +267,30 @@ export class MembersService {
 
     const totalRequests = borrowingHistory.length;
 
-    const booksRead = borrowingHistory.filter(
-      (b) => b.status === 'returned'
-    ).length;
+    const memberId = member.memberId.toString();
+    const phone = member.phoneNumber;
+    const address = member.address;
+
+    let booksRead = 0;
+
+    try {
+      const issueServiceURL = 'http://library-issues-service:3013/library/issues';
+      const response = await firstValueFrom(
+        this.httpService.get(`${issueServiceURL}/issues/member/${memberId}/completed-count`));
+
+      const booksRead = response.data.count;
+      console.log("Books Read Count from member service :", booksRead);
+    } catch (error) {
+      console.error('Issue service error:', error.message);
+      booksRead = 0;
+    }
 
     return {
       name: member.name,
       email: member.email,
+      memberId,
+      phone,
+      address,
       memberSince: member.membershipDate,
       totalRequests,
       booksRead,

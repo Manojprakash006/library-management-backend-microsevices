@@ -74,6 +74,10 @@ export class IssuesService {
         throw new BadRequestException('Book not found');
       }
 
+      if (bookData.bookType === 'Reference Book' && createIssueDto.issueType === IssueType.TAKING_HOME) {
+        throw new BadRequestException('Reference books can only be read inside the library and cannot be taken home.');
+      }
+
       const currentIssuesCount = await this.getBookIssueCount(createIssueDto.bookId);
       const maxQuantity = bookData.quantity || 1;
 
@@ -311,6 +315,13 @@ export class IssuesService {
     );
 
     return savedIssue;
+  }
+
+  async getCompletedCount(memberId: string): Promise<number> {
+    return this.issueBookModel.countDocuments({
+      memberId,
+      status: IssueStatus.RETURNED,
+    });
   }
 
   async update(id: string, updateIssueDto: any, adminId?: string): Promise<IssueBook> {

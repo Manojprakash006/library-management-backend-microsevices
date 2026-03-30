@@ -25,7 +25,8 @@ export class BooksController {
   @ApiResponse({ status: 409, description: 'Book ID already exists' })
   async create(@Body() createBookDto: CreateBookDto, @Req() req: any): Promise<{ message: string; data: Book }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
-    const book = await this.booksService.create(createBookDto, adminId);
+    const role = req.user?.role;
+    const book = await this.booksService.create(createBookDto, adminId, role);
     return { message: 'Book created successfully', data: book };
   }
 

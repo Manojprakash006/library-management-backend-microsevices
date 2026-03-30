@@ -159,6 +159,12 @@ export class IssuesController {
     };
   }
 
+  @Get('member/:memberId/completed-count')
+  async getCompletedCount(@Param('memberId') memberId: string) {
+    const count = await this.issuesService.getCompletedCount(memberId);
+    return { count };
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete issued book record' })
   @ApiResponse({ status: 200, description: 'Issued book record deleted successfully' })
