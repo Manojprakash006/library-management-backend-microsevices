@@ -66,6 +66,7 @@ services:
       - JWT_SECRET=your-secret-key
       - KAFKA_BROKER=localhost:9092
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
+      - BOOKS_SERVICE_URL=http://library-books-service:3001
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
       - SMTP_USER=mernstackdev.yoho@gmail.com
