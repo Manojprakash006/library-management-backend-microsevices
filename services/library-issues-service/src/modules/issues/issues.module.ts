@@ -4,10 +4,11 @@ import { HttpModule } from '@nestjs/axios';
 import { IssuesController } from './controller/issues.controller';
 import { IssuesService } from './service/issues.service';
 import { IssueBook, IssueBookSchema } from './entities/issue-book.entity';
+import { Book, BookSchema } from './shared/entities/book.entity';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: IssueBook.name, schema: IssueBookSchema }]),
+    MongooseModule.forFeature([{ name: IssueBook.name, schema: IssueBookSchema }, { name: Book.name, schema: BookSchema },]),
     HttpModule,
   ],
   controllers: [IssuesController],

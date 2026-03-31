@@ -59,11 +59,11 @@ export class MembersController {
     @ApiOperation({ summary: 'Get member stats'})
       async getFooterStats(@Req() req: any) {
           const userId = req.user.id;
-
+          const token = req.headers.authorization;
           if (!userId) {
             throw new BadRequestException('User ID is missing');
           }
-          const footerStats = await this.membersService.getMyStats(userId);
+          const footerStats = await this.membersService.getMyStats(userId, token);
           return { message: 'Data retrieved successfully', data: footerStats };
     }
 

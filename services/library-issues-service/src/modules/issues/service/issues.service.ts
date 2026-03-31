@@ -63,6 +63,19 @@ export class IssuesService {
       dueDate.setDate(dueDate.getDate() + numberOfDays);
     }
 
+    let status = IssueStatus.ACTIVE;
+
+    if(dueDate) {
+      const today = new Date();
+
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+
+      if(dueDate < today) {
+        status = IssueStatus.OVERDUE
+      }
+    }
+
     // Check book availability first before issuing
     try {
       const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
@@ -254,14 +267,33 @@ export class IssuesService {
   }
 
   async findByMember(memberId: string): Promise<IssueBook[]> {
-    return this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+    return this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).populate('bookId').exec();
   }
 
-  async findActiveByMember(memberId: string): Promise<IssueBook[]> {
-    return this.issueBookModel.find({
+  async findActiveByMember(memberId: string): Promise<any[]> {
+
+    const issues = await this.issueBookModel.find({
       memberId: new Types.ObjectId(memberId),
-      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
-    }).exec();
+      status: { $in: ["Active"] },
+    }).lean();
+
+    const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+
+    const enrichedIssues = await Promise.all(
+      issues.map(async (issue) => {
+        try {
+          const bookResponse = await firstValueFrom(
+            this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`)
+          );
+
+          return { ...issue, bookId: bookResponse.data?.data || null };
+        } catch (error) {
+          return { ...issue, bookId: null };
+        }
+      })
+    );
+
+    return enrichedIssues;
   }
 
   async returnBook(id: string, adminId?: string): Promise<IssueBook> {
@@ -319,7 +351,7 @@ export class IssuesService {
 
   async getCompletedCount(memberId: string): Promise<number> {
     return this.issueBookModel.countDocuments({
-      memberId,
+      memberId: new Types.ObjectId(memberId),
       status: IssueStatus.RETURNED,
     });
   }

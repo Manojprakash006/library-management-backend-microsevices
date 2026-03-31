@@ -117,7 +117,7 @@ export class MemberDashboardService {
     const overDueBooks = await this.issueModel
       .find({
         memberId: new Types.ObjectId(userId),
-        status: 'Overdue',
+        status: 'Active',
         dueDate: { $lt: today },
       })
       .populate('bookId');
@@ -145,8 +145,8 @@ export class MemberDashboardService {
 
       const requests = response.data?.data || [];
 
-    return requests.sort((a: any, b: any) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
+    return requests?.sort((a: any, b: any) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     } catch (error) {
       console.log("FAILED TO FETCH RECENT REQUESTS:", error.message);
@@ -155,14 +155,20 @@ export class MemberDashboardService {
   }
 
   async getCurrentlyBorrowedBooks(userId: string) {
-    return this.issueModel
-      .find({
-        memberId: new Types.ObjectId(userId),
-        status: 'Active'
-      })
-      .populate('bookId')
-      .lean();
+  try {
+    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+    const response = await firstValueFrom(
+      this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}/active`)
+    );
+
+    return response.data?.data || [];
+
+  } catch (error) {
+    console.log('FAILED TO FETCH BORROWED BOOKS:', error.message);
+    return [];
   }
+}
 
   async getBookDetails(issueId: string) {
     const issue = await this.issueModel

@@ -251,7 +251,7 @@ export class MembersService {
     }
   }
 
-  async getMyStats(userId: string) {
+  async getMyStats(userId: string, token: string) {
 
     if (!userId) {
       throw new BadRequestException('User ID is missing');
@@ -267,19 +267,24 @@ export class MembersService {
 
     const totalRequests = borrowingHistory.length;
 
-    const memberId = member.memberId.toString();
+    const memberId = member._id.toString();
     const phone = member.phoneNumber;
     const address = member.address;
+    const memId = member.memberId;
 
     let booksRead = 0;
 
     try {
-      const issueServiceURL = 'http://library-issues-service:3013/library/issues';
+      const issueServiceURL = 'http://library-api-gateway:3000/library/issues';
       const response = await firstValueFrom(
-        this.httpService.get(`${issueServiceURL}/issues/member/${memberId}/completed-count`));
-
-      const booksRead = response.data.count;
-      console.log("Books Read Count from member service :", booksRead);
+        this.httpService.get(`${issueServiceURL}/issues/member/${memberId}/completed-count`,
+          {
+            headers: {
+              Authorization: token,
+            },
+          }
+        ));
+      booksRead = response.data.count;
     } catch (error) {
       console.error('Issue service error:', error.message);
       booksRead = 0;
@@ -294,6 +299,7 @@ export class MembersService {
       memberSince: member.membershipDate,
       totalRequests,
       booksRead,
+      memId,
     };
   }
 

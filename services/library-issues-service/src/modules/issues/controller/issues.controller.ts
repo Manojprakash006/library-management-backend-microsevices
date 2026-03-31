@@ -71,6 +71,18 @@ export class IssuesController {
   }
 
   @Public()
+  @Get('member/:memberId/active')
+  @ApiOperation({ summary: 'Get active borrowed books (including overdue)' })
+  async findActiveByMember(@Param('memberId') memberId: string) {
+    const issues = await this.issuesService.findActiveByMember(memberId);
+    return {
+      message: 'Active borrowed books retrieved successfully',
+      data: issues,
+      count: issues.length,
+    };
+  }
+
+  @Public()
   @Get('recent')
   @ApiOperation({ summary: 'Get recent issued books' })
   @ApiResponse({ status: 200, description: 'Recent issued books retrieved successfully', type: [IssueBook] })
@@ -159,6 +171,8 @@ export class IssuesController {
     };
   }
 
+  @Public()
+  @ApiOperation({ summary: 'Get Member Read Books Count'})
   @Get('member/:memberId/completed-count')
   async getCompletedCount(@Param('memberId') memberId: string) {
     const count = await this.issuesService.getCompletedCount(memberId);
