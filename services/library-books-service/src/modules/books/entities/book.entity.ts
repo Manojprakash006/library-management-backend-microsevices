@@ -83,6 +83,9 @@ export class Book {
   @Prop({ trim: true })
   coverUrl: string;
 
+  @Prop({ type: String })
+  createdBy?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

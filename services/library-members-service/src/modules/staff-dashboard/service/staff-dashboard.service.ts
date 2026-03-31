@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
@@ -23,7 +23,7 @@ export class StaffDashboardService {
     @InjectModel(Staff.name) private staffModel: Model<Staff>,
     @InjectModel(LibraryVisit.name) private libraryVisitModel: Model<LibraryVisit>,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async getStaffStats(authHeader?: string) {
     try {
@@ -118,13 +118,13 @@ export class StaffDashboardService {
     };
   }
 
-  async getBooksAddedToday(staffId?: string, authHeader?: string) {
+  async getBooksAddedToday(authHeader?: string) {
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      this.logger.log(`Fetching books added today for staff: ${staffId}`);
+      this.logger.log(`Fetching books added today`);
 
       // Get all books from books service
       const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
@@ -135,15 +135,13 @@ export class StaffDashboardService {
 
       const books = response.data?.data || [];
 
-      // Filter books created today by this staff member
+      // Filter books created today
       const todayBooks = books.filter((book: any) => {
         const createdAt = new Date(book.createdAt);
-        const isToday = createdAt >= today;
-        const isCreatedByThisStaff = staffId ? book.createdBy === staffId : true;
-        return isToday && isCreatedByThisStaff;
+        return createdAt >= today;
       });
 
-      this.logger.log(`Found ${todayBooks.length} books added today by staff ${staffId}`);
+      this.logger.log(`Found ${todayBooks.length} books added today`);
 
       return todayBooks;
     } catch (error) {
@@ -153,15 +151,32 @@ export class StaffDashboardService {
   }
 
   async getRecentActivities() {
-    // TODO: Implement when activity logs module is created
     return [];
   }
 
-  async getRackDistribution() {
-    return [];
+  async getRackDistribution(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+
+      this.logger.log(`Fetching rack distribution from: ${booksServiceUrl}/racks`);
+
+      const response: AxiosResponse<{ data: any[]; count: number }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/racks`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const racks = response.data?.data || [];
+      this.logger.log(`Found ${racks.length} racks`);
+
+      return racks;
+    } catch (error) {
+      this.logger.error(`Failed to fetch rack distribution: ${error.message}`);
+      return [];
+    }
   }
 
-  async createBook(bookData: any, authHeader?: string) {
+  async createBook(bookData: any, staffId: string, authHeader?: string) {
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       this.logger.log(`Creating book via books service: ${booksServiceUrl}/books`);
@@ -173,6 +188,7 @@ export class StaffDashboardService {
       );
 
       this.logger.log(`Book created successfully: ${JSON.stringify(response.data)}`);
+
       return {
         message: 'Book created successfully',
         data: response.data?.data || response.data,
@@ -184,10 +200,7 @@ export class StaffDashboardService {
     }
   }
 
-  async getMyActivityLogs(staffId: string) {
-    // TODO: Implement when activity logs module is created
-    return [];
-  }
+
 
   async getMyProfile(staffId: string) {
     return this.staffModel.findById(staffId).select('-password -__v');
