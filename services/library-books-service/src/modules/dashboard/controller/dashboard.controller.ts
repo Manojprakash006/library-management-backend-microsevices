@@ -36,6 +36,7 @@ export class DashboardController {
   }
 
   @Get('stat-cards')
+  @Roles('admin', 'staff')
   @ApiOperation({ summary: 'Get stat cards data' })
   async getStatCards(@Req() req: Request) {
     const authHeader = req.headers['authorization'];

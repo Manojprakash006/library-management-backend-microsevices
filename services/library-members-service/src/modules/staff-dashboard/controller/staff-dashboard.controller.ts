@@ -4,6 +4,7 @@ import { StaffDashboardService } from '../service/staff-dashboard.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { CreateBookDto } from '../dto/create-book.dto';
 
 @ApiTags('Staff Dashboard')
 @ApiBearerAuth()
@@ -15,8 +16,9 @@ export class StaffDashboardController {
    @Get('stats')
   @Roles('staff')
   @ApiOperation({ summary: 'Get staff dashboard stats' })
-  async getStaffStats() {
-    const result = await this.staffDashboardService.getStaffStats();
+  async getStaffStats(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getStaffStats(authHeader);
     return { message: 'Stats retrieved successfully', data: result };
   }
 
@@ -54,9 +56,11 @@ export class StaffDashboardController {
 
    @Get('books-added-today')
   @Roles('staff')
-  @ApiOperation({ summary: 'Get books added today' })
-  async getBooksAddedToday() {
-    const result = await this.staffDashboardService.getBooksAddedToday();
+  @ApiOperation({ summary: 'Get books added today by staff' })
+  async getBooksAddedToday(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const staffId = req.user?.userId;
+    const result = await this.staffDashboardService.getBooksAddedToday(staffId, authHeader);
     return { message: 'Books added today retrieved', data: result };
   }
 
@@ -79,8 +83,12 @@ export class StaffDashboardController {
    @Post('books')
   @Roles('staff')
   @ApiOperation({ summary: 'Create a new book' })
-  async createBook(@Body() bookData: any) {
-    const result = await this.staffDashboardService.createBook(bookData);
+  @ApiResponse({ status: 201, description: 'Book created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createBook(@Body() bookData: CreateBookDto, @Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.createBook(bookData, authHeader);
     return { message: 'Book created successfully', data: result };
   }
 
