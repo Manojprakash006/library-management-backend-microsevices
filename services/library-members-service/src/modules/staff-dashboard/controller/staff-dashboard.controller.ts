@@ -139,4 +139,21 @@ export class StaffDashboardController {
     const result = await this.staffDashboardService.getBooksStatusDistribution();
     return { message: 'Books status distribution retrieved', data: result };
   }
+
+  @Get('todays-visitors')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get todays library visitors' })
+  async getTodaysVisitors() {
+    const result = await this.staffDashboardService.getTodaysVisitors();
+    return { message: 'Today\'s visitors retrieved', count: result.length, data: result };
+  }
+
+  @Get('todays-issues')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get todays book issues' })
+  async getTodaysIssues(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getTodaysIssues(authHeader);
+    return { message: 'Today\'s book issues retrieved', count: result.length, data: result };
+  }
 }

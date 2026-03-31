@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { Member } from '../../members/entities/member.entity';
 import { Staff } from '../../staff/entities/staff.entity';
+import { LibraryVisit } from '../../library-visits/entities/library-visit.entity';
 
 interface BooksStatsResponse {
   totalBooks: number;
@@ -20,6 +21,7 @@ export class StaffDashboardService {
   constructor(
     @InjectModel(Member.name) private memberModel: Model<Member>,
     @InjectModel(Staff.name) private staffModel: Model<Staff>,
+    @InjectModel(LibraryVisit.name) private libraryVisitModel: Model<LibraryVisit>,
     private readonly httpService: HttpService,
   ) {}
 
@@ -216,5 +218,51 @@ export class StaffDashboardService {
       overdue: 0,
       damaged: 0,
     };
+  }
+
+  async getTodaysVisitors() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const visits = await this.libraryVisitModel
+        .find({
+          timeIn: { $gte: today },
+        })
+        .populate('memberId', 'name email memberId')
+        .sort({ timeIn: -1 })
+        .exec();
+
+      this.logger.log(`Found ${visits.length} visitors today`);
+      return visits;
+    } catch (error) {
+      this.logger.error(`Failed to get today's visitors: ${error.message}`);
+      return [];
+    }
+  }
+
+  async getTodaysIssues(authHeader?: string) {
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3003';
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      this.logger.log(`Fetching today's issues from: ${issuesServiceUrl}`);
+
+      // Get today's issues from issues service
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/today`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const issues = response.data?.data || [];
+      this.logger.log(`Found ${issues.length} issues today`);
+
+      return issues;
+    } catch (error) {
+      this.logger.error(`Failed to get today's issues: ${error.message}`);
+      return [];
+    }
   }
 }
