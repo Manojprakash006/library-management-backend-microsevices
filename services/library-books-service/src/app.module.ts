@@ -26,4 +26,4 @@ import { UtilModule } from './modules/util/util.module';
     UtilModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

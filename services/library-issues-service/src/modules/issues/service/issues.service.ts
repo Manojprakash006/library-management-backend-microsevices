@@ -13,19 +13,89 @@ export class IssuesService {
   constructor(
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
-  async create(createIssueDto: CreateIssueDto): Promise<IssueBook> {
+  private async logActivity(adminId: string, action: string, entityId: string, details: any) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/activities/logs`, {
+          adminId,
+          action,
+          entityType: 'ISSUE',
+          entityId,
+          details
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to log activity to member service: ${error.message}`);
+    }
+  }
+
+  private async sendNotification(memberId: string, type: string, title: string, message: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/notifications`, {
+          memberId,
+          type,
+          title,
+          message
+        })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to send notification to member service: ${error.message}`);
+    }
+  }
+
+  async create(createIssueDto: CreateIssueDto, adminId?: string): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
-    
+
     let dueDate = null;
     let numberOfDays = null;
-    
+
     // Only set due date and number of days for Taking Home
     if (createIssueDto.issueType === IssueType.TAKING_HOME) {
       numberOfDays = createIssueDto.numberOfDays || 7; // Default 7 days if not provided
       dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + numberOfDays);
+    }
+
+    // Check book availability first before issuing
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
+      );
+      const bookData = bookResponse.data?.data;
+      if (!bookData) {
+        throw new BadRequestException('Book not found');
+      }
+
+      if (bookData.bookType === 'Reference Book' && createIssueDto.issueType === IssueType.TAKING_HOME) {
+        throw new BadRequestException('Reference books can only be read inside the library and cannot be taken home.');
+      }
+
+      const currentIssuesCount = await this.getBookIssueCount(createIssueDto.bookId);
+      const maxQuantity = bookData.quantity || 1;
+
+      if (currentIssuesCount >= maxQuantity) {
+        throw new BadRequestException('Book is out of stock and cannot be issued (all copies are currently issued)');
+      }
+
+      // Check if this specific member already has this exact book actively issued
+      const existingIssue = await this.issueBookModel.findOne({
+        bookId: new Types.ObjectId(createIssueDto.bookId),
+        memberId: new Types.ObjectId(createIssueDto.memberId),
+        status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+      }).exec();
+
+      if (existingIssue) {
+        throw new ConflictException('This member already has an active issue for this book.');
+      }
+    } catch (error) {
+       if (error instanceof BadRequestException) throw error;
+       throw new BadRequestException('Failed to verify book availability. Book may not exist.');
     }
 
     const issuedBook = new this.issueBookModel({
@@ -40,9 +110,24 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
-    // Update book status to issued
-    await this.updateBookStatus(createIssueDto.bookId, 'issued');
-    
+    // Update book status: if all copies are issued, mark as 'issued' (out of stock), else keep it 'available'
+    let newBookStatus = 'available';
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
+      );
+      const bookData = bookResponse.data?.data;
+      const maxQuantity = bookData?.quantity || 1;
+      const currentIssuesCountAfterThis = await this.getBookIssueCount(createIssueDto.bookId);
+      if (currentIssuesCountAfterThis >= maxQuantity) {
+        newBookStatus = 'issued';
+      }
+    } catch (e) {
+      newBookStatus = 'issued'; // fallback
+    }
+    await this.updateBookStatus(createIssueDto.bookId, newBookStatus);
+
     // Add to member's borrowing history
     await this.addToBorrowingHistory(
       createIssueDto.memberId,
@@ -50,6 +135,21 @@ export class IssuesService {
       savedIssue._id.toString(),
       startDate,
       dueDate
+    );
+
+    if (adminId) {
+      await this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), { 
+        bookId: createIssueDto.bookId, 
+        memberId: createIssueDto.memberId 
+      });
+    }
+
+    // Send generic notification to the member about their new book
+    await this.sendNotification(
+      createIssueDto.memberId,
+      'BOOK_ISSUED',
+      'Book Issued Successfully',
+      `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`
     );
 
     return savedIssue;
@@ -81,12 +181,13 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       await firstValueFrom(
-        this.httpService.patch(`${booksServiceUrl}/library/books/${bookId}/status`, { status })
+        this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
     } catch (error) {
       this.logger.error(`Failed to update book status: ${error.message}`);
+      // Rollback might be needed here in a strict system, but let's log for now.
     }
   }
 
@@ -113,9 +214,9 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       await firstValueFrom(
-        this.httpService.patch(`${booksServiceUrl}/library/books/${bookObjectId}/status`, { status })
+        this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
     } catch (error) {
       this.logger.error(`Failed to update book status: ${error.message}`);
@@ -129,10 +230,10 @@ export class IssuesService {
     return issuedBooks.map((issue) => {
       const issueObj = issue.toObject();
       // Skip overdue check for Reading Inside Library (no due date) or returned books
-      if (issueObj.status !== IssueStatus.RETURNED && 
-          issueObj.issueType === IssueType.TAKING_HOME && 
-          issueObj.dueDate && 
-          new Date(issueObj.dueDate) < today) {
+      if (issueObj.status !== IssueStatus.RETURNED &&
+        issueObj.issueType === IssueType.TAKING_HOME &&
+        issueObj.dueDate &&
+        new Date(issueObj.dueDate) < today) {
         const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
         issueObj.status = IssueStatus.OVERDUE;
         issueObj.daysOverdue = overdueDays;
@@ -151,7 +252,22 @@ export class IssuesService {
   }
 
   async findByMember(memberId: string): Promise<IssueBook[]> {
-    return this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+    const today = new Date();
+
+    return issuedBooks.map((issue) => {
+      const issueObj = issue.toObject();
+      if (issueObj.status !== IssueStatus.RETURNED &&
+        issueObj.issueType === IssueType.TAKING_HOME &&
+        issueObj.dueDate &&
+        new Date(issueObj.dueDate) < today) {
+        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        issueObj.status = IssueStatus.OVERDUE;
+        issueObj.daysOverdue = overdueDays;
+        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
+      }
+      return issueObj as IssueBook;
+    });
   }
 
   async findActiveByMember(memberId: string): Promise<IssueBook[]> {
@@ -161,7 +277,7 @@ export class IssuesService {
     }).exec();
   }
 
-  async returnBook(id: string): Promise<IssueBook> {
+  async returnBook(id: string, adminId?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -187,7 +303,7 @@ export class IssuesService {
     // Update book status back to available
     const bookId = issuedBook.bookId.toString();
     await this.updateBookStatus(bookId, 'available');
-    
+
     // Update member's borrowing history
     await this.updateBorrowingHistory(
       issuedBook.memberId.toString(),
@@ -196,10 +312,25 @@ export class IssuesService {
       issuedBook.fine || 0
     );
 
+    if (adminId) {
+      await this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), { 
+        bookId: issuedBook.bookId, 
+        memberId: issuedBook.memberId 
+      });
+    }
+
+    // Send generic notification to the member about their book return
+    await this.sendNotification(
+      issuedBook.memberId.toString(),
+      'BOOK_RETURNED',
+      'Book Returned Successfully',
+      `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`
+    );
+
     return savedIssue;
   }
 
-  async update(id: string, updateIssueDto: any): Promise<IssueBook> {
+  async update(id: string, updateIssueDto: any, adminId?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -213,7 +344,13 @@ export class IssuesService {
     }
 
     Object.assign(issuedBook, updateIssueDto);
-    return issuedBook.save();
+    const savedIssue = await issuedBook.save();
+
+    if (adminId) {
+      await this.logActivity(adminId, 'UPDATE', savedIssue._id.toString(), { updatedFields: Object.keys(updateIssueDto) });
+    }
+
+    return savedIssue;
   }
 
   async findRecent(limit: number = 5): Promise<IssueBook[]> {
@@ -266,10 +403,14 @@ export class IssuesService {
     });
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, adminId?: string): Promise<void> {
     const result = await this.issueBookModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException('Issued book record not found');
+    }
+
+    if (adminId) {
+      await this.logActivity(adminId, 'DELETE', id, { bookId: result.bookId });
     }
   }
 }

@@ -51,12 +51,14 @@ let RequestsController = class RequestsController {
         const request = await this.requestsService.cancel(id, memberId);
         return { message: 'Book request cancelled successfully', data: request };
     }
-    async approve(id) {
-        const request = await this.requestsService.approve(id);
+    async approve(id, req) {
+        const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+        const request = await this.requestsService.approve(id, adminId);
         return { message: 'Book request approved successfully', data: request };
     }
-    async reject(id) {
-        const request = await this.requestsService.reject(id);
+    async reject(id, req) {
+        const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+        const request = await this.requestsService.reject(id, adminId);
         return { message: 'Book request rejected successfully', data: request };
     }
     async remove(id) {
@@ -130,8 +132,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Approve a book request' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request approved successfully', type: book_request_entity_1.BookRequest }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "approve", null);
 __decorate([
@@ -140,8 +143,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Reject a book request' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request rejected successfully', type: book_request_entity_1.BookRequest }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "reject", null);
 __decorate([

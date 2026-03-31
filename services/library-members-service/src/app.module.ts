@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import { MembersModule } from './modules/members/members.module';
 import { StaffModule } from './modules/staff/staff.module';
@@ -10,10 +11,13 @@ import { UsersModule } from './modules/users/users.module';
 import { MemberHistoryModule } from './modules/member-history/member-history.module';
 import { MemberDashboardModule } from './modules/member-dashboard/member-dashboard.module';
 import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
     ConfigModule,
+    ScheduleModule.forRoot(),
     MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/library_members', {
       dbName: process.env.MONGODB_DB || 'library_members',
     }),
@@ -26,6 +30,8 @@ import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.
     MemberHistoryModule,
     MemberDashboardModule,
     StaffDashboardModule,
+    ActivityLogModule,
+    AdminModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

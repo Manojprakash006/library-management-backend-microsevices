@@ -18,10 +18,12 @@ const jwt_1 = require("@nestjs/jwt");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const user_entity_1 = require("../entities/user.entity");
+const activity_log_service_1 = require("../../activity-log/service/activity-log.service");
 let AuthService = class AuthService {
-    constructor(userModel, jwtService) {
+    constructor(userModel, jwtService, activityLogService) {
         this.userModel = userModel;
         this.jwtService = jwtService;
+        this.activityLogService = activityLogService;
     }
     async login(loginDto) {
         const { email, password } = loginDto;
@@ -34,6 +36,15 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         const token = this.jwtService.sign({ id: user._id, role: user.role });
+        if (user.role === 'admin') {
+            await this.activityLogService.logAction({
+                adminId: user._id.toString(),
+                action: 'ADMIN_LOGIN',
+                entityType: 'AUTH',
+                entityId: user._id.toString(),
+                details: { email: user.email }
+            });
+        }
         return {
             token,
             user: { id: user._id, name: user.name, email: user.email, role: user.role },
@@ -64,6 +75,7 @@ exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(user_entity_1.User.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        activity_log_service_1.ActivityLogService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

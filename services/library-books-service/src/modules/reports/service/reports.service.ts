@@ -144,10 +144,10 @@ export class ReportsService {
     };
   }
 
-  async getMemberActivityReport(): Promise<MemberActivityReport> {
+  async getMemberActivityReport(authHeader?: string): Promise<MemberActivityReport> {
     const [activeMembers, inactiveMembers] = await Promise.all([
-      this.getActiveMembersCount(),
-      this.getInactiveMembersCount(),
+      this.getActiveMembersCount(authHeader),
+      this.getInactiveMembersCount(authHeader),
     ]);
 
     return {
@@ -156,7 +156,7 @@ export class ReportsService {
     };
   }
 
-  async getAllReports(): Promise<any> {
+  async getAllReports(authHeader?: string): Promise<any> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -164,7 +164,7 @@ export class ReportsService {
       this.getDailyIssueReturnReport(),
       this.getOverdueReport(),
       this.getRackInventoryReport(),
-      this.getMemberActivityReport(),
+      this.getMemberActivityReport(authHeader),
     ]);
 
     return {
@@ -178,7 +178,7 @@ export class ReportsService {
   // Private helper methods for HTTP calls
   private async getTodayIssuesCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const today = new Date().toISOString().split('T')[0];
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count?date=${today}`)
@@ -192,7 +192,7 @@ export class ReportsService {
 
   private async getTodayReturnsCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const today = new Date().toISOString().split('T')[0];
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/returns/count?date=${today}`)
@@ -206,7 +206,7 @@ export class ReportsService {
 
   private async getOverdueBooksCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/overdue/count`)
       );
@@ -219,7 +219,7 @@ export class ReportsService {
 
   private async getBookIssueCount(bookId: string): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count/book/${bookId}`)
       );
@@ -232,11 +232,12 @@ export class ReportsService {
 
   private async getAllBookIssueCounts(): Promise<Record<string, number>> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
-      const response: AxiosResponse<{ issues: any[] }> = await firstValueFrom(
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues`)
       );
-      const issues = response.data?.issues || [];
+      const issues = response.data?.data || [];
       
       const counts: Record<string, number> = {};
       for (const issue of issues) {
@@ -252,26 +253,30 @@ export class ReportsService {
     }
   }
 
-  private async getActiveMembersCount(): Promise<number> {
+  private async getActiveMembersCount(authHeader?: string): Promise<number> {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
-      const response: AxiosResponse<CountResponse> = await firstValueFrom(
-        this.httpService.get(`${membersServiceUrl}/members/count/active`)
+      const response: AxiosResponse<any> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/stats/active`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
       );
-      return response.data?.count || 0;
+      return response.data?.data || 0;
     } catch (error) {
       this.logger.error(`Failed to get active members count: ${error.message}`);
       return 0;
     }
   }
 
-  private async getInactiveMembersCount(): Promise<number> {
+  private async getInactiveMembersCount(authHeader?: string): Promise<number> {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
-      const response: AxiosResponse<CountResponse> = await firstValueFrom(
-        this.httpService.get(`${membersServiceUrl}/members/count/inactive`)
+      const response: AxiosResponse<any> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/stats/inactive`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
       );
-      return response.data?.count || 0;
+      return response.data?.data || 0;
     } catch (error) {
       this.logger.error(`Failed to get inactive members count: ${error.message}`);
       return 0;

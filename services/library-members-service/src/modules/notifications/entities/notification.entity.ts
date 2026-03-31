@@ -9,6 +9,10 @@ export enum NotificationType {
   RETURN_CONFIRMATION = 'RETURN_CONFIRMATION',
   REQUEST_APPROVED = 'REQUEST_APPROVED',
   REQUEST_REJECTED = 'REQUEST_REJECTED',
+  NEW_BOOK_REQUEST = 'NEW_BOOK_REQUEST',
+  NEW_BOOK_ADDED = 'NEW_BOOK_ADDED',
+  BOOK_ISSUED = 'BOOK_ISSUED',
+  BOOK_RETURNED = 'BOOK_RETURNED',
   GENERAL = 'GENERAL',
 }
 
@@ -45,3 +49,9 @@ export const NotificationSchema = SchemaFactory.createForClass(Notification);
 NotificationSchema.index({ memberId: 1, isRead: 1 });
 NotificationSchema.index({ memberId: 1, sentAt: -1 });
 NotificationSchema.index({ type: 1 });
+
+NotificationSchema.virtual('read').get(function() {
+  return this.isRead;
+});
+NotificationSchema.set('toJSON', { virtuals: true });
+NotificationSchema.set('toObject', { virtuals: true });

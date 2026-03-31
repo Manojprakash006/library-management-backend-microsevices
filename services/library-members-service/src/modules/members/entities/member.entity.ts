@@ -7,7 +7,7 @@ export type MemberDocument = HydratedDocument<Member>;
 
 @Schema({ timestamps: true })
 export class Member {
-  @Prop({ unique: true, trim: true, index: true, default: () => 'MEM' + crypto.randomUUID().slice(0, 8).toUpperCase() })
+  @Prop({ unique: true, trim: true, index: true, sparse: true })
   memberId: string;
 
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 100 })
@@ -30,6 +30,21 @@ export class Member {
 
   @Prop({ default: true, index: true })
   isActive: boolean;
+
+  @Prop({ default: 0 })
+  booksHeld: number;
+
+  @Prop({ default: 0 })
+  booksAtHome: number;
+
+  @Prop({ default: 0 })
+  readingInsideLibrary: number;
+
+  @Prop({ default: 0 })
+  totalFines: number;
+
+  @Prop({ default: false })
+  hasActiveIssues: boolean;
 
   @Prop([{
     bookId: { type: String, required: true },
@@ -69,6 +84,11 @@ export class Member {
 export const MemberSchema = SchemaFactory.createForClass(Member);
 
 MemberSchema.pre('save', async function (next) {
+  if (!this.memberId) {
+    const count = await (this.constructor as any).countDocuments();
+    this.memberId = `MEM${count + 1}`;
+  }
+
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);

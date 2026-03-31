@@ -20,13 +20,15 @@ const mongoose_2 = require("mongoose");
 const axios_1 = require("@nestjs/axios");
 const rxjs_1 = require("rxjs");
 const member_entity_1 = require("../entities/member.entity");
+const activity_log_service_1 = require("../../activity-log/service/activity-log.service");
 let MembersService = MembersService_1 = class MembersService {
-    constructor(memberModel, httpService) {
+    constructor(memberModel, httpService, activityLogService) {
         this.memberModel = memberModel;
         this.httpService = httpService;
+        this.activityLogService = activityLogService;
         this.logger = new common_1.Logger(MembersService_1.name);
     }
-    async create(createMemberDto) {
+    async create(createMemberDto, adminId) {
         if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
             throw new common_1.ConflictException('Full name is required and must be at least 2 characters');
         }
@@ -36,16 +38,11 @@ let MembersService = MembersService_1 = class MembersService {
         if (!createMemberDto.password || createMemberDto.password.length < 6) {
             throw new common_1.ConflictException('Password is required and must be at least 6 characters');
         }
-        const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
-        if (existingMember) {
-            throw new common_1.ConflictException('Member ID already exists');
-        }
         const existingEmail = await this.memberModel.findOne({ email: createMemberDto.email }).exec();
         if (existingEmail) {
             throw new common_1.ConflictException('Email already registered');
         }
         const memberData = {
-            memberId: createMemberDto.memberId,
             name: createMemberDto.fullName,
             email: createMemberDto.email,
             phoneNumber: createMemberDto.phoneNumber,
@@ -53,17 +50,29 @@ let MembersService = MembersService_1 = class MembersService {
             password: createMemberDto.password,
         };
         const createdMember = new this.memberModel(memberData);
-        return createdMember.save();
+        const savedMember = await createdMember.save();
+        if (adminId) {
+            await this.activityLogService.logAction({
+                adminId,
+                action: 'CREATE',
+                entityType: 'MEMBER',
+                entityId: savedMember.memberId || savedMember._id.toString(),
+                details: { email: savedMember.email, name: savedMember.name }
+            });
+        }
+        return savedMember;
     }
     async findAll() {
         const members = await this.memberModel.find().select('-password').exec();
         const membersWithStats = await Promise.all(members.map(async (member) => {
             const memberObj = member.toObject();
-            const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+            const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
             return {
                 ...memberObj,
+                borrowingHistory: memberObj.borrowingHistory || [],
                 booksHeld,
-                booksAtHome: booksHeld,
+                booksAtHome,
+                readingInsideLibrary,
                 totalFines,
                 hasActiveIssues: booksHeld > 0,
             };
@@ -76,11 +85,13 @@ let MembersService = MembersService_1 = class MembersService {
             throw new common_1.NotFoundException('Member not found');
         }
         const memberObj = member.toObject();
-        const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(id);
+        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(id);
         return {
             ...memberObj,
+            borrowingHistory: memberObj.borrowingHistory || [],
             booksHeld,
-            booksAtHome: booksHeld,
+            booksAtHome,
+            readingInsideLibrary,
             totalFines,
             hasActiveIssues: booksHeld > 0,
         };
@@ -91,19 +102,30 @@ let MembersService = MembersService_1 = class MembersService {
             throw new common_1.NotFoundException('Member not found');
         }
         const memberObj = member.toObject();
-        const { booksHeld, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
         return {
             ...memberObj,
+            borrowingHistory: memberObj.borrowingHistory || [],
             booksHeld,
-            booksAtHome: booksHeld,
+            booksAtHome,
+            readingInsideLibrary,
             totalFines,
             hasActiveIssues: booksHeld > 0,
         };
     }
-    async update(id, updateData) {
+    async update(id, updateData, adminId) {
         const member = await this.memberModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
         if (!member) {
             throw new common_1.NotFoundException('Member not found');
+        }
+        if (adminId) {
+            await this.activityLogService.logAction({
+                adminId,
+                action: 'UPDATE',
+                entityType: 'MEMBER',
+                entityId: member.memberId || id,
+                details: { updatedFields: Object.keys(updateData) }
+            });
         }
         return member;
     }
@@ -139,11 +161,30 @@ let MembersService = MembersService_1 = class MembersService {
         historyEntry.status = updateData.status;
         await member.save();
     }
-    async remove(id) {
+    async remove(id, adminId) {
+        const stats = await this.getMemberStatsFromIssues(id);
+        if (stats.booksHeld > 0) {
+            throw new common_1.ConflictException('Cannot delete member: Member has active issued books that must be returned first.');
+        }
         const result = await this.memberModel.findByIdAndDelete(id).exec();
         if (!result) {
             throw new common_1.NotFoundException('Member not found');
         }
+        if (adminId) {
+            await this.activityLogService.logAction({
+                adminId,
+                action: 'DELETE',
+                entityType: 'MEMBER',
+                entityId: result.memberId || id,
+                details: { email: result.email }
+            });
+        }
+    }
+    async getActiveMembersCount() {
+        return this.memberModel.countDocuments({ isActive: true });
+    }
+    async getInactiveMembersCount() {
+        return this.memberModel.countDocuments({ isActive: false });
     }
     async getActiveMembersCount() {
         return this.memberModel.countDocuments({ isActive: true });
@@ -157,16 +198,26 @@ let MembersService = MembersService_1 = class MembersService {
     async getMemberStatsFromIssues(memberId) {
         try {
             const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
-            const takingHomeIssuesResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}/active?issueType=Taking%20Home`));
-            const booksHeld = takingHomeIssuesResponse.data?.count || 0;
+            const statsResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}/stats`));
+            const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
             const allIssuesResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`));
             const allIssues = allIssuesResponse.data?.data || [];
             const totalFines = allIssues.reduce((sum, issue) => sum + (issue.fine || 0), 0);
-            return { booksHeld, totalFines };
+            const computedStats = {
+                booksHeld: stats.totalActive,
+                booksAtHome: stats.booksAtHome,
+                readingInsideLibrary: stats.readingInsideLibrary,
+                totalFines
+            };
+            this.memberModel.findByIdAndUpdate(memberId, {
+                ...computedStats,
+                hasActiveIssues: computedStats.booksHeld > 0
+            }).catch(err => this.logger.error(`Failed to sync stats to DB for member ${memberId}: ${err.message}`));
+            return computedStats;
         }
         catch (error) {
             this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
-            return { booksHeld: 0, totalFines: 0 };
+            return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
         }
     }
 };
@@ -175,6 +226,7 @@ exports.MembersService = MembersService = MembersService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(member_entity_1.Member.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        axios_1.HttpService])
+        axios_1.HttpService,
+        activity_log_service_1.ActivityLogService])
 ], MembersService);
 //# sourceMappingURL=members.service.js.map

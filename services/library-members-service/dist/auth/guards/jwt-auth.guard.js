@@ -40,10 +40,13 @@ let JwtAuthGuard = class JwtAuthGuard {
         }
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret');
-            request['user'] = { id: decoded.id, role: decoded.role };
+            request['user'] = { id: decoded.id || decoded.userId, role: decoded.role };
             return true;
         }
         catch (error) {
+            if (error.name === 'TokenExpiredError') {
+                throw new common_1.UnauthorizedException({ message: 'Token expired', status: 'session_expired', error: 'Unauthorized' });
+            }
             throw new common_1.UnauthorizedException('Not authorized, token failed');
         }
     }

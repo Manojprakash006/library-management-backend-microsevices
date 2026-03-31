@@ -6,7 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, Pragma, Cache-Control',
@@ -20,6 +20,11 @@ async function bootstrap() {
       pathRewrite: {
         '^/library/books': '',
       },
+      onProxyReq: (proxyReq, req) => {
+        if(req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+      },
     }),
   );
 
@@ -30,6 +35,11 @@ async function bootstrap() {
       changeOrigin: true,
       pathRewrite: {
         '^/library/members': '',
+      },
+      onProxyReq: (proxyReq, req) => {
+        if(req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
       },
     }),
   );
@@ -42,6 +52,11 @@ async function bootstrap() {
       pathRewrite: {
         '^/library/issues': '',
       },
+      onProxyReq: (proxyReq, req) => {
+        if(req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+      },
     }),
   );
 
@@ -52,6 +67,11 @@ async function bootstrap() {
       changeOrigin: true,
       pathRewrite: {
         '^/library/requests': '',
+      },
+      onProxyReq: (proxyReq, req) => {
+        if(req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
       },
     }),
   );

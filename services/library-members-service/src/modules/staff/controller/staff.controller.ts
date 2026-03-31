@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from '../service/staff.service';
 import { CreateStaffDto } from '../dto/create-staff.dto';
@@ -11,9 +11,9 @@ import { RolesGuard } from '../../../auth/guards/roles.guard';
 @ApiTags('Staff')
 @Controller('staff')
 export class StaffController {
-  constructor(private readonly staffService: StaffService) {}
+  constructor(private readonly staffService: StaffService) { }
 
-   @Post('login')
+  @Post('login')
   @ApiOperation({ summary: 'Staff login' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   async staffLogin(@Body() loginDto: StaffLoginDto) {
@@ -27,8 +27,9 @@ export class StaffController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create new staff' })
   @ApiResponse({ status: 201, description: 'Staff created successfully' })
-  async createStaff(@Body() createDto: CreateStaffDto) {
-    const result = await this.staffService.create(createDto);
+  async createStaff(@Body() createDto: CreateStaffDto, @Req() req: any) {
+    const adminId = req.user?.id;
+    const result = await this.staffService.create(createDto, adminId);
     return { message: 'Staff created successfully', data: result };
   }
 
@@ -43,7 +44,7 @@ export class StaffController {
     return { message: 'Staff statistics retrieved successfully', data: stats };
   }
 
-   @Get()
+  @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
@@ -54,7 +55,7 @@ export class StaffController {
     return { message: 'Staff retrieved successfully', data: result, count: result.length };
   }
 
-   @Get(':id')
+  @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
@@ -65,25 +66,27 @@ export class StaffController {
     return { message: 'Staff retrieved successfully', data: result };
   }
 
-   @Put(':id')
+  @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update staff' })
   @ApiResponse({ status: 200, description: 'Staff updated successfully' })
-  async updateStaff(@Param('id') id: string, @Body() updateDto: UpdateStaffDto) {
-    const result = await this.staffService.update(id, updateDto);
+  async updateStaff(@Param('id') id: string, @Body() updateDto: UpdateStaffDto, @Req() req: any) {
+    const adminId = req.user?.id;
+    const result = await this.staffService.update(id, updateDto, adminId);
     return { message: 'Staff updated successfully', data: result };
   }
 
-   @Delete(':id')
+  @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete staff' })
   @ApiResponse({ status: 200, description: 'Staff deleted successfully' })
-  async deleteStaff(@Param('id') id: string) {
-    await this.staffService.delete(id);
+  async deleteStaff(@Param('id') id: string, @Req() req: any) {
+    const adminId = req.user?.id;
+    await this.staffService.delete(id, adminId);
     return { message: 'Staff deleted successfully' };
   }
 }

@@ -1,15 +1,20 @@
 import { MembersService } from '../service/members.service';
 import { CreateMemberDto } from '../dto/create-member.dto';
-import { Member } from '../entities/member.entity';
 export declare class MembersController {
     private readonly membersService;
     constructor(membersService: MembersService);
-    create(createMemberDto: CreateMemberDto): Promise<{
+    create(createMemberDto: CreateMemberDto, req: any): Promise<{
         message: string;
-        data: Member;
+        data: import("../entities/member.entity").Member;
+    }>;
+    getActiveCount(): Promise<{
+        data: number;
+    }>;
+    getInactiveCount(): Promise<{
+        data: number;
     }>;
     getCount(): Promise<{
-        count: number;
+        data: number;
     }>;
     getActiveCount(): Promise<{
         count: number;
@@ -19,34 +24,40 @@ export declare class MembersController {
     }>;
     findAll(): Promise<{
         message: string;
-        data: Member[];
+        data: (import("../entities/member.entity").Member & {
+            booksHeld: number;
+            booksAtHome: number;
+            readingInsideLibrary: number;
+            totalFines: number;
+            hasActiveIssues: boolean;
+        })[];
         count: number;
     }>;
     findOne(id: string): Promise<{
         message: string;
-        data: Member;
+        data: import("../entities/member.entity").Member & {
+            booksHeld: number;
+            booksAtHome: number;
+            readingInsideLibrary: number;
+            totalFines: number;
+            hasActiveIssues: boolean;
+        };
     }>;
-    update(id: string, updateData: Partial<CreateMemberDto>): Promise<{
+    findByMemberId(memberId: string): Promise<{
         message: string;
-        data: Member;
+        data: import("../entities/member.entity").Member & {
+            booksHeld: number;
+            booksAtHome: number;
+            readingInsideLibrary: number;
+            totalFines: number;
+            hasActiveIssues: boolean;
+        };
     }>;
-    addBorrowingHistory(id: string, historyData: {
-        bookId: string;
-        issueId: string;
-        borrowedAt: Date;
-        dueDate: Date;
-        status: 'borrowed' | 'returned' | 'overdue';
-    }): Promise<{
+    update(id: string, updateData: Partial<CreateMemberDto>, req: any): Promise<{
         message: string;
+        data: import("../entities/member.entity").Member;
     }>;
-    updateBorrowingHistory(id: string, issueId: string, updateData: {
-        returnedAt: Date;
-        fine: number;
-        status: 'borrowed' | 'returned' | 'overdue';
-    }): Promise<{
-        message: string;
-    }>;
-    remove(id: string): Promise<{
+    remove(id: string, req: any): Promise<{
         message: string;
     }>;
 }

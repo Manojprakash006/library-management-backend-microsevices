@@ -26,7 +26,36 @@ let IssuesService = IssuesService_1 = class IssuesService {
         this.httpService = httpService;
         this.logger = new common_1.Logger(IssuesService_1.name);
     }
-    async create(createIssueDto) {
+    async logActivity(adminId, action, entityId, details) {
+        try {
+            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/activities/logs`, {
+                adminId,
+                action,
+                entityType: 'ISSUE',
+                entityId,
+                details
+            }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to log activity to member service: ${error.message}`);
+        }
+    }
+    async sendNotification(memberId, type, title, message) {
+        try {
+            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/notifications`, {
+                memberId,
+                type,
+                title,
+                message
+            }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to send notification to member service: ${error.message}`);
+        }
+    }
+    async create(createIssueDto, adminId) {
         const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
         let dueDate = null;
         let numberOfDays = null;
@@ -34,6 +63,35 @@ let IssuesService = IssuesService_1 = class IssuesService {
             numberOfDays = createIssueDto.numberOfDays || 7;
             dueDate = new Date(startDate);
             dueDate.setDate(dueDate.getDate() + numberOfDays);
+        }
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            const bookResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`));
+            const bookData = bookResponse.data?.data;
+            if (!bookData) {
+                throw new common_1.BadRequestException('Book not found');
+            }
+            if (bookData.bookType === 'Reference Book' && createIssueDto.issueType === issue_book_entity_1.IssueType.TAKING_HOME) {
+                throw new common_1.BadRequestException('Reference books can only be read inside the library and cannot be taken home.');
+            }
+            const currentIssuesCount = await this.getBookIssueCount(createIssueDto.bookId);
+            const maxQuantity = bookData.quantity || 1;
+            if (currentIssuesCount >= maxQuantity) {
+                throw new common_1.BadRequestException('Book is out of stock and cannot be issued (all copies are currently issued)');
+            }
+            const existingIssue = await this.issueBookModel.findOne({
+                bookId: new mongoose_2.Types.ObjectId(createIssueDto.bookId),
+                memberId: new mongoose_2.Types.ObjectId(createIssueDto.memberId),
+                status: { $in: [issue_book_entity_1.IssueStatus.ACTIVE, issue_book_entity_1.IssueStatus.OVERDUE] }
+            }).exec();
+            if (existingIssue) {
+                throw new common_1.ConflictException('This member already has an active issue for this book.');
+            }
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException)
+                throw error;
+            throw new common_1.BadRequestException('Failed to verify book availability. Book may not exist.');
         }
         const issuedBook = new this.issueBookModel({
             bookId: new mongoose_2.Types.ObjectId(createIssueDto.bookId),
@@ -45,8 +103,29 @@ let IssuesService = IssuesService_1 = class IssuesService {
             status: issue_book_entity_1.IssueStatus.ACTIVE,
         });
         const savedIssue = await issuedBook.save();
-        await this.updateBookStatus(createIssueDto.bookId, 'issued');
+        let newBookStatus = 'available';
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            const bookResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`));
+            const bookData = bookResponse.data?.data;
+            const maxQuantity = bookData?.quantity || 1;
+            const currentIssuesCountAfterThis = await this.getBookIssueCount(createIssueDto.bookId);
+            if (currentIssuesCountAfterThis >= maxQuantity) {
+                newBookStatus = 'issued';
+            }
+        }
+        catch (e) {
+            newBookStatus = 'issued';
+        }
+        await this.updateBookStatus(createIssueDto.bookId, newBookStatus);
         await this.addToBorrowingHistory(createIssueDto.memberId, createIssueDto.bookId, savedIssue._id.toString(), startDate, dueDate);
+        if (adminId) {
+            await this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), {
+                bookId: createIssueDto.bookId,
+                memberId: createIssueDto.memberId
+            });
+        }
+        await this.sendNotification(createIssueDto.memberId, 'BOOK_ISSUED', 'Book Issued Successfully', `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`);
         return savedIssue;
     }
     async addToBorrowingHistory(memberId, bookId, issueId, borrowedAt, dueDate) {
@@ -67,8 +146,8 @@ let IssuesService = IssuesService_1 = class IssuesService {
     }
     async updateBookStatus(bookId, status) {
         try {
-            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
-            await (0, rxjs_1.firstValueFrom)(this.httpService.patch(`${booksServiceUrl}/library/books/${bookId}/status`, { status }));
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status }));
         }
         catch (error) {
             this.logger.error(`Failed to update book status: ${error.message}`);
@@ -90,8 +169,8 @@ let IssuesService = IssuesService_1 = class IssuesService {
     }
     async updateBookStatusByObjectId(bookObjectId, status) {
         try {
-            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3000';
-            await (0, rxjs_1.firstValueFrom)(this.httpService.patch(`${booksServiceUrl}/library/books/${bookObjectId}/status`, { status }));
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            await (0, rxjs_1.firstValueFrom)(this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status }));
         }
         catch (error) {
             this.logger.error(`Failed to update book status: ${error.message}`);
@@ -102,7 +181,10 @@ let IssuesService = IssuesService_1 = class IssuesService {
         const today = new Date();
         return issuedBooks.map((issue) => {
             const issueObj = issue.toObject();
-            if (issueObj.status !== issue_book_entity_1.IssueStatus.RETURNED && new Date(issueObj.dueDate) < today) {
+            if (issueObj.status !== issue_book_entity_1.IssueStatus.RETURNED &&
+                issueObj.issueType === issue_book_entity_1.IssueType.TAKING_HOME &&
+                issueObj.dueDate &&
+                new Date(issueObj.dueDate) < today) {
                 const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
                 issueObj.status = issue_book_entity_1.IssueStatus.OVERDUE;
                 issueObj.daysOverdue = overdueDays;
@@ -119,7 +201,21 @@ let IssuesService = IssuesService_1 = class IssuesService {
         return issuedBook;
     }
     async findByMember(memberId) {
-        return this.issueBookModel.find({ memberId: new mongoose_2.Types.ObjectId(memberId) }).exec();
+        const issuedBooks = await this.issueBookModel.find({ memberId: new mongoose_2.Types.ObjectId(memberId) }).exec();
+        const today = new Date();
+        return issuedBooks.map((issue) => {
+            const issueObj = issue.toObject();
+            if (issueObj.status !== issue_book_entity_1.IssueStatus.RETURNED &&
+                issueObj.issueType === issue_book_entity_1.IssueType.TAKING_HOME &&
+                issueObj.dueDate &&
+                new Date(issueObj.dueDate) < today) {
+                const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+                issueObj.status = issue_book_entity_1.IssueStatus.OVERDUE;
+                issueObj.daysOverdue = overdueDays;
+                issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
+            }
+            return issueObj;
+        });
     }
     async findActiveByMember(memberId) {
         return this.issueBookModel.find({
@@ -127,7 +223,7 @@ let IssuesService = IssuesService_1 = class IssuesService {
             status: { $in: [issue_book_entity_1.IssueStatus.ACTIVE, issue_book_entity_1.IssueStatus.OVERDUE] },
         }).exec();
     }
-    async returnBook(id) {
+    async returnBook(id, adminId) {
         const issuedBook = await this.issueBookModel.findById(id).exec();
         if (!issuedBook) {
             throw new common_1.NotFoundException('Issued book record not found');
@@ -147,9 +243,16 @@ let IssuesService = IssuesService_1 = class IssuesService {
         const bookId = issuedBook.bookId.toString();
         await this.updateBookStatus(bookId, 'available');
         await this.updateBorrowingHistory(issuedBook.memberId.toString(), issuedBook._id.toString(), returnDate, issuedBook.fine || 0);
+        if (adminId) {
+            await this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
+                bookId: issuedBook.bookId,
+                memberId: issuedBook.memberId
+            });
+        }
+        await this.sendNotification(issuedBook.memberId.toString(), 'BOOK_RETURNED', 'Book Returned Successfully', `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`);
         return savedIssue;
     }
-    async update(id, updateIssueDto) {
+    async update(id, updateIssueDto, adminId) {
         const issuedBook = await this.issueBookModel.findById(id).exec();
         if (!issuedBook) {
             throw new common_1.NotFoundException('Issued book record not found');
@@ -161,7 +264,11 @@ let IssuesService = IssuesService_1 = class IssuesService {
             updateIssueDto.dueDate = dueDate;
         }
         Object.assign(issuedBook, updateIssueDto);
-        return issuedBook.save();
+        const savedIssue = await issuedBook.save();
+        if (adminId) {
+            await this.logActivity(adminId, 'UPDATE', savedIssue._id.toString(), { updatedFields: Object.keys(updateIssueDto) });
+        }
+        return savedIssue;
     }
     async findRecent(limit = 5) {
         return this.issueBookModel
@@ -174,6 +281,7 @@ let IssuesService = IssuesService_1 = class IssuesService {
         const today = new Date();
         const issues = await this.issueBookModel.find({
             status: { $in: [issue_book_entity_1.IssueStatus.ACTIVE, issue_book_entity_1.IssueStatus.OVERDUE] },
+            issueType: issue_book_entity_1.IssueType.TAKING_HOME,
             dueDate: { $lt: today },
         }).exec();
         return issues.length;
@@ -189,10 +297,31 @@ let IssuesService = IssuesService_1 = class IssuesService {
             issueDate: { $gte: startOfDay, $lt: endOfDay },
         });
     }
-    async remove(id) {
+    async getReturnsCount(date) {
+        if (!date) {
+            return this.issueBookModel.countDocuments({ status: issue_book_entity_1.IssueStatus.RETURNED });
+        }
+        const startOfDay = new Date(date);
+        const endOfDay = new Date(date);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+        return this.issueBookModel.countDocuments({
+            status: issue_book_entity_1.IssueStatus.RETURNED,
+            returnDate: { $gte: startOfDay, $lt: endOfDay },
+        });
+    }
+    async getBookIssueCount(bookId) {
+        return this.issueBookModel.countDocuments({
+            bookId: new mongoose_2.Types.ObjectId(bookId),
+            status: { $in: [issue_book_entity_1.IssueStatus.ACTIVE, issue_book_entity_1.IssueStatus.OVERDUE] },
+        });
+    }
+    async remove(id, adminId) {
         const result = await this.issueBookModel.findByIdAndDelete(id).exec();
         if (!result) {
             throw new common_1.NotFoundException('Issued book record not found');
+        }
+        if (adminId) {
+            await this.logActivity(adminId, 'DELETE', id, { bookId: result.bookId });
         }
     }
 };

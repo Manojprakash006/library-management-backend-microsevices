@@ -19,6 +19,10 @@ var NotificationType;
     NotificationType["RETURN_CONFIRMATION"] = "RETURN_CONFIRMATION";
     NotificationType["REQUEST_APPROVED"] = "REQUEST_APPROVED";
     NotificationType["REQUEST_REJECTED"] = "REQUEST_REJECTED";
+    NotificationType["NEW_BOOK_REQUEST"] = "NEW_BOOK_REQUEST";
+    NotificationType["NEW_BOOK_ADDED"] = "NEW_BOOK_ADDED";
+    NotificationType["BOOK_ISSUED"] = "BOOK_ISSUED";
+    NotificationType["BOOK_RETURNED"] = "BOOK_RETURNED";
     NotificationType["GENERAL"] = "GENERAL";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 let Notification = class Notification {
@@ -63,4 +67,9 @@ exports.NotificationSchema = mongoose_1.SchemaFactory.createForClass(Notificatio
 exports.NotificationSchema.index({ memberId: 1, isRead: 1 });
 exports.NotificationSchema.index({ memberId: 1, sentAt: -1 });
 exports.NotificationSchema.index({ type: 1 });
+exports.NotificationSchema.virtual('read').get(function () {
+    return this.isRead;
+});
+exports.NotificationSchema.set('toJSON', { virtuals: true });
+exports.NotificationSchema.set('toObject', { virtuals: true });
 //# sourceMappingURL=notification.entity.js.map

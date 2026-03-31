@@ -30,8 +30,9 @@ let StaffController = class StaffController {
         const result = await this.staffService.login(loginDto);
         return { message: 'Login successful', data: result };
     }
-    async createStaff(createDto) {
-        const result = await this.staffService.create(createDto);
+    async createStaff(createDto, req) {
+        const adminId = req.user?.id;
+        const result = await this.staffService.create(createDto, adminId);
         return { message: 'Staff created successfully', data: result };
     }
     async getStaffStats() {
@@ -46,12 +47,14 @@ let StaffController = class StaffController {
         const result = await this.staffService.findById(id);
         return { message: 'Staff retrieved successfully', data: result };
     }
-    async updateStaff(id, updateDto) {
-        const result = await this.staffService.update(id, updateDto);
+    async updateStaff(id, updateDto, req) {
+        const adminId = req.user?.id;
+        const result = await this.staffService.update(id, updateDto, adminId);
         return { message: 'Staff updated successfully', data: result };
     }
-    async deleteStaff(id) {
-        await this.staffService.delete(id);
+    async deleteStaff(id, req) {
+        const adminId = req.user?.id;
+        await this.staffService.delete(id, adminId);
         return { message: 'Staff deleted successfully' };
     }
 };
@@ -73,8 +76,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Create new staff' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Staff created successfully' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_staff_dto_1.CreateStaffDto]),
+    __metadata("design:paramtypes", [create_staff_dto_1.CreateStaffDto, Object]),
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "createStaff", null);
 __decorate([
@@ -120,8 +124,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Staff updated successfully' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_staff_dto_1.UpdateStaffDto]),
+    __metadata("design:paramtypes", [String, update_staff_dto_1.UpdateStaffDto, Object]),
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "updateStaff", null);
 __decorate([
@@ -132,8 +137,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Delete staff' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Staff deleted successfully' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "deleteStaff", null);
 exports.StaffController = StaffController = __decorate([

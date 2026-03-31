@@ -37,8 +37,9 @@ export class DashboardController {
 
   @Get('stat-cards')
   @ApiOperation({ summary: 'Get stat cards data' })
-  async getStatCards() {
-    const result = await this.dashboardService.getStatCards();
+  async getStatCards(@Req() req: Request) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.dashboardService.getStatCards(authHeader as string);
     return { message: 'Stat cards retrieved', data: result };
   }
 

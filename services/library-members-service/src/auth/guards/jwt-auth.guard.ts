@@ -5,7 +5,8 @@ import * as jwt from 'jsonwebtoken';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 interface JwtPayload {
-  id: string;
+  id?: string;
+  userId?: string;
   role: string;
 }
 
@@ -38,9 +39,12 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret') as JwtPayload;
-      request['user'] = { id: decoded.id, role: decoded.role };
+      request['user'] = { id: decoded.id || decoded.userId, role: decoded.role };
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException({ message: 'Token expired', status: 'session_expired', error: 'Unauthorized' });
+      }
       throw new UnauthorizedException('Not authorized, token failed');
     }
   }

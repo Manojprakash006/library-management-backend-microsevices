@@ -12,12 +12,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MemberSchema = exports.Member = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
 let Member = class Member {
 };
 exports.Member = Member;
 __decorate([
-    (0, mongoose_1.Prop)({ unique: true, trim: true, index: true, default: () => 'MEM' + crypto.randomUUID().slice(0, 8).toUpperCase() }),
+    (0, mongoose_1.Prop)({ unique: true, trim: true, index: true, sparse: true }),
     __metadata("design:type", String)
 ], Member.prototype, "memberId", void 0);
 __decorate([
@@ -49,6 +48,26 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Member.prototype, "isActive", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], Member.prototype, "booksHeld", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], Member.prototype, "booksAtHome", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], Member.prototype, "readingInsideLibrary", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], Member.prototype, "totalFines", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: false }),
+    __metadata("design:type", Boolean)
+], Member.prototype, "hasActiveIssues", void 0);
+__decorate([
     (0, mongoose_1.Prop)([{
             bookId: { type: String, required: true },
             rating: { type: Number, required: true, min: 1, max: 5 },
@@ -75,6 +94,10 @@ exports.Member = Member = __decorate([
 ], Member);
 exports.MemberSchema = mongoose_1.SchemaFactory.createForClass(Member);
 exports.MemberSchema.pre('save', async function (next) {
+    if (!this.memberId) {
+        const count = await this.constructor.countDocuments();
+        this.memberId = `MEM${count + 1}`;
+    }
     if (!this.isModified('password'))
         return next();
     const salt = await bcrypt.genSalt(10);

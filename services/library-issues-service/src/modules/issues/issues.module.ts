@@ -14,4 +14,4 @@ import { IssueBook, IssueBookSchema } from './entities/issue-book.entity';
   providers: [IssuesService],
   exports: [IssuesService],
 })
-export class IssuesModule {}
+export class IssuesModule { }

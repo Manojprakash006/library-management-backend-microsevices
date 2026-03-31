@@ -103,7 +103,7 @@ export class DashboardService {
     return this.bookModel.find().sort({ borrowCount: -1 }).limit(10).select('-__v');
   }
 
-  async getStatCards() {
+  async getStatCards(authHeader?: string) {
     const totalBooks = await this.bookModel.countDocuments();
     
     // Calculate available/issued from quantity and issues service
@@ -115,7 +115,7 @@ export class DashboardService {
     const pendingRequests = await this.getPendingRequestsCount();
     
     const overdueBooks = await this.getOverdueBooksCount();
-    const totalMembers = await this.getTotalMembersCount();
+    const totalMembers = await this.getTotalMembersCount(authHeader);
     const newArrivals = await this.getNewArrivalsCount();
     const todayIssues = await this.getTodayIssuesCount();
 
@@ -376,13 +376,15 @@ export class DashboardService {
     }
   }
 
-  private async getTotalMembersCount(): Promise<number> {
+  private async getTotalMembersCount(authHeader?: string): Promise<number> {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
-      const response: AxiosResponse<CountResponse> = await firstValueFrom(
-        this.httpService.get(`${membersServiceUrl}/members/count`)
+      const response: AxiosResponse<any> = await firstValueFrom(
+        this.httpService.get(`${membersServiceUrl}/members/stats/total`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
       );
-      return response.data?.count || 0;
+      return response.data?.data || 0;
     } catch (error) {
       return 0;
     }

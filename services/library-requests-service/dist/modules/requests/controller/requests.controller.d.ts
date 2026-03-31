@@ -28,11 +28,11 @@ export declare class RequestsController {
         message: string;
         data: BookRequest;
     }>;
-    approve(id: string): Promise<{
+    approve(id: string, req: any): Promise<{
         message: string;
         data: BookRequest;
     }>;
-    reject(id: string): Promise<{
+    reject(id: string, req: any): Promise<{
         message: string;
         data: BookRequest;
     }>;
