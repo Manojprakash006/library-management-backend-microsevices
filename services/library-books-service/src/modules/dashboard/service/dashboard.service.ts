@@ -391,9 +391,11 @@ export class DashboardService {
   }
 
   private async getNewArrivalsCount(): Promise<number> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return this.bookModel.countDocuments({ createdAt: { $gte: thirtyDaysAgo } });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return this.bookModel.countDocuments({ createdAt: { $gte: today, $lt: tomorrow } });
   }
 
   private async getTodayIssuesCount(): Promise<number> {
