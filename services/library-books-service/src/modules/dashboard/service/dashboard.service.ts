@@ -62,22 +62,29 @@ export class DashboardService {
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async getDashboardStats() {
     const totalBooks = await this.bookModel.countDocuments();
-    const availableBooks = await this.bookModel.countDocuments({ status: 'available' });
-    const issuedBooks = await this.bookModel.countDocuments({ status: 'issued' });
-    const pendingRequests = await this.bookRequestModel.countDocuments({ status: 'Pending' });
+    const totalBooksResult = await this.bookModel.aggregate([
+      { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }
+    ]);
+    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
     
+    const issuedBooks = await this.getActiveIssuesCount();
+    const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
+    const pendingRequests = await this.bookRequestModel.countDocuments({ status: 'Pending' });
+
     const overdueBooks = await this.getOverdueBooksCount();
     const totalMembers = await this.getTotalMembersCount();
     const newArrivals = await this.getNewArrivalsCount();
     const todayIssues = await this.getTodayIssuesCount();
-    
+
     return {
       totalBooks,
-      availableBooks,
+      totalQuantity,
+      availableBooks: availableQuantity,
+      availableQuantity,
       issuedBooks,
       totalMembers,
       activeIssues: issuedBooks,
@@ -92,7 +99,7 @@ export class DashboardService {
     const booksByCategory = await this.bookModel.aggregate([
       { $group: { _id: '$category', count: { $sum: 1 } } },
     ]);
-    
+
     return {
       totalBooks: await this.bookModel.countDocuments(),
       booksByCategory,
@@ -105,15 +112,19 @@ export class DashboardService {
 
   async getStatCards(authHeader?: string) {
     const totalBooks = await this.bookModel.countDocuments();
-    
+    const totalBooksResult = await this.bookModel.aggregate([
+      { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }
+    ]);
+    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+
     // Calculate available/issued from quantity and issues service
-    const availableBooks = await this.bookModel.countDocuments({ quantity: { $gt: 0 } });
     const activeIssues = await this.getActiveIssuesCount();
     const issuedBooks = activeIssues;
-    
+    const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
+
     // Get pending requests from requests service instead of local DB
     const pendingRequests = await this.getPendingRequestsCount();
-    
+
     const overdueBooks = await this.getOverdueBooksCount();
     const totalMembers = await this.getTotalMembersCount(authHeader);
     const newArrivals = await this.getNewArrivalsCount();
@@ -121,7 +132,9 @@ export class DashboardService {
 
     return {
       totalBooks,
-      availableBooks,
+      totalQuantity,
+      availableBooks: availableQuantity,
+      availableQuantity,
       issuedBooks,
       overdueBooks,
       totalMembers,
@@ -223,7 +236,7 @@ export class DashboardService {
         const member = response.data.data;
         const borrowingHistory = member.borrowingHistory || [];
         const activeBooks = borrowingHistory.filter(h => h.status === 'borrowed').length;
-        
+
         return {
           _id: member._id,
           memberId: member.memberId,
@@ -315,9 +328,9 @@ export class DashboardService {
           headers: authHeader ? { Authorization: authHeader } : undefined,
         })
       );
-      
+
       const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
-      
+
       const populatedRequests = await Promise.all(
         pendingRequests.map(async (req) => {
           const [book, member] = await Promise.all([
@@ -331,8 +344,8 @@ export class DashboardService {
           };
         })
       );
-      
-      return populatedRequests.sort((a, b) => 
+
+      return populatedRequests.sort((a, b) =>
         new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()
       );
     } catch (error) {
