@@ -448,7 +448,9 @@ export class IssuesService {
 
   async getIssuesCount(date?: string): Promise<number> {
     if (!date) {
-      return this.issueBookModel.countDocuments();
+      return this.issueBookModel.countDocuments({
+        status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+      });
     }
     const startOfDay = new Date(date);
     const endOfDay = new Date(date);
