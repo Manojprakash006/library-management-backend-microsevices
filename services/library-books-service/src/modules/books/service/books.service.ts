@@ -57,7 +57,10 @@ export class BooksService {
       throw new ConflictException('Book ID already exists');
     }
 
-    const createdBook = new this.bookModel(createBookDto);
+    const createdBook = new this.bookModel({
+      ...createBookDto,
+      createdBy: adminId, // Set the staff/admin who created this book
+    });
     const savedBook = await createdBook.save();
 
     if (adminId) {

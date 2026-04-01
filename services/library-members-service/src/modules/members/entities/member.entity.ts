@@ -31,6 +31,21 @@ export class Member {
   @Prop({ default: true, index: true })
   isActive: boolean;
 
+  @Prop({ default: 0 })
+  booksHeld: number;
+
+  @Prop({ default: 0 })
+  booksAtHome: number;
+
+  @Prop({ default: 0 })
+  readingInsideLibrary: number;
+
+  @Prop({ default: 0 })
+  totalFines: number;
+
+  @Prop({ default: false })
+  hasActiveIssues: boolean;
+
   @Prop([{
     bookId: { type: String, required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },

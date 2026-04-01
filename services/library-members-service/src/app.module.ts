@@ -13,6 +13,7 @@ import { MemberDashboardModule } from './modules/member-dashboard/member-dashboa
 import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { LibraryVisitsModule } from './modules/library-visits/library-visits.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AdminModule } from './modules/admin/admin.module';
     StaffDashboardModule,
     ActivityLogModule,
     AdminModule,
+    LibraryVisitsModule,
   ],
 })
 export class AppModule { }

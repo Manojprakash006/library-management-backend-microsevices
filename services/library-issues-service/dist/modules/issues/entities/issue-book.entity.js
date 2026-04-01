@@ -39,7 +39,7 @@ __decorate([
     __metadata("design:type", String)
 ], IssueBook.prototype, "issueType", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, min: 1 }),
+    (0, mongoose_1.Prop)({ min: 1, required: false }),
     __metadata("design:type", Number)
 ], IssueBook.prototype, "numberOfDays", void 0);
 __decorate([
@@ -47,7 +47,7 @@ __decorate([
     __metadata("design:type", Date)
 ], IssueBook.prototype, "issueDate", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)({ required: false }),
     __metadata("design:type", Date)
 ], IssueBook.prototype, "dueDate", void 0);
 __decorate([

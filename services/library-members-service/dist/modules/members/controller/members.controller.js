@@ -39,7 +39,7 @@ let MembersController = class MembersController {
     }
     async getCount() {
         const count = await this.membersService.getCount();
-        return { count };
+        return { data: count };
     }
     async findAll() {
         const members = await this.membersService.findAll();
@@ -92,7 +92,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MembersController.prototype, "getInactiveCount", null);
 __decorate([
-    (0, common_1.Get)('count'),
+    (0, common_1.Get)('stats/total'),
     (0, roles_decorator_1.Roles)('admin', 'staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get total members count' }),
     __metadata("design:type", Function),

@@ -9,6 +9,11 @@ export declare class Member {
     password: string;
     membershipDate: Date;
     isActive: boolean;
+    booksHeld: number;
+    booksAtHome: number;
+    readingInsideLibrary: number;
+    totalFines: number;
+    hasActiveIssues: boolean;
     reviews: Array<{
         bookId: string;
         rating: number;

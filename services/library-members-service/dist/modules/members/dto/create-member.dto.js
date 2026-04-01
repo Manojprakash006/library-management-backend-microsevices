@@ -16,13 +16,6 @@ class CreateMemberDto {
 }
 exports.CreateMemberDto = CreateMemberDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Unique member identifier (auto-generated if not provided)', required: false }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(1),
-    __metadata("design:type", String)
-], CreateMemberDto.prototype, "memberId", void 0);
-__decorate([
     (0, swagger_1.ApiProperty)({ description: 'Full name of the member' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(2),

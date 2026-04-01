@@ -38,16 +38,11 @@ let MembersService = MembersService_1 = class MembersService {
         if (!createMemberDto.password || createMemberDto.password.length < 6) {
             throw new common_1.ConflictException('Password is required and must be at least 6 characters');
         }
-        const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
-        if (existingMember) {
-            throw new common_1.ConflictException('Member ID already exists');
-        }
         const existingEmail = await this.memberModel.findOne({ email: createMemberDto.email }).exec();
         if (existingEmail) {
             throw new common_1.ConflictException('Email already registered');
         }
         const memberData = {
-            memberId: createMemberDto.memberId,
             name: createMemberDto.fullName,
             email: createMemberDto.email,
             phoneNumber: createMemberDto.phoneNumber,
@@ -167,6 +162,10 @@ let MembersService = MembersService_1 = class MembersService {
         await member.save();
     }
     async remove(id, adminId) {
+        const stats = await this.getMemberStatsFromIssues(id);
+        if (stats.booksHeld > 0) {
+            throw new common_1.ConflictException('Cannot delete member: Member has active issued books that must be returned first.');
+        }
         const result = await this.memberModel.findByIdAndDelete(id).exec();
         if (!result) {
             throw new common_1.NotFoundException('Member not found');
@@ -198,12 +197,17 @@ let MembersService = MembersService_1 = class MembersService {
             const allIssuesResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`));
             const allIssues = allIssuesResponse.data?.data || [];
             const totalFines = allIssues.reduce((sum, issue) => sum + (issue.fine || 0), 0);
-            return {
+            const computedStats = {
                 booksHeld: stats.totalActive,
                 booksAtHome: stats.booksAtHome,
                 readingInsideLibrary: stats.readingInsideLibrary,
                 totalFines
             };
+            this.memberModel.findByIdAndUpdate(memberId, {
+                ...computedStats,
+                hasActiveIssues: computedStats.booksHeld > 0
+            }).catch(err => this.logger.error(`Failed to sync stats to DB for member ${memberId}: ${err.message}`));
+            return computedStats;
         }
         catch (error) {
             this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);

@@ -67,4 +67,9 @@ exports.NotificationSchema = mongoose_1.SchemaFactory.createForClass(Notificatio
 exports.NotificationSchema.index({ memberId: 1, isRead: 1 });
 exports.NotificationSchema.index({ memberId: 1, sentAt: -1 });
 exports.NotificationSchema.index({ type: 1 });
+exports.NotificationSchema.virtual('read').get(function () {
+    return this.isRead;
+});
+exports.NotificationSchema.set('toJSON', { virtuals: true });
+exports.NotificationSchema.set('toObject', { virtuals: true });
 //# sourceMappingURL=notification.entity.js.map

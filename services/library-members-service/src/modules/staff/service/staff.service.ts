@@ -36,6 +36,15 @@ export class StaffService {
       role: staff.role,
     });
 
+    // Log staff login activity
+    await this.activityLogService.logAction({
+      adminId: staff._id.toString(),
+      action: 'STAFF_LOGIN',
+      entityType: 'AUTH',
+      entityId: staff._id.toString(),
+      details: { email: staff.email, fullName: staff.fullName }
+    });
+
     return {
       token,
       user: {

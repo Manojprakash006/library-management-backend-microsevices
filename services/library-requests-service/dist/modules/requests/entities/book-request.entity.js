@@ -23,7 +23,7 @@ let BookRequest = class BookRequest {
 };
 exports.BookRequest = BookRequest;
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, unique: true }),
+    (0, mongoose_1.Prop)({ unique: true, trim: true, index: true, sparse: true }),
     __metadata("design:type", String)
 ], BookRequest.prototype, "requestId", void 0);
 __decorate([
@@ -66,6 +66,13 @@ exports.BookRequest = BookRequest = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], BookRequest);
 exports.BookRequestSchema = mongoose_1.SchemaFactory.createForClass(BookRequest);
+exports.BookRequestSchema.pre('save', async function (next) {
+    if (this.requestId)
+        return next();
+    const count = await this.constructor.countDocuments();
+    this.requestId = `REQ${count + 1}`;
+    next();
+});
 exports.BookRequestSchema.index({ memberId: 1, status: 1 });
 exports.BookRequestSchema.index({ bookId: 1, status: 1 });
 exports.BookRequestSchema.index({ requestDate: -1 });

@@ -14,7 +14,7 @@ export declare class MembersController {
         data: number;
     }>;
     getCount(): Promise<{
-        count: number;
+        data: number;
     }>;
     findAll(): Promise<{
         message: string;

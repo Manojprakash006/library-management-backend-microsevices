@@ -35,8 +35,7 @@ export class IssuesService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
-      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -47,6 +46,61 @@ export class IssuesService {
       );
     } catch (error) {
       this.logger.error(`Failed to send notification to member service: ${error.message}`);
+    }
+  }
+
+  private async autoRecordLibraryVisit(memberId: string, bookId: string, issueType: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      
+      // Map issueType to purpose
+      // "Taking Home" -> "issue" (immediate in/out)
+      // "Reading Inside Library" -> "reading" (only timeIn, staying in library)
+      const purpose = issueType === 'Taking Home' ? 'issue' : 'reading';
+      
+      // For issue (Taking Home), timeIn=timeOut (immediate exit)
+      // For reading (Reading Inside), only timeIn (staying in library)
+      const isImmediate = purpose === 'issue';
+      const now = new Date().toISOString();
+      
+      const payload = {
+        memberId,
+        bookId,
+        purpose,
+        timeIn: now,
+        timeOut: isImmediate ? now : null,
+        isAutoRecorded: true
+      };
+      
+      this.logger.log(`Calling auto-record API: ${membersServiceUrl}/library-visits/auto-record with payload: ${JSON.stringify(payload)}`);
+      
+      const response = await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/library-visits/auto-record`, payload)
+      );
+      
+      this.logger.log(`Auto-recorded library visit success: ${JSON.stringify(response.data)}`);
+    } catch (error) {
+      this.logger.error(`Failed to auto-record library visit: ${error.message}`);
+      if (error.response) {
+        this.logger.error(`Response status: ${error.response.status}`);
+        this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+      }
+    }
+  }
+
+  private async recordReturnVisit(memberId: string, bookId: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      
+      await firstValueFrom(
+        this.httpService.post(`${membersServiceUrl}/library-visits/record-return`, {
+          memberId,
+          bookId
+        })
+      );
+      this.logger.log(`Recorded return visit for member ${memberId}, book ${bookId}`);
+    } catch (error) {
+      this.logger.error(`Failed to record return visit: ${error.message}`);
     }
   }
 
@@ -167,6 +221,13 @@ export class IssuesService {
       `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`
     );
 
+    // Auto-record library visit for tracking
+    await this.autoRecordLibraryVisit(
+      createIssueDto.memberId,
+      createIssueDto.bookId,
+      createIssueDto.issueType
+    );
+
     return savedIssue;
   }
 
@@ -267,7 +328,22 @@ export class IssuesService {
   }
 
   async findByMember(memberId: string): Promise<IssueBook[]> {
-    return this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).populate('bookId').exec();
+    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+    const today = new Date();
+
+    return issuedBooks.map((issue) => {
+      const issueObj = issue.toObject();
+      if (issueObj.status !== IssueStatus.RETURNED &&
+        issueObj.issueType === IssueType.TAKING_HOME &&
+        issueObj.dueDate &&
+        new Date(issueObj.dueDate) < today) {
+        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        issueObj.status = IssueStatus.OVERDUE;
+        issueObj.daysOverdue = overdueDays;
+        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
+      }
+      return issueObj as IssueBook;
+    });
   }
 
   async findActiveByMember(memberId: string): Promise<any[]> {
@@ -344,6 +420,19 @@ export class IssuesService {
       'BOOK_RETURNED',
       'Book Returned Successfully',
       `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`
+    );
+
+    // Auto-record library visit for return (member came to return book)
+    await this.autoRecordLibraryVisit(
+      issuedBook.memberId.toString(),
+      issuedBook.bookId.toString(),
+      'return'
+    );
+
+    // Record return visit (update timeOut for reading visits)
+    await this.recordReturnVisit(
+      issuedBook.memberId.toString(),
+      issuedBook.bookId.toString()
     );
 
     return savedIssue;

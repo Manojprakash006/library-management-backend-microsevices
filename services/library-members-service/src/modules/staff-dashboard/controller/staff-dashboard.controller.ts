@@ -4,23 +4,25 @@ import { StaffDashboardService } from '../service/staff-dashboard.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { CreateBookDto } from '../dto/create-book.dto';
 
 @ApiTags('Staff Dashboard')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('staff-dashboard')
 export class StaffDashboardController {
-  constructor(private readonly staffDashboardService: StaffDashboardService) {}
+  constructor(private readonly staffDashboardService: StaffDashboardService) { }
 
-   @Get('stats')
+  @Get('stats')
   @Roles('staff')
   @ApiOperation({ summary: 'Get staff dashboard stats' })
-  async getStaffStats() {
-    const result = await this.staffDashboardService.getStaffStats();
+  async getStaffStats(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getStaffStats(authHeader);
     return { message: 'Stats retrieved successfully', data: result };
   }
 
-   @Get('recent-issues')
+  @Get('recent-issues')
   @Roles('staff')
   @ApiOperation({ summary: 'Get recent book issues' })
   async getRecentIssues() {
@@ -28,7 +30,7 @@ export class StaffDashboardController {
     return { message: 'Recent issues retrieved', data: result };
   }
 
-   @Get('overdue-books')
+  @Get('overdue-books')
   @Roles('staff')
   @ApiOperation({ summary: 'Get all overdue books' })
   async getOverdueBooks() {
@@ -36,7 +38,7 @@ export class StaffDashboardController {
     return { message: 'Overdue books retrieved', data: result };
   }
 
-   @Get('pending-requests')
+  @Get('pending-requests')
   @Roles('staff')
   @ApiOperation({ summary: 'Get pending book requests' })
   async getPendingRequests() {
@@ -44,7 +46,7 @@ export class StaffDashboardController {
     return { message: 'Pending requests retrieved', data: result };
   }
 
-   @Get('stat-cards')
+  @Get('stat-cards')
   @Roles('staff')
   @ApiOperation({ summary: 'Get staff stat cards' })
   async getStaffStatCards() {
@@ -52,47 +54,42 @@ export class StaffDashboardController {
     return { message: 'Stat cards retrieved successfully', data: result };
   }
 
-   @Get('books-added-today')
+  @Get('books-added-today')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books added today' })
-  async getBooksAddedToday() {
-    const result = await this.staffDashboardService.getBooksAddedToday();
+  async getBooksAddedToday(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getBooksAddedToday(authHeader);
     return { message: 'Books added today retrieved', data: result };
   }
 
-   @Get('recent-activities')
-  @Roles('staff')
-  @ApiOperation({ summary: 'Get recent activities' })
-  async getRecentActivities() {
-    const result = await this.staffDashboardService.getRecentActivities();
-    return { message: 'Recent activities retrieved', data: result };
-  }
 
-   @Get('rack-distribution')
+
+  @Get('rack-distribution')
   @Roles('staff')
   @ApiOperation({ summary: 'Get rack distribution' })
-  async getRackDistribution() {
-    const result = await this.staffDashboardService.getRackDistribution();
+  async getRackDistribution(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getRackDistribution(authHeader);
     return { message: 'Rack distribution retrieved', data: result };
   }
 
-   @Post('books')
+  @Post('books')
   @Roles('staff')
   @ApiOperation({ summary: 'Create a new book' })
-  async createBook(@Body() bookData: any) {
-    const result = await this.staffDashboardService.createBook(bookData);
+  @ApiResponse({ status: 201, description: 'Book created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createBook(@Body() bookData: CreateBookDto, @Request() req) {
+    const authHeader = req.headers['authorization'];
+    const staffId = req.user?.userId;
+    const result = await this.staffDashboardService.createBook(bookData, staffId, authHeader);
     return { message: 'Book created successfully', data: result };
   }
 
-   @Get('my-activity-logs')
-  @Roles('staff')
-  @ApiOperation({ summary: 'Get my activity logs' })
-  async getMyActivityLogs(@Request() req) {
-    const result = await this.staffDashboardService.getMyActivityLogs(req.user.userId);
-    return { message: 'Activity logs retrieved', data: result };
-  }
 
-   @Get('my-profile')
+
+  @Get('my-profile')
   @Roles('staff')
   @ApiOperation({ summary: 'Get my profile' })
   async getMyProfile(@Request() req) {
@@ -100,15 +97,9 @@ export class StaffDashboardController {
     return { message: 'Profile retrieved', data: result };
   }
 
-   @Get('my-contribution')
-  @Roles('staff')
-  @ApiOperation({ summary: 'Get my contribution' })
-  async getMyContribution(@Request() req) {
-    const result = await this.staffDashboardService.getMyContribution(req.user.userId);
-    return { message: 'Contribution data retrieved', data: result };
-  }
 
-   @Get('books-by-category')
+
+  @Get('books-by-category')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books by category' })
   async getBooksByCategory() {
@@ -116,7 +107,7 @@ export class StaffDashboardController {
     return { message: 'Books by category retrieved', data: result };
   }
 
-   @Get('rack-utilization')
+  @Get('rack-utilization')
   @Roles('staff')
   @ApiOperation({ summary: 'Get rack utilization' })
   async getRackUtilization() {
@@ -124,11 +115,28 @@ export class StaffDashboardController {
     return { message: 'Rack utilization retrieved', data: result };
   }
 
-   @Get('books-status-distribution')
+  @Get('books-status-distribution')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books status distribution' })
   async getBooksStatusDistribution() {
     const result = await this.staffDashboardService.getBooksStatusDistribution();
     return { message: 'Books status distribution retrieved', data: result };
+  }
+
+  @Get('todays-visitors')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get todays library visitors' })
+  async getTodaysVisitors() {
+    const result = await this.staffDashboardService.getTodaysVisitors();
+    return { message: 'Today\'s visitors retrieved', count: result.length, data: result };
+  }
+
+  @Get('todays-issues')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get todays book issues' })
+  async getTodaysIssues(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getTodaysIssues(authHeader);
+    return { message: 'Today\'s book issues retrieved', count: result.length, data: result };
   }
 }

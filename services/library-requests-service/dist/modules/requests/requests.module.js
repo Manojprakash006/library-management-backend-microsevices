@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RequestsModule = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
+const axios_1 = require("@nestjs/axios");
 const requests_controller_1 = require("./controller/requests.controller");
 const requests_service_1 = require("./service/requests.service");
 const book_request_entity_1 = require("./entities/book-request.entity");
@@ -17,7 +18,10 @@ let RequestsModule = class RequestsModule {
 exports.RequestsModule = RequestsModule;
 exports.RequestsModule = RequestsModule = __decorate([
     (0, common_1.Module)({
-        imports: [mongoose_1.MongooseModule.forFeature([{ name: book_request_entity_1.BookRequest.name, schema: book_request_entity_1.BookRequestSchema }])],
+        imports: [
+            mongoose_1.MongooseModule.forFeature([{ name: book_request_entity_1.BookRequest.name, schema: book_request_entity_1.BookRequestSchema }]),
+            axios_1.HttpModule,
+        ],
         controllers: [requests_controller_1.RequestsController],
         providers: [requests_service_1.RequestsService],
         exports: [requests_service_1.RequestsService],
