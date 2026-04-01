@@ -78,7 +78,7 @@ export class IssuesController {
     return {
       message: 'Active borrowed books retrieved successfully',
       data: issues,
-      count: issues.length,
+      count: issues.length,  
     };
   }
 
