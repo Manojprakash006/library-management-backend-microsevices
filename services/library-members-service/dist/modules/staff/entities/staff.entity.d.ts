@@ -22,12 +22,4 @@ export declare class Staff {
     emergencyContact: string;
     isActive: boolean;
 }
-export declare const StaffSchema: import("mongoose").Schema<Staff, import("mongoose").Model<Staff, any, any, any, import("mongoose").Document<unknown, any, Staff, any, {}> & Staff & {
-    _id: import("mongoose").Types.ObjectId;
-} & {
-    __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, Staff, import("mongoose").Document<unknown, {}, import("mongoose").FlatRecord<Staff>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<Staff> & {
-    _id: import("mongoose").Types.ObjectId;
-} & {
-    __v: number;
-}>;
+export declare const StaffSchema: any;

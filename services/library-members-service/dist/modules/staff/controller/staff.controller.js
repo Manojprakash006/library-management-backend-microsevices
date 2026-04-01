@@ -30,6 +30,11 @@ let StaffController = class StaffController {
         const result = await this.staffService.login(loginDto);
         return { message: 'Login successful', data: result };
     }
+    async staffLogout(req) {
+        const staffId = req.user?.userId || req.user?.id;
+        const result = await this.staffService.logout(staffId);
+        return { message: 'Logout successful', data: result };
+    }
     async createStaff(createDto, req) {
         const adminId = req.user?.id;
         const result = await this.staffService.create(createDto, adminId);
@@ -68,6 +73,17 @@ __decorate([
     __metadata("design:paramtypes", [staff_login_dto_1.StaffLoginDto]),
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "staffLogin", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Staff logout' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Logout successful' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], StaffController.prototype, "staffLogout", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

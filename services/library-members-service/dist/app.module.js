@@ -22,6 +22,7 @@ const member_dashboard_module_1 = require("./modules/member-dashboard/member-das
 const staff_dashboard_module_1 = require("./modules/staff-dashboard/staff-dashboard.module");
 const activity_log_module_1 = require("./modules/activity-log/activity-log.module");
 const admin_module_1 = require("./modules/admin/admin.module");
+const library_visits_module_1 = require("./modules/library-visits/library-visits.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -44,6 +45,7 @@ exports.AppModule = AppModule = __decorate([
             staff_dashboard_module_1.StaffDashboardModule,
             activity_log_module_1.ActivityLogModule,
             admin_module_1.AdminModule,
+            library_visits_module_1.LibraryVisitsModule,
         ],
     })
 ], AppModule);

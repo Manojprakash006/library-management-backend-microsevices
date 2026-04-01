@@ -9,6 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var NotificationsGateway_1;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
@@ -87,18 +88,18 @@ let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
 exports.NotificationsGateway = NotificationsGateway;
 __decorate([
     (0, websockets_1.WebSocketServer)(),
-    __metadata("design:type", socket_io_1.Server)
+    __metadata("design:type", typeof (_b = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _b : Object)
 ], NotificationsGateway.prototype, "server", void 0);
 __decorate([
     (0, websockets_1.SubscribeMessage)('markAsRead'),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:paramtypes", [typeof (_c = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _c : Object, Object]),
     __metadata("design:returntype", void 0)
 ], NotificationsGateway.prototype, "handleMarkAsRead", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('subscribe'),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:paramtypes", [typeof (_d = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _d : Object, Object]),
     __metadata("design:returntype", void 0)
 ], NotificationsGateway.prototype, "handleSubscribe", null);
 exports.NotificationsGateway = NotificationsGateway = NotificationsGateway_1 = __decorate([
@@ -108,6 +109,6 @@ exports.NotificationsGateway = NotificationsGateway = NotificationsGateway_1 = _
             origin: '*',
         },
     }),
-    __metadata("design:paramtypes", [jwt_1.JwtService])
+    __metadata("design:paramtypes", [typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object])
 ], NotificationsGateway);
 //# sourceMappingURL=notifications.gateway.js.map

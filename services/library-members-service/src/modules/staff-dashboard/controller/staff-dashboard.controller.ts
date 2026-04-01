@@ -82,18 +82,26 @@ export class StaffDashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createBook(@Body() bookData: CreateBookDto, @Request() req) {
     const authHeader = req.headers['authorization'];
-    const staffId = req.user?.userId;
+    const staffId = req.user?.userId || req.user?.id;
     const result = await this.staffDashboardService.createBook(bookData, staffId, authHeader);
     return { message: 'Book created successfully', data: result };
   }
 
 
 
+  @Get('my-activity-summary')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get my activity summary' })
+  async getMyActivitySummary(@Request() req) {
+    const result = await this.staffDashboardService.getMyActivitySummary(req.user.userId || req.user.id);
+    return { message: 'Activity summary retrieved successfully', data: result };
+  }
+
   @Get('my-profile')
   @Roles('staff')
   @ApiOperation({ summary: 'Get my profile' })
   async getMyProfile(@Request() req) {
-    const result = await this.staffDashboardService.getMyProfile(req.user.userId);
+    const result = await this.staffDashboardService.getMyProfile(req.user.userId || req.user.id);
     return { message: 'Profile retrieved', data: result };
   }
 

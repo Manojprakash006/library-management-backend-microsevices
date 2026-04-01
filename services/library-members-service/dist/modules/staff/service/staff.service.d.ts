@@ -11,13 +11,16 @@ export declare class StaffService {
     private readonly activityLogService;
     constructor(staffModel: Model<StaffDocument>, jwtService: JwtService, activityLogService: ActivityLogService);
     login(loginDto: StaffLoginDto): Promise<{
-        token: string;
+        token: any;
         user: {
             id: import("mongoose").Types.ObjectId;
             email: string;
             fullName: string;
             role: import("../entities/staff.entity").StaffRole;
         };
+    }>;
+    logout(staffId: string): Promise<{
+        message: string;
     }>;
     create(createDto: CreateStaffDto, adminId?: string): Promise<import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Staff, {}, {}> & Staff & {
         _id: import("mongoose").Types.ObjectId;

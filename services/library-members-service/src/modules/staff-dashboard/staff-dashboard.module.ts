@@ -6,6 +6,7 @@ import { StaffDashboardService } from './service/staff-dashboard.service';
 import { Member, MemberSchema } from '../members/entities/member.entity';
 import { Staff, StaffSchema } from '../staff/entities/staff.entity';
 import { LibraryVisit, LibraryVisitSchema } from '../library-visits/entities/library-visit.entity';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { LibraryVisit, LibraryVisitSchema } from '../library-visits/entities/lib
       { name: LibraryVisit.name, schema: LibraryVisitSchema },
     ]),
     HttpModule,
+    ActivityLogModule,
   ],
   controllers: [StaffDashboardController],
   providers: [StaffDashboardService],

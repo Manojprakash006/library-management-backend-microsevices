@@ -8,13 +8,19 @@ export declare class StaffController {
     staffLogin(loginDto: StaffLoginDto): Promise<{
         message: string;
         data: {
-            token: string;
+            token: any;
             user: {
                 id: import("mongoose").Types.ObjectId;
                 email: string;
                 fullName: string;
                 role: import("../entities/staff.entity").StaffRole;
             };
+        };
+    }>;
+    staffLogout(req: any): Promise<{
+        message: string;
+        data: {
+            message: string;
         };
     }>;
     createStaff(createDto: CreateStaffDto, req: any): Promise<{
