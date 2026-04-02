@@ -10,6 +10,7 @@ export declare class BookRequest {
     requestId: string;
     bookId: Types.ObjectId;
     memberId: Types.ObjectId;
+    requestType: string;
     requestDate: Date;
     status: RequestStatus;
     currentlyBorrowed: number;

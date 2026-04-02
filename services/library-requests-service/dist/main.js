@@ -13,7 +13,7 @@ async function bootstrap() {
         transport: microservices_1.Transport.GRPC,
         options: {
             package: 'library.requests',
-            protoPath: (0, path_1.join)(__dirname, './proto/requests.proto'),
+            protoPath: (0, path_1.join)(process.cwd(), 'proto/requests.proto'),
             url: process.env.GRPC_URL || '0.0.0.0:5004',
         },
     });

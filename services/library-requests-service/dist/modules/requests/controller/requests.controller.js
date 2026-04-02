@@ -38,6 +38,10 @@ let RequestsController = class RequestsController {
         const count = await this.requestsService.getPendingCount();
         return { count };
     }
+    async getRequestsByMember(memberId) {
+        const requests = await this.requestsService.getByMember(memberId);
+        return { data: requests };
+    }
     async findOne(id) {
         const request = await this.requestsService.findOne(id);
         return { message: 'Book request retrieved successfully', data: request };
@@ -95,6 +99,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "getPendingCount", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('member/:memberId'),
+    __param(0, (0, common_1.Param)('memberId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RequestsController.prototype, "getRequestsByMember", null);
 __decorate([
     (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Get)(':id'),

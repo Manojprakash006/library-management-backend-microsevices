@@ -13,8 +13,8 @@ export declare class RequestsService {
     create(createDto: CreateBookRequestDto): Promise<BookRequest>;
     private getMemberBorrowingDetails;
     findAll(): Promise<any[]>;
+    getByMember(memberId: string): Promise<BookRequest[]>;
     findOne(id: string): Promise<BookRequest>;
-    findByMember(memberId: string): Promise<any[]>;
     update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<BookRequest>;
     cancel(id: string, memberId: string): Promise<BookRequest>;
     approve(id: string, adminId?: string): Promise<BookRequest>;

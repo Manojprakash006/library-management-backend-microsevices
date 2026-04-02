@@ -28,7 +28,7 @@ let RequestsService = RequestsService_1 = class RequestsService {
     }
     async logActivity(adminId, action, entityId, details) {
         try {
-            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+            const membersServiceUrl = "http://library-api-gateway:3000/library/members";
             await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/activities/logs`, {
                 adminId,
                 action,
@@ -43,7 +43,7 @@ let RequestsService = RequestsService_1 = class RequestsService {
     }
     async sendNotification(memberId, type, title, message) {
         try {
-            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+            const membersServiceUrl = "http://library-api-gateway:3000/library/members";
             await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/notifications`, {
                 memberId,
                 type,
@@ -57,7 +57,7 @@ let RequestsService = RequestsService_1 = class RequestsService {
     }
     async notifyAdmins(type, title, message) {
         try {
-            const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+            const membersServiceUrl = "http://library-api-gateway:3000/library/members";
             await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
                 type,
                 title,
@@ -82,26 +82,8 @@ let RequestsService = RequestsService_1 = class RequestsService {
         if (alreadyBorrowed) {
             throw new common_1.ConflictException('You have already borrowed this book. Please return it before requesting again.');
         }
-        let bookNameInitials = 'BOK';
-        try {
-            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
-            const bookResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/books/${createDto.bookId}`));
-            const bookTitle = bookResponse.data?.data?.title || '';
-            if (bookTitle) {
-                const cleanedTitle = bookTitle.replace(/[^a-zA-Z]/g, '');
-                if (cleanedTitle.length > 0) {
-                    bookNameInitials = cleanedTitle.substring(0, 3).toUpperCase();
-                }
-            }
-        }
-        catch (error) {
-            this.logger.error(`Failed to fetch book details for ID generation: ${error.message}`);
-        }
-        const count = await this.bookRequestModel.countDocuments();
-        const generatedRequestId = `REQ-${bookNameInitials}-${count + 1}`;
         const bookRequest = new this.bookRequestModel({
             ...createDto,
-            requestId: generatedRequestId,
             bookId: new mongoose_2.Types.ObjectId(createDto.bookId),
             memberId: new mongoose_2.Types.ObjectId(createDto.memberId),
             requestDate: createDto.requestDate || new Date(),
@@ -115,7 +97,7 @@ let RequestsService = RequestsService_1 = class RequestsService {
     }
     async getMemberBorrowingDetails(memberId) {
         try {
-            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+            const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
             const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`));
             const allIssues = response.data?.data || [];
             const activeIssues = allIssues.filter((issue) => issue.status === 'Active' || issue.status === 'Overdue');
@@ -150,24 +132,40 @@ let RequestsService = RequestsService_1 = class RequestsService {
         }));
         return enrichedRequests;
     }
+    async getByMember(memberId) {
+        const data = await this.bookRequestModel.find({
+            memberId: new mongoose_2.Types.ObjectId(memberId)
+        }).lean();
+        const enriched = await Promise.all(data.map(async (req) => {
+            const bookId = req.bookId.toString();
+            if (!bookId) {
+                return { ...req, bookId: null };
+            }
+            try {
+                const bookServiceURL = "http://library-api-gateway:3000/library/books";
+                const bookResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${bookServiceURL}/books/${bookId}`));
+                const book = bookResponse.data?.data;
+                return {
+                    ...req,
+                    bookId: book,
+                };
+            }
+            catch (error) {
+                console.log("❌ BOOK FETCH FAILED:", error.message);
+                return {
+                    ...req,
+                    bookId: null,
+                };
+            }
+        }));
+        return enriched;
+    }
     async findOne(id) {
         const request = await this.bookRequestModel.findById(id).exec();
         if (!request) {
             throw new common_1.NotFoundException('Book request not found');
         }
         return request;
-    }
-    async findByMember(memberId) {
-        const requests = await this.bookRequestModel.find({ memberId: new mongoose_2.Types.ObjectId(memberId) }).sort({ requestDate: -1 }).exec();
-        const memberStats = await this.getMemberBorrowingDetails(memberId);
-        const enrichedRequests = requests.map((request) => ({
-            ...request.toObject(),
-            currentlyBorrowed: memberStats.currentlyBorrowed,
-            totalHistory: memberStats.totalHistory,
-            activeBookIds: memberStats.activeBookIds,
-            booklistBorrowed: memberStats.booklistBorrowed,
-        }));
-        return enrichedRequests;
     }
     async update(id, updateDto) {
         const request = await this.bookRequestModel.findById(id).exec();
@@ -206,6 +204,19 @@ let RequestsService = RequestsService_1 = class RequestsService {
         request.status = book_request_entity_1.RequestStatus.APPROVED;
         request.processedDate = new Date();
         const savedRequest = await request.save();
+        const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+        try {
+            await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${membersServiceUrl}/library/members/members/${request.memberId}/borrow`, {
+                bookId: request.bookId.toString(),
+                issueId: request._id.toString(),
+                borrowedAt: new Date(),
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                status: 'borrowed',
+            }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to update borrowing history: ${error.message}`);
+        }
         if (adminId) {
             await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
         }

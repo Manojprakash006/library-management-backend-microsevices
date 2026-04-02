@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Member } from '../../members/entities/member.entity';
 import { ReportDamageDto } from '../dto/report-damage.dto';
 import { RenewBookDto } from '../dto/renew-book.dto';
@@ -204,10 +204,12 @@ export class MemberDashboardService {
   }
 
   async renewBook(renewDto: RenewBookDto) {
-    const issue = await this.issueModel.findById(renewDto.bookId);
+    console.log("Received ID:", renewDto.issueId);
+    const issue = await this.issueModel.findById(new mongoose.Types.ObjectId(renewDto.issueId));
+    console.log("Found Isuues :", issue);
 
     if (!issue) {
-      throw new Error('Issue not found');
+      throw new NotFoundException('Issue not found');
     }
 
     const newDueDate = new Date(issue.dueDate);

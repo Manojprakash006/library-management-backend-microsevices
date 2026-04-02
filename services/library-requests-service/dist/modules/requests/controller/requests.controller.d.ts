@@ -16,6 +16,9 @@ export declare class RequestsController {
     getPendingCount(): Promise<{
         count: number;
     }>;
+    getRequestsByMember(memberId: string): Promise<{
+        data: BookRequest[];
+    }>;
     findOne(id: string): Promise<{
         message: string;
         data: BookRequest;

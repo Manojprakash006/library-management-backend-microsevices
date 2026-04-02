@@ -26,6 +26,12 @@ __decorate([
     __metadata("design:type", String)
 ], CreateBookRequestDto.prototype, "memberId", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Request Type' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(4),
+    __metadata("design:type", String)
+], CreateBookRequestDto.prototype, "requestType", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ description: 'Request date', required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsDateString)(),

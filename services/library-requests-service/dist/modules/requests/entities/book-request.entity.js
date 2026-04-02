@@ -35,6 +35,10 @@ __decorate([
     __metadata("design:type", mongoose_2.Types.ObjectId)
 ], BookRequest.prototype, "memberId", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ type: String, required: true }),
+    __metadata("design:type", String)
+], BookRequest.prototype, "requestType", void 0);
+__decorate([
     (0, mongoose_1.Prop)({ default: Date.now }),
     __metadata("design:type", Date)
 ], BookRequest.prototype, "requestDate", void 0);
