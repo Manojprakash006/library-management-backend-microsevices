@@ -79,8 +79,28 @@ export class BooksService {
     return savedBook;
   }
 
-  async findAll(): Promise<Book[]> {
-    return this.bookModel.find().exec();
+  async findAll(): Promise<any[]> {
+    const books = await this.bookModel.find().exec();
+
+    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+    const updatedBooks = await Promise.all(
+      books.map(async (book) => {
+        try {
+          const response = await firstValueFrom( this.httpService.get(
+              `${issuesServiceUrl}/issues/count/book/${book._id}` ));
+
+          const issuedCount = response.data?.count || 0;
+
+          return { ...book.toObject(), available: book.quantity - issuedCount };
+        } catch (error) {
+          console.log("ISSUE COUNT FETCH FAILED:", error.message);
+          return { ...book.toObject(), available: book.quantity };
+        }
+      })
+    );
+
+    return updatedBooks;
   }
 
   async findOne(id: string): Promise<Book> {
