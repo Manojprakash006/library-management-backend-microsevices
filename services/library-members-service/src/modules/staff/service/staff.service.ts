@@ -56,6 +56,20 @@ export class StaffService {
     };
   }
 
+  async logout(staffId: string) {
+    const staff = await this.staffModel.findById(staffId);
+    if (staff) {
+      await this.activityLogService.logAction({
+        adminId: staff._id.toString(),
+        action: 'STAFF_LOGOUT',
+        entityType: 'AUTH',
+        entityId: staff._id.toString(),
+        details: { email: staff.email, fullName: staff.fullName }
+      });
+    }
+    return { message: 'Logged out successfully' };
+  }
+
   async create(createDto: CreateStaffDto, adminId?: string) {
     const existingStaff = await this.staffModel.findOne({ email: createDto.email });
     if (existingStaff) {

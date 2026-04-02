@@ -7,6 +7,7 @@ import { AxiosResponse } from 'axios';
 import { Member } from '../../members/entities/member.entity';
 import { Staff } from '../../staff/entities/staff.entity';
 import { LibraryVisit } from '../../library-visits/entities/library-visit.entity';
+import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
 interface BooksStatsResponse {
   totalBooks: number;
@@ -23,6 +24,7 @@ export class StaffDashboardService {
     @InjectModel(Staff.name) private staffModel: Model<Staff>,
     @InjectModel(LibraryVisit.name) private libraryVisitModel: Model<LibraryVisit>,
     private readonly httpService: HttpService,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
   async getStaffStats(authHeader?: string) {
@@ -187,11 +189,26 @@ export class StaffDashboardService {
         })
       );
 
+      const createdBook = response.data?.data || response.data;
       this.logger.log(`Book created successfully: ${JSON.stringify(response.data)}`);
+
+      if (staffId) {
+        await this.activityLogService.logAction({
+          adminId: staffId,
+          action: 'BOOKSADDED',
+          entityType: 'BOOK',
+          entityId: createdBook._id || createdBook.id || 'unknown',
+          details: {
+            title: createdBook.title,
+            message: `Added new book: ${createdBook.title || bookData.title} (ID: ${createdBook.bookId || createdBook.id || 'unknown'})`,
+            referenceId: createdBook.bookId || createdBook.id || createdBook._id
+          }
+        });
+      }
 
       return {
         message: 'Book created successfully',
-        data: response.data?.data || response.data,
+        data: createdBook,
       };
     } catch (error) {
       this.logger.error(`Failed to create book: ${error.message}`);
@@ -207,12 +224,48 @@ export class StaffDashboardService {
   }
 
   async getMyContribution(staffId: string) {
-    // TODO: Implement when activity logs module is created
     return {
       totalActivities: 0,
       booksAdded: 0,
       booksIssued: 0,
       booksReturned: 0,
+    };
+  }
+
+  async getMyActivitySummary(staffId: string) {
+    const totalBooksAdded = await this.activityLogService.getLogs(1, 1, { adminId: staffId, action: 'BOOKSADDED' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysBooksAdded = await this.activityLogService.getLogs(1, 1, {
+      adminId: staffId,
+      action: 'BOOKSADDED',
+      createdAt: { $gte: today }
+    });
+
+    const lastActivityQuery = await this.activityLogService.getLogs(1, 1000, {
+      adminId: staffId,
+      action: { $in: ['BOOKSADDED', 'STAFF_LOGIN', 'STAFF_LOGOUT'] }
+    });
+
+    const recentActivities = lastActivityQuery.data.map((log: any) => {
+      let actionName = log.action;
+      if (log.action === 'BOOKSADDED') actionName = 'ADD BOOK';
+      else if (log.action === 'STAFF_LOGIN') actionName = 'LOGIN';
+      else if (log.action === 'STAFF_LOGOUT') actionName = 'LOGOUT';
+
+      return {
+        action: actionName,
+        date: log.createdAt,
+        description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
+        referenceId: log.details?.referenceId || log.entityId
+      };
+    });
+
+    return {
+      totalActivitiesBooksAdded: totalBooksAdded.count || 0,
+      todaysActivitiesBooksAdded: todaysBooksAdded.count || 0,
+      recentActivities: recentActivities,
     };
   }
 
@@ -256,7 +309,7 @@ export class StaffDashboardService {
 
   async getTodaysIssues(authHeader?: string) {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3003';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

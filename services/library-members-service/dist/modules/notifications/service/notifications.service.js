@@ -12,6 +12,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 var NotificationsService_1;
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsService = void 0;
 const common_1 = require("@nestjs/common");
@@ -273,7 +274,6 @@ exports.NotificationsService = NotificationsService = NotificationsService_1 = _
     __param(0, (0, mongoose_1.InjectModel)(notification_entity_1.Notification.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
         email_service_1.EmailService,
-        notifications_gateway_1.NotificationsGateway,
-        axios_1.HttpService])
+        notifications_gateway_1.NotificationsGateway, typeof (_a = typeof axios_1.HttpService !== "undefined" && axios_1.HttpService) === "function" ? _a : Object])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

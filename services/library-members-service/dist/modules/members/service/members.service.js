@@ -12,6 +12,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 var MembersService_1;
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MembersService = void 0;
 const common_1 = require("@nestjs/common");
@@ -225,8 +226,6 @@ exports.MembersService = MembersService;
 exports.MembersService = MembersService = MembersService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(member_entity_1.Member.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model,
-        axios_1.HttpService,
-        activity_log_service_1.ActivityLogService])
+    __metadata("design:paramtypes", [mongoose_2.Model, typeof (_a = typeof axios_1.HttpService !== "undefined" && axios_1.HttpService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
 ], MembersService);
 //# sourceMappingURL=members.service.js.map

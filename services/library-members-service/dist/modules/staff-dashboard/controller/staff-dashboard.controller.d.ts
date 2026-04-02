@@ -1,16 +1,15 @@
 import { StaffDashboardService } from '../service/staff-dashboard.service';
+import { CreateBookDto } from '../dto/create-book.dto';
 export declare class StaffDashboardController {
     private readonly staffDashboardService;
     constructor(staffDashboardService: StaffDashboardService);
-    getStaffStats(): Promise<{
+    getStaffStats(req: any): Promise<{
         message: string;
         data: {
-            totalMembers: number;
             totalBooks: number;
-            booksIssued: number;
-            booksReturned: number;
-            overdueBooks: number;
-            pendingRequests: number;
+            availableBooks: number;
+            issuedBooks: number;
+            todayBookAdded: number;
         };
     }>;
     getRecentIssues(): Promise<{
@@ -36,28 +35,33 @@ export declare class StaffDashboardController {
             pendingRequests: number;
         };
     }>;
-    getBooksAddedToday(): Promise<{
+    getBooksAddedToday(req: any): Promise<{
         message: string;
         data: any[];
     }>;
-    getRecentActivities(): Promise<{
+    getRackDistribution(req: any): Promise<{
         message: string;
         data: any[];
     }>;
-    getRackDistribution(): Promise<{
-        message: string;
-        data: any[];
-    }>;
-    createBook(bookData: any): Promise<{
+    createBook(bookData: CreateBookDto, req: any): Promise<{
         message: string;
         data: {
             message: string;
             data: any;
         };
     }>;
-    getMyActivityLogs(req: any): Promise<{
+    getMyActivitySummary(req: any): Promise<{
         message: string;
-        data: any[];
+        data: {
+            totalActivitiesBooksAdded: number;
+            todaysActivitiesBooksAdded: number;
+            recentActivities: {
+                action: any;
+                date: any;
+                description: any;
+                referenceId: any;
+            }[];
+        };
     }>;
     getMyProfile(req: any): Promise<{
         message: string;
@@ -65,15 +69,6 @@ export declare class StaffDashboardController {
             _id: import("mongoose").Types.ObjectId;
         } & {
             __v: number;
-        };
-    }>;
-    getMyContribution(req: any): Promise<{
-        message: string;
-        data: {
-            totalActivities: number;
-            booksAdded: number;
-            booksIssued: number;
-            booksReturned: number;
         };
     }>;
     getBooksByCategory(): Promise<{
@@ -92,5 +87,19 @@ export declare class StaffDashboardController {
             overdue: number;
             damaged: number;
         };
+    }>;
+    getTodaysVisitors(): Promise<{
+        message: string;
+        count: number;
+        data: (import("mongoose").Document<unknown, {}, import("../../library-visits/entities/library-visit.entity").LibraryVisit, {}, {}> & import("../../library-visits/entities/library-visit.entity").LibraryVisit & {
+            _id: import("mongoose").Types.ObjectId;
+        } & {
+            __v: number;
+        })[];
+    }>;
+    getTodaysIssues(req: any): Promise<{
+        message: string;
+        count: number;
+        data: any[];
     }>;
 }

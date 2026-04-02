@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffService = void 0;
 const common_1 = require("@nestjs/common");
@@ -41,6 +42,13 @@ let StaffService = class StaffService {
             email: staff.email,
             role: staff.role,
         });
+        await this.activityLogService.logAction({
+            adminId: staff._id.toString(),
+            action: 'STAFF_LOGIN',
+            entityType: 'AUTH',
+            entityId: staff._id.toString(),
+            details: { email: staff.email, fullName: staff.fullName }
+        });
         return {
             token,
             user: {
@@ -50,6 +58,19 @@ let StaffService = class StaffService {
                 role: staff.role,
             },
         };
+    }
+    async logout(staffId) {
+        const staff = await this.staffModel.findById(staffId);
+        if (staff) {
+            await this.activityLogService.logAction({
+                adminId: staff._id.toString(),
+                action: 'STAFF_LOGOUT',
+                entityType: 'AUTH',
+                entityId: staff._id.toString(),
+                details: { email: staff.email, fullName: staff.fullName }
+            });
+        }
+        return { message: 'Logged out successfully' };
     }
     async create(createDto, adminId) {
         const existingStaff = await this.staffModel.findOne({ email: createDto.email });
@@ -126,8 +147,6 @@ exports.StaffService = StaffService;
 exports.StaffService = StaffService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(staff_entity_1.Staff.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model,
-        jwt_1.JwtService,
-        activity_log_service_1.ActivityLogService])
+    __metadata("design:paramtypes", [mongoose_2.Model, typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
 ], StaffService);
 //# sourceMappingURL=staff.service.js.map

@@ -29,6 +29,7 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
+    "@nestjs/mongoose": "^11.0.4",
     "@nestjs/testing": "^11.1.17"
   }
 }

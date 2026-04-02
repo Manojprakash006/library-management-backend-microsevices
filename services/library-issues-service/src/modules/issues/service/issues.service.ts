@@ -34,7 +34,7 @@ export class IssuesService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -50,7 +50,7 @@ export class IssuesService {
 
   private async autoRecordLibraryVisit(memberId: string, bookId: string, issueType: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       
       // Map issueType to purpose
       // "Taking Home" -> "issue" (immediate in/out)
@@ -89,7 +89,7 @@ export class IssuesService {
 
   private async recordReturnVisit(memberId: string, bookId: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/library-visits/record-return`, {
@@ -225,7 +225,7 @@ export class IssuesService {
     dueDate: Date
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
@@ -260,7 +260,7 @@ export class IssuesService {
     fine: number
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.put(`${membersServiceUrl}/members/${memberId}/borrowing-history/${issueId}`, {
           returnedAt,
@@ -448,7 +448,9 @@ export class IssuesService {
 
   async getIssuesCount(date?: string): Promise<number> {
     if (!date) {
-      return this.issueBookModel.countDocuments();
+      return this.issueBookModel.countDocuments({
+        status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+      });
     }
     const startOfDay = new Date(date);
     const endOfDay = new Date(date);

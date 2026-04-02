@@ -21,6 +21,17 @@ export class StaffController {
     return { message: 'Login successful', data: result };
   }
 
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Staff logout' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  async staffLogout(@Req() req: any) {
+    const staffId = req.user?.userId || req.user?.id;
+    const result = await this.staffService.logout(staffId);
+    return { message: 'Logout successful', data: result };
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
