@@ -49,6 +49,9 @@ export class Staff {
   @Prop({ trim: true, minlength: 10, maxlength: 20 })
   emergencyContact: string;
 
+  @Prop({ trim: true, default: 'General' })
+  department: string;
+
   @Prop({ default: true, index: true })
   isActive: boolean;
 }

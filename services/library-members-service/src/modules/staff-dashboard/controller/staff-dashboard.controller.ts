@@ -82,7 +82,7 @@ export class StaffDashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createBook(@Body() bookData: CreateBookDto, @Request() req) {
     const authHeader = req.headers['authorization'];
-    const staffId = req.user?.userId || req.user?.id;
+    const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
     const result = await this.staffDashboardService.createBook(bookData, staffId, authHeader);
     return { message: 'Book created successfully', data: result };
   }
@@ -93,15 +93,26 @@ export class StaffDashboardController {
   @Roles('staff')
   @ApiOperation({ summary: 'Get my activity summary' })
   async getMyActivitySummary(@Request() req) {
-    const result = await this.staffDashboardService.getMyActivitySummary(req.user.userId || req.user.id);
+    const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+    const result = await this.staffDashboardService.getMyActivitySummary(staffId);
     return { message: 'Activity summary retrieved successfully', data: result };
+  }
+
+  @Get('my-contribution')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get my contribution' })
+  async getMyContribution(@Request() req) {
+    const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+    const result = await this.staffDashboardService.getMyContribution(staffId);
+    return { message: 'My contribution retrieved successfully', data: result };
   }
 
   @Get('my-profile')
   @Roles('staff')
   @ApiOperation({ summary: 'Get my profile' })
   async getMyProfile(@Request() req) {
-    const result = await this.staffDashboardService.getMyProfile(req.user.userId || req.user.id);
+    const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+    const result = await this.staffDashboardService.getMyProfile(staffId);
     return { message: 'Profile retrieved', data: result };
   }
 
@@ -110,24 +121,27 @@ export class StaffDashboardController {
   @Get('books-by-category')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books by category' })
-  async getBooksByCategory() {
-    const result = await this.staffDashboardService.getBooksByCategory();
+  async getBooksByCategory(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getBooksByCategory(authHeader);
     return { message: 'Books by category retrieved', data: result };
   }
 
   @Get('rack-utilization')
   @Roles('staff')
   @ApiOperation({ summary: 'Get rack utilization' })
-  async getRackUtilization() {
-    const result = await this.staffDashboardService.getRackUtilization();
+  async getRackUtilization(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getRackUtilization(authHeader);
     return { message: 'Rack utilization retrieved', data: result };
   }
 
   @Get('books-status-distribution')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books status distribution' })
-  async getBooksStatusDistribution() {
-    const result = await this.staffDashboardService.getBooksStatusDistribution();
+  async getBooksStatusDistribution(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getBooksStatusDistribution(authHeader);
     return { message: 'Books status distribution retrieved', data: result };
   }
 

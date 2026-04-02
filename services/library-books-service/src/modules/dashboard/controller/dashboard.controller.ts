@@ -22,6 +22,7 @@ export class DashboardController {
   }
 
   @Get('inventory')
+  @Roles('admin', 'staff')
   @ApiOperation({ summary: 'Get inventory summary' })
   async getInventorySummary() {
     const result = await this.dashboardService.getInventorySummary();
