@@ -119,7 +119,7 @@ export class RequestsService {
         this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
 
-      const allIssues = response.data?.data || [];
+      const allIssues = response.data?.data || [];  
 
       // Get active (not returned) issues - Active or Overdue status
       const activeIssues = allIssues.filter((issue: any) =>
