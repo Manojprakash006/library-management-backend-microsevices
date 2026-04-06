@@ -10,6 +10,7 @@ import { IssueBook } from '../shared/issue-book.entity';
 import { Types } from 'mongoose';
 import { firstValueFrom } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
+import { status } from '@grpc/grpc-js';
 
 @Injectable()
 export class MemberDashboardService {
@@ -38,11 +39,28 @@ export class MemberDashboardService {
         const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
   
         const allIssuesResponse = await firstValueFrom(
-          this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`)
+          this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
         );
+
         const allIssues = allIssuesResponse.data?.data || [];
-        const totalFines = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
-  
+
+        const today = new Date();
+
+        const totalFines = allIssues.reduce((sum: number, issue: any) => {
+          if (issue.dueDate && new Date(issue.dueDate) < today) {
+            const dueDate = new Date(issue.dueDate);
+
+            if (dueDate < today) {
+              const daysOverdue = Math.max(1, Math.floor(
+                (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
+              ));
+
+              return sum + daysOverdue * 10;
+            }
+          }
+          return sum;
+        }, 0);
+
         return {
           booksHeld: stats.totalActive,
           booksAtHome: stats.booksAtHome,
@@ -95,8 +113,13 @@ export class MemberDashboardService {
         console.log("REQUEST SERVICE FAILED :", e.message);
       }
   
-      const overdueBooks = member.borrowingHistory.filter(
-        (b) => b.status === "overdue").length;
+      let overdueBooks = 0;
+      try {
+        const overdue = await this.getOverdueBooks(userId);
+        overdueBooks = overdue.length;
+      } catch (error) {
+        console.log("OverDue fetch Failed :", error.message);
+      }
   
     return {
       issuedBooks: booksHeld,
@@ -109,29 +132,31 @@ export class MemberDashboardService {
 
   async getOverdueBooks(userId: string) {
 
-    if (!Types.ObjectId.isValid(userId)) {
-      throw new Error('Invalid userId');
-    }
+    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+    const response = await firstValueFrom(
+      this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}`) );
+
+    const allIssues = response.data?.data || [];
+
     const today = new Date();
 
-    const overDueBooks = await this.issueModel
-      .find({
-        memberId: new Types.ObjectId(userId),
-        status: 'Active',
-        dueDate: { $lt: today },
-      })
-      .populate('bookId');
+    const overDueBooks = allIssues.filter((issue: any) => {
+      return (
+        issue.issueType === "Taking Home" &&
+        issue.dueDate &&
+        new Date(issue.dueDate) < today
+      );
+    });
 
-    return overDueBooks.map((issue) => {
-      const diffTime = today.getTime() - new Date(issue.dueDate).getTime();
-      const overDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+    return overDueBooks.map((issue: any) => {
       return {
         _id: issue._id,
-        bookId: issue.bookId,
+        bookId: issue.book,
         bookRequestId: issue._id,
         dueDate: issue.dueDate,
-        overDue: overDue,
+        overDue: issue.daysOverdue || 0,
+        status: issue.status,
       };
     });
   }

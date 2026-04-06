@@ -327,23 +327,48 @@ export class IssuesService {
     return issuedBook;
   }
 
-  async findByMember(memberId: string): Promise<IssueBook[]> {
-    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+  async findByMember(memberId: string): Promise<any[]> {
+    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).lean();
+
     const today = new Date();
 
-    return issuedBooks.map((issue) => {
-      const issueObj = issue.toObject();
-      if (issueObj.status !== IssueStatus.RETURNED &&
-        issueObj.issueType === IssueType.TAKING_HOME &&
-        issueObj.dueDate &&
-        new Date(issueObj.dueDate) < today) {
-        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-        issueObj.status = IssueStatus.OVERDUE;
-        issueObj.daysOverdue = overdueDays;
-        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
-      }
-      return issueObj as IssueBook;
-    });
+    const enriched = await Promise.all(issuedBooks.map(async (issue) => { let updatedIssue = { ...issue };
+
+        if (
+          issue.status !== IssueStatus.RETURNED &&
+          issue.issueType === 'Taking Home' &&
+          issue.dueDate &&
+          new Date(issue.dueDate) < today
+        ) {
+          const overdueDays = Math.ceil(
+            (today.getTime() - new Date(issue.dueDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+          );
+
+          updatedIssue.status = IssueStatus.OVERDUE;
+          updatedIssue.daysOverdue = overdueDays;
+          updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+        }
+
+        let book = null;
+
+        try {
+          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+
+          const response = await firstValueFrom(
+            this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`) );
+
+          book = response.data?.data;
+
+        } catch (error) {
+          console.log("BOOK FETCH FAILED:", error.message);
+        }
+
+        return { ...updatedIssue, book };
+      })
+    );
+
+    return enriched;
   }
 
   async findActiveByMember(memberId: string): Promise<any[]> {
