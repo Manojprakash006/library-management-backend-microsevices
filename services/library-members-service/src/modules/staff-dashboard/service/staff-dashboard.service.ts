@@ -7,6 +7,7 @@ import { AxiosResponse } from 'axios';
 import { Member } from '../../members/entities/member.entity';
 import { Staff } from '../../staff/entities/staff.entity';
 import { LibraryVisit } from '../../library-visits/entities/library-visit.entity';
+import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
 interface BooksStatsResponse {
   totalBooks: number;
@@ -23,6 +24,7 @@ export class StaffDashboardService {
     @InjectModel(Staff.name) private staffModel: Model<Staff>,
     @InjectModel(LibraryVisit.name) private libraryVisitModel: Model<LibraryVisit>,
     private readonly httpService: HttpService,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
   async getStaffStats(authHeader?: string) {
@@ -187,11 +189,26 @@ export class StaffDashboardService {
         })
       );
 
+      const createdBook = response.data?.data || response.data;
       this.logger.log(`Book created successfully: ${JSON.stringify(response.data)}`);
+
+      if (staffId) {
+        await this.activityLogService.logAction({
+          adminId: staffId,
+          action: 'BOOKSADDED',
+          entityType: 'BOOK',
+          entityId: createdBook._id || createdBook.id || 'unknown',
+          details: {
+            title: createdBook.title,
+            message: `Added new book: ${createdBook.title || bookData.title} (ID: ${createdBook.bookId || createdBook.id || 'unknown'})`,
+            referenceId: createdBook.bookId || createdBook.id || createdBook._id
+          }
+        });
+      }
 
       return {
         message: 'Book created successfully',
-        data: response.data?.data || response.data,
+        data: createdBook,
       };
     } catch (error) {
       this.logger.error(`Failed to create book: ${error.message}`);
@@ -203,34 +220,168 @@ export class StaffDashboardService {
 
 
   async getMyProfile(staffId: string) {
-    return this.staffModel.findById(staffId).select('-password -__v');
+    const profile: any = await this.staffModel.findById(staffId).select('-password -__v').lean();
+    if (!profile) return null;
+
+    const contributionFilter = {
+      adminId: staffId,
+      action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+    };
+    const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysActivities = await this.activityLogService.getLogs(1, 1, {
+      ...contributionFilter,
+      createdAt: { $gte: today }
+    });
+
+    const lastActivity = await this.activityLogService.getLogs(1, 1, { adminId: staffId });
+
+    return {
+      ...profile,
+      department: profile.department || 'General',
+      qualification: profile.qualification || 'N/A',
+      address: profile.address || 'N/A',
+      emergencyContact: profile.emergencyContact || 'N/A',
+      joinDate: profile.createdAt,
+      totalActivities: totalActivities.count || 0,
+      todaysActivities: todaysActivities.count || 0,
+      lastActive: lastActivity.data?.length > 0 ? (lastActivity.data[0] as any).createdAt : profile.updatedAt
+    };
   }
 
   async getMyContribution(staffId: string) {
-    // TODO: Implement when activity logs module is created
+    // Exclude logins and logouts since those are not 'contributions' to the system
+    const contributionFilter = {
+      adminId: staffId,
+      action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+    };
+
+    const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysActivities = await this.activityLogService.getLogs(1, 1, {
+      ...contributionFilter,
+      createdAt: { $gte: today }
+    });
+
     return {
-      totalActivities: 0,
-      booksAdded: 0,
-      booksIssued: 0,
-      booksReturned: 0,
+      totalActivities: totalActivities.count || 0,
+      todaysActivities: todaysActivities.count || 0,
     };
   }
 
-  async getBooksByCategory() {
-    return [];
-  }
+  async getMyActivitySummary(staffId: string) {
+    const totalBooksAdded = await this.activityLogService.getLogs(1, 1, { adminId: staffId, action: 'BOOKSADDED' });
 
-  async getRackUtilization() {
-    return [];
-  }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysBooksAdded = await this.activityLogService.getLogs(1, 1, {
+      adminId: staffId,
+      action: 'BOOKSADDED',
+      createdAt: { $gte: today }
+    });
 
-  async getBooksStatusDistribution() {
+    const lastActivityQuery = await this.activityLogService.getLogs(1, 1000, {
+      adminId: staffId,
+      action: { $in: ['BOOKSADDED', 'STAFF_LOGIN', 'STAFF_LOGOUT'] }
+    });
+
+    const recentActivities = lastActivityQuery.data.map((log: any) => {
+      let actionName = log.action;
+      if (log.action === 'BOOKSADDED') actionName = 'ADD BOOK';
+      else if (log.action === 'STAFF_LOGIN') actionName = 'LOGIN';
+      else if (log.action === 'STAFF_LOGOUT') actionName = 'LOGOUT';
+
+      return {
+        action: actionName,
+        date: log.createdAt,
+        description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
+        referenceId: log.details?.referenceId || log.entityId
+      };
+    });
+
     return {
-      available: 0,
-      issued: 0,
-      overdue: 0,
-      damaged: 0,
+      totalActivitiesBooksAdded: totalBooksAdded.count || 0,
+      todaysActivitiesBooksAdded: todaysBooksAdded.count || 0,
+      recentActivities: recentActivities,
     };
+  }
+
+  async getBooksByCategory(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      this.logger.log(`Fetching books by category from: ${booksServiceUrl}/dashboard/inventory`);
+
+      const response: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/inventory`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const booksByCategory = response.data?.data?.booksByCategory || [];
+
+      return booksByCategory.map((item: any) => ({
+        category: item._id || 'Unknown',
+        count: item.count || 0
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to fetch books by category: ${error.message}`);
+      return [];
+    }
+  }
+
+  async getRackUtilization(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      this.logger.log(`Fetching rack utilization from: ${booksServiceUrl}/racks`);
+
+      const response: AxiosResponse<{ data: any[]; count: number }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/racks`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const racks = response.data?.data || [];
+
+      return racks.map((rack: any) => ({
+        rackNumber: rack.rackNumber || 'Unknown',
+        usedCount: rack.totalBooks || 0,
+        totalBooks: rack.totalBooks || 0,
+        capacity: rack.capacity || 50,
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to fetch rack utilization: ${error.message}`);
+      return [];
+    }
+  }
+
+  async getBooksStatusDistribution(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      this.logger.log(`Fetching books status distribution from: ${booksServiceUrl}/dashboard/stat-cards`);
+
+      const statsResponse: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/stat-cards`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const stats = statsResponse.data?.data || {};
+
+      return {
+        available: stats.availableBooks || stats.availableQuantity || 0,
+        issued: stats.issuedBooks || stats.activeIssues || 0,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch books status distribution: ${error.message}`);
+      return {
+        available: 0,
+        issued: 0,
+      };
+    }
   }
 
   async getTodaysVisitors() {
@@ -256,7 +407,7 @@ export class StaffDashboardService {
 
   async getTodaysIssues(authHeader?: string) {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3003';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

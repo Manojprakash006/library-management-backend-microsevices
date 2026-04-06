@@ -56,6 +56,20 @@ export class StaffService {
     };
   }
 
+  async logout(staffId: string) {
+    const staff = await this.staffModel.findById(staffId);
+    if (staff) {
+      await this.activityLogService.logAction({
+        adminId: staff._id.toString(),
+        action: 'STAFF_LOGOUT',
+        entityType: 'AUTH',
+        entityId: staff._id.toString(),
+        details: { email: staff.email, fullName: staff.fullName }
+      });
+    }
+    return { message: 'Logged out successfully' };
+  }
+
   async create(createDto: CreateStaffDto, adminId?: string) {
     const existingStaff = await this.staffModel.findOne({ email: createDto.email });
     if (existingStaff) {
@@ -91,6 +105,18 @@ export class StaffService {
   }
 
   async update(id: string, updateDto: UpdateStaffDto, adminId?: string) {
+    if (updateDto.email) {
+      const existingStaff = await this.staffModel.findOne({ email: updateDto.email, _id: { $ne: id } });
+      if (existingStaff) {
+        throw new ConflictException('Email already registered');
+      }
+    }
+
+    if (updateDto.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateDto.password = await bcrypt.hash(updateDto.password, salt);
+    }
+
     const staff = await this.staffModel.findByIdAndUpdate(
       id,
       { $set: updateDto },

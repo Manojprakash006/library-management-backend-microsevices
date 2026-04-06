@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#2f7c47",
@@ -20,3 +21,6 @@
     },
     "peacock.color": "#215732"
 }
+=======
+﻿{ "files.exclude": { "**/dist": true } }
+>>>>>>> 21dfec9ecde1254f493df761d87119cc81b4ddbc

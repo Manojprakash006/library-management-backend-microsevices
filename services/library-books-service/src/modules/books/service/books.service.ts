@@ -32,7 +32,7 @@ export class BooksService {
         })
       );
     } catch (error) {
-      this.logger.error(`Failed to log activity to member service: ${error.message}`);
+      this.logger.error(`Failed to log activity to member service: ${error}`);
     }
   }
 
@@ -47,7 +47,7 @@ export class BooksService {
         })
       );
     } catch (error) {
-      this.logger.error(`Failed to broadcast to admins: ${error.message}`);
+      this.logger.error(`Failed to broadcast to admins: ${error}`);
     }
   }
 
@@ -94,7 +94,7 @@ export class BooksService {
 
           return { ...book.toObject(), available: book.quantity - issuedCount };
         } catch (error) {
-          console.log("ISSUE COUNT FETCH FAILED:", error.message);
+          console.log("ISSUE COUNT FETCH FAILED:", error);
           return { ...book.toObject(), available: book.quantity };
         }
       })

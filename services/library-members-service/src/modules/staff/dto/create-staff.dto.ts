@@ -25,7 +25,8 @@ export class CreateStaffDto {
   @MaxLength(100)
   password: string;
 
-  @ApiProperty({ description: 'Department' })
+  @ApiProperty({ description: 'Department', default: 'General', required: false })
+  @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(100)

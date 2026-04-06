@@ -5,12 +5,18 @@ import { IsEnum } from 'class-validator';
 
 export class CreateBookReviewDto {
   @ApiProperty({ description: 'Book ID' })
-  @IsMongoId()
+  @IsString()
   bookId: string;
 
   @ApiProperty({ description: 'Member ID' })
-  @IsMongoId()
+  @IsString()
   memberId: string;
+
+  @ApiProperty({ description: 'Member Name' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  memberName: string;
 
   @ApiProperty({ description: 'Rating (1-5)', minimum: 1, maximum: 5 })
   @IsNumber()

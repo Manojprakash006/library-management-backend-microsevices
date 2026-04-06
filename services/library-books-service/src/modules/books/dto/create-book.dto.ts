@@ -104,4 +104,11 @@ export class CreateBookDto {
   @IsOptional()
   @IsUrl()
   coverUrl: string;
+
+  @ApiProperty({ description: 'Book rating from 0 to 5', required: false, minimum: 0, maximum: 5, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  rating?: number;
 }
