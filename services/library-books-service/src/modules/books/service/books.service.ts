@@ -103,12 +103,27 @@ export class BooksService {
     return updatedBooks;
   }
 
-  async findOne(id: string): Promise<Book> {
+  async findOne(id: string): Promise<any> {
     const book = await this.bookModel.findById(id).exec();
+
     if (!book) {
       throw new NotFoundException('Book not found');
     }
-    return book;
+
+    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+    try {
+      const response = await firstValueFrom( this.httpService.get(
+          `${issuesServiceUrl}/issues/count/book/${book._id}`) );
+
+      const issuedCount = response.data?.count || 0;
+
+      return { ...book.toObject(), available: book.quantity - issuedCount };
+    } catch (error) {
+      console.log("ISSUE COUNT FETCH FAILED:", error);
+
+      return { ...book.toObject(), available: book.quantity };
+    }
   }
 
   async findByBookId(bookId: string): Promise<Book> {

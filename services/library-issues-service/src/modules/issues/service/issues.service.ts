@@ -239,11 +239,7 @@ export class IssuesService {
     dueDate: Date
   ): Promise<void> {
     try {
-<<<<<<< HEAD
-      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
-=======
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
->>>>>>> 21dfec9ecde1254f493df761d87119cc81b4ddbc
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
