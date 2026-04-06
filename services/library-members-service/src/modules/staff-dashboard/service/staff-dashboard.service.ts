@@ -59,8 +59,8 @@ export class StaffDashboardService {
         todayBookAdded: todayBookAdded,
       };
     } catch (error) {
-      this.logger.error(`Failed to fetch stats from books service: ${error.message}`);
-      this.logger.error(`Error details: ${JSON.stringify(error.response?.data || error)}`);
+      this.logger.error(`Failed to fetch stats from books service: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`Error details: ${JSON.stringify((error as any).response?.data || error)}`);
       // Return default values if books service is unavailable
       return {
         totalBooks: 0,
@@ -92,7 +92,7 @@ export class StaffDashboardService {
 
       return todayBookAdded;
     } catch (error) {
-      this.logger.error(`Failed to fetch books added today: ${error.message}`);
+      this.logger.error(`Failed to fetch books added today: ${error instanceof Error ? error.message : String(error)}`);
       return 0;
     }
   }
@@ -147,7 +147,7 @@ export class StaffDashboardService {
 
       return todayBooks;
     } catch (error) {
-      this.logger.error(`Failed to fetch books added today: ${error.message}`);
+      this.logger.error(`Failed to fetch books added today: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }
@@ -173,7 +173,7 @@ export class StaffDashboardService {
 
       return racks;
     } catch (error) {
-      this.logger.error(`Failed to fetch rack distribution: ${error.message}`);
+      this.logger.error(`Failed to fetch rack distribution: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }
@@ -211,8 +211,8 @@ export class StaffDashboardService {
         data: createdBook,
       };
     } catch (error) {
-      this.logger.error(`Failed to create book: ${error.message}`);
-      this.logger.error(`Error details: ${JSON.stringify(error.response?.data || error)}`);
+      this.logger.error(`Failed to create book: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`Error details: ${JSON.stringify((error as any).response?.data || error)}`);
       throw error;
     }
   }
@@ -302,7 +302,7 @@ export class StaffDashboardService {
       this.logger.log(`Found ${visits.length} visitors today`);
       return visits;
     } catch (error) {
-      this.logger.error(`Failed to get today's visitors: ${error.message}`);
+      this.logger.error(`Failed to get today's visitors: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }
@@ -327,7 +327,7 @@ export class StaffDashboardService {
 
       return issues;
     } catch (error) {
-      this.logger.error(`Failed to get today's issues: ${error.message}`);
+      this.logger.error(`Failed to get today's issues: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }
