@@ -105,6 +105,18 @@ export class StaffService {
   }
 
   async update(id: string, updateDto: UpdateStaffDto, adminId?: string) {
+    if (updateDto.email) {
+      const existingStaff = await this.staffModel.findOne({ email: updateDto.email, _id: { $ne: id } });
+      if (existingStaff) {
+        throw new ConflictException('Email already registered');
+      }
+    }
+
+    if (updateDto.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateDto.password = await bcrypt.hash(updateDto.password, salt);
+    }
+
     const staff = await this.staffModel.findByIdAndUpdate(
       id,
       { $set: updateDto },

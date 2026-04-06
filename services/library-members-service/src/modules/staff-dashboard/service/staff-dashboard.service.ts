@@ -220,15 +220,56 @@ export class StaffDashboardService {
 
 
   async getMyProfile(staffId: string) {
-    return this.staffModel.findById(staffId).select('-password -__v');
+    const profile: any = await this.staffModel.findById(staffId).select('-password -__v').lean();
+    if (!profile) return null;
+
+    const contributionFilter = {
+      adminId: staffId,
+      action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+    };
+    const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysActivities = await this.activityLogService.getLogs(1, 1, {
+      ...contributionFilter,
+      createdAt: { $gte: today }
+    });
+
+    const lastActivity = await this.activityLogService.getLogs(1, 1, { adminId: staffId });
+
+    return {
+      ...profile,
+      department: profile.department || 'General',
+      qualification: profile.qualification || 'N/A',
+      address: profile.address || 'N/A',
+      emergencyContact: profile.emergencyContact || 'N/A',
+      joinDate: profile.createdAt,
+      totalActivities: totalActivities.count || 0,
+      todaysActivities: todaysActivities.count || 0,
+      lastActive: lastActivity.data?.length > 0 ? (lastActivity.data[0] as any).createdAt : profile.updatedAt
+    };
   }
 
   async getMyContribution(staffId: string) {
+    // Exclude logins and logouts since those are not 'contributions' to the system
+    const contributionFilter = {
+      adminId: staffId,
+      action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+    };
+
+    const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysActivities = await this.activityLogService.getLogs(1, 1, {
+      ...contributionFilter,
+      createdAt: { $gte: today }
+    });
+
     return {
-      totalActivities: 0,
-      booksAdded: 0,
-      booksIssued: 0,
-      booksReturned: 0,
+      totalActivities: totalActivities.count || 0,
+      todaysActivities: todaysActivities.count || 0,
     };
   }
 
@@ -269,21 +310,78 @@ export class StaffDashboardService {
     };
   }
 
-  async getBooksByCategory() {
-    return [];
+  async getBooksByCategory(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      this.logger.log(`Fetching books by category from: ${booksServiceUrl}/dashboard/inventory`);
+
+      const response: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/inventory`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const booksByCategory = response.data?.data?.booksByCategory || [];
+
+      return booksByCategory.map((item: any) => ({
+        category: item._id || 'Unknown',
+        count: item.count || 0
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to fetch books by category: ${error.message}`);
+      return [];
+    }
   }
 
-  async getRackUtilization() {
-    return [];
+  async getRackUtilization(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      this.logger.log(`Fetching rack utilization from: ${booksServiceUrl}/racks`);
+
+      const response: AxiosResponse<{ data: any[]; count: number }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/racks`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const racks = response.data?.data || [];
+
+      return racks.map((rack: any) => ({
+        rackNumber: rack.rackNumber || 'Unknown',
+        usedCount: rack.totalBooks || 0,
+        totalBooks: rack.totalBooks || 0,
+        capacity: rack.capacity || 50,
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to fetch rack utilization: ${error.message}`);
+      return [];
+    }
   }
 
-  async getBooksStatusDistribution() {
-    return {
-      available: 0,
-      issued: 0,
-      overdue: 0,
-      damaged: 0,
-    };
+  async getBooksStatusDistribution(authHeader?: string) {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      this.logger.log(`Fetching books status distribution from: ${booksServiceUrl}/dashboard/stat-cards`);
+
+      const statsResponse: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/stat-cards`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const stats = statsResponse.data?.data || {};
+
+      return {
+        available: stats.availableBooks || stats.availableQuantity || 0,
+        issued: stats.issuedBooks || stats.activeIssues || 0,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch books status distribution: ${error.message}`);
+      return {
+        available: 0,
+        issued: 0,
+      };
+    }
   }
 
   async getTodaysVisitors() {

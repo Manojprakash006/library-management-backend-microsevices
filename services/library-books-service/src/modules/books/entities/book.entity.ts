@@ -83,6 +83,9 @@ export class Book {
   @Prop({ trim: true })
   coverUrl: string;
 
+  @Prop({ type: Number, min: 0, max: 5, default: 0 })
+  rating: number;
+
   @Prop({ type: String })
   createdBy?: string;
 

@@ -1,8 +1,20 @@
-import { IsString, IsOptional, IsEnum, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MinLength, MaxLength, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { StaffRole, StaffStatus } from '../entities/staff.entity';
 
 export class UpdateStaffDto {
+  @ApiProperty({ description: 'Email address', required: false })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ description: 'Password', minLength: 6, maxLength: 100, required: false })
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  password?: string;
+
   @ApiProperty({ description: 'Full name', required: false })
   @IsOptional()
   @IsString()
