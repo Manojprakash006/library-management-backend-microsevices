@@ -16,6 +16,7 @@ services:
       - library-members-service
       - library-issues-service
       - library-requests-service
+      - library-payments-service
     networks:
       - app-network
     restart: unless-stopped
@@ -94,6 +95,7 @@ services:
       - KAFKA_BROKER=localhost:9092
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
       - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - PAYMENTS_SERVICE_URL=http://library-payments-service:3005
       
     depends_on:
       - mongodb
@@ -137,6 +139,27 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
       - mongo_data:/data/db
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Library Payments Service
+  library-payments-service:
+    build:
+      context: ./services/library-payments-service
+      dockerfile: Dockerfile
+    container_name: library-payments-service
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
+      - MONGODB_DB=PaymentServices
+      - JWT_SECRET=your-secret-key
+      - KAFKA_BROKER=localhost:9092
+    depends_on:
+      - mongodb
     networks:
       - app-network
     restart: unless-stopped

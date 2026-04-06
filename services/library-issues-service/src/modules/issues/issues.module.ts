@@ -9,6 +9,7 @@ import { IssueBook, IssueBookSchema } from './entities/issue-book.entity';
   imports: [
     MongooseModule.forFeature([{ name: IssueBook.name, schema: IssueBookSchema }]),
     HttpModule,
+
   ],
   controllers: [IssuesController],
   providers: [IssuesService],

@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package library.issues;
+
+service IssuesService {
+  rpc CreateIssue (CreateIssueRequest) returns (IssueResponse);
+  rpc GetIssueById (GetIssueByIdRequest) returns (IssueResponse);
+  rpc GetAllIssues (GetAllIssuesRequest) returns (IssuesListResponse);
+  rpc UpdateIssue (UpdateIssueRequest) returns (IssueResponse);
+  rpc DeleteIssue (DeleteIssueRequest) returns (DeleteResponse);
+  rpc ReturnBook (ReturnBookRequest) returns (IssueResponse);
+  rpc GetMemberIssues (GetMemberIssuesRequest) returns (IssuesListResponse);
+  rpc GetOverdueIssues (GetOverdueIssuesRequest) returns (IssuesListResponse);
+  rpc RenewBook (RenewBookRequest) returns (IssueResponse);
+  rpc ReportDamage (ReportDamageRequest) returns (DamageReportResponse);
+  rpc GetMemberHistory (GetMemberIssuesRequest) returns (IssuesListResponse);
+  rpc RequestBookAgain (RequestAgainRequest) returns (IssueResponse);
+  rpc GetDashboardStats (GetMemberIssuesRequest) returns (DashboardStatsResponse);
+}
+
+message CreateIssueRequest {
+  string bookId = 1;
+  string memberId = 2;
+  string bookTitle = 3;
+  string memberName = 4;
+  int32 issueDays = 5;
+  string notes = 6;
+}
+
+message GetIssueByIdRequest {
+  string id = 1;
+}
+
+message GetAllIssuesRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string status = 3;
+  string memberId = 4;
+}
+
+message UpdateIssueRequest {
+  string id = 1;
+  string status = 2;
+  string notes = 3;
+}
+
+message DeleteIssueRequest {
+  string id = 1;
+}
+
+message ReturnBookRequest {
+  string id = 1;
+  string returnCondition = 2;
+  string notes = 3;
+}
+
+message GetMemberIssuesRequest {
+  string memberId = 1;
+  string status = 2;
+}
+
+message GetOverdueIssuesRequest {
+  int32 daysOverdue = 1;
+}
+
+message RenewBookRequest {
+  string id = 1;
+  int32 additionalDays = 2;
+}
+
+message ReportDamageRequest {
+  string issueId = 1;
+  string reason = 2;
+  double damageAmount = 3;
+  double fineAmount = 4;
+}
+
+message RequestAgainRequest {
+  string bookId = 1;
+  string memberId = 2;
+}
+
+message IssueResponse {
+  string id = 1;
+  string bookId = 2;
+  string memberId = 3;
+  string bookTitle = 4;
+  string memberName = 5;
+  string issueDate = 6;
+  string dueDate = 7;
+  string returnDate = 8;
+  string status = 9;
+  double fine = 10;
+  string notes = 11;
+  string returnCondition = 12;
+  string createdAt = 13;
+  string updatedAt = 14;
+}
+
+message DamageReportResponse {
+  string id = 1;
+  string issueId = 2;
+  string bookId = 3;
+  string memberId = 4;
+  string reason = 5;
+  double damageAmount = 6;
+  double fineAmount = 7;
+  string status = 8;
+  string createdAt = 9;
+}
+
+message DashboardStatsResponse {
+  int32 totalBorrowed = 1;
+  int32 overdueBooks = 2;
+  int32 pendingRequests = 3;
+  int32 totalHistory = 4;
+  repeated BorrowedBook borrowedBooks = 5;
+  repeated OverdueBook overdueBooksList = 6;
+}
+
+message BorrowedBook {
+  string id = 1;
+  string bookId = 2;
+  string bookTitle = 3;
+  string issueDate = 4;
+  string dueDate = 5;
+  string status = 6;
+}
+
+message OverdueBook {
+  string id = 1;
+  string bookId = 2;
+  string bookTitle = 3;
+  string dueDate = 4;
+  int32 daysOverdue = 5;
+  double fine = 6;
+}
+
+message IssuesListResponse {
+  repeated IssueResponse issues = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}

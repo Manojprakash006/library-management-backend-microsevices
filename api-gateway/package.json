@@ -22,7 +22,8 @@
     "start:members": "cd .. && cd services/library-members-service && npm i && npm run start:dev",
     "start:issues": "cd .. && cd services/library-issues-service && npm i && npm run start:dev",
     "start:requests": "cd .. && cd services/library-requests-service && npm i && npm run start:dev",
-    "start:all": "concurrently -n GATEWAY,BOOKS,MEMBERS,ISSUES,REQUESTS -c yellow,green,blue,red,white \"npm run start:dev\" \"npm run start:books\" \"npm run start:members\" \"npm run start:issues\" \"npm run start:requests\" "
+    "start:payments": "cd .. && cd services/library-payments-service && npm i && npm run start:dev",
+    "start:all": "concurrently -n GATEWAY,BOOKS,MEMBERS,ISSUES,REQUESTS,PAYMENTS -c yellow,green,blue,red,white,cyan \"npm run start:dev\" \"npm run start:books\" \"npm run start:members\" \"npm run start:issues\" \"npm run start:requests\" \"npm run start:payments\" "
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.0",

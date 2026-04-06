@@ -76,6 +76,17 @@ async function bootstrap() {
     }),
   );
 
+  app.use(
+    '/library/payments',
+    createProxyMiddleware({
+      target: 'http://library-payments-service:3005',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/library/payments': '',
+      },
+    }),
+  );
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
