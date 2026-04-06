@@ -18,6 +18,7 @@ export declare class Fine {
     paymentMethod?: PaymentMethod;
     paidAt?: Date;
     referenceId?: string;
+    razorpayOrderId?: string;
 }
 export declare const FineSchema: import("mongoose").Schema<Fine, import("mongoose").Model<Fine, any, any, any, Document<unknown, any, Fine, any, {}> & Fine & {
     _id: import("mongoose").Types.ObjectId;

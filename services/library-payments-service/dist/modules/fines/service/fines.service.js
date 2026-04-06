@@ -16,10 +16,16 @@ exports.FinesService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
+const crypto = require("crypto");
+const Razorpay = require('razorpay');
 const fine_entity_1 = require("../entities/fine.entity");
 let FinesService = class FinesService {
     constructor(fineModel) {
         this.fineModel = fineModel;
+        this.razorpayInstance = new Razorpay({
+            key_id: process.env.RZP_KEY_ID || 'rzp_test_SaDCl7Au48PRQf',
+            key_secret: process.env.RZP_KEY_SECRET || 'Ge4uiF1mxjvZZ5LSXgy5PAZt',
+        });
     }
     async createFine(data) {
         const newFine = new this.fineModel({
@@ -58,6 +64,53 @@ let FinesService = class FinesService {
         fine.status = fine_entity_1.FineStatus.PAID;
         fine.paymentMethod = paymentMethod;
         fine.referenceId = referenceId;
+        fine.paidAt = new Date();
+        return fine.save();
+    }
+    async createRazorpayOrder(fineId) {
+        const fine = await this.getFineById(fineId);
+        if (fine.status === fine_entity_1.FineStatus.PAID) {
+            throw new common_1.BadRequestException(`Fine with ID ${fineId} is already paid`);
+        }
+        const options = {
+            amount: Math.round(fine.amount * 100),
+            currency: 'INR',
+            receipt: `receipt_fine_${fineId}`,
+        };
+        try {
+            const order = await this.razorpayInstance.orders.create(options);
+            fine.razorpayOrderId = order.id;
+            await fine.save();
+            return {
+                orderId: order.id,
+                amount: options.amount,
+                currency: options.currency,
+                fineId,
+            };
+        }
+        catch (error) {
+            throw new common_1.BadRequestException('Could not create Razorpay order');
+        }
+    }
+    async verifyRazorpayPayment(fineId, razorpayOrderId, razorpayPaymentId, signature) {
+        const fine = await this.getFineById(fineId);
+        if (fine.status === fine_entity_1.FineStatus.PAID) {
+            return fine;
+        }
+        if (fine.razorpayOrderId !== razorpayOrderId) {
+            throw new common_1.BadRequestException('Order ID mismatch');
+        }
+        const secret = process.env.RZP_KEY_SECRET || 'Ge4uiF1mxjvZZ5LSXgy5PAZt';
+        const generatedSignature = crypto
+            .createHmac('sha256', secret)
+            .update(razorpayOrderId + '|' + razorpayPaymentId)
+            .digest('hex');
+        if (generatedSignature !== signature) {
+            throw new common_1.BadRequestException('Invalid payment signature');
+        }
+        fine.status = fine_entity_1.FineStatus.PAID;
+        fine.paymentMethod = fine_entity_1.PaymentMethod.UPI;
+        fine.referenceId = razorpayPaymentId;
         fine.paidAt = new Date();
         return fine.save();
     }
