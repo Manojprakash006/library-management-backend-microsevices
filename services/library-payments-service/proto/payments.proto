@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package library.payments;
+
+service FinesService {
+  rpc CreateFine (CreateFineRequest) returns (FineResponse) {}
+  rpc CheckPendingFines (CheckPendingFinesRequest) returns (PendingFinesResponse) {}
+  rpc GetFine (GetFineRequest) returns (FineResponse) {}
+}
+
+message CreateFineRequest {
+  string memberId = 1;
+  string issueId = 2;
+  double amount = 3;
+  string reason = 4;
+}
+
+message FineResponse {
+  string id = 1;
+  string memberId = 2;
+  string issueId = 3;
+  double amount = 4;
+  string reason = 5;
+  string status = 6;
+  string paymentMethod = 7;
+  string paidAt = 8;
+  string referenceId = 9;
+  string createdAt = 10;
+  string updatedAt = 11;
+}
+
+message CheckPendingFinesRequest {
+  string memberId = 1;
+}
+
+message PendingFinesResponse {
+  bool hasPendingFines = 1;
+  double totalPendingAmount = 2;
+  repeated FineResponse pendingFines = 3;
+}
+
+message GetFineRequest {
+  string id = 1;
+}

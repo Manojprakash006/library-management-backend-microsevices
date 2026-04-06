@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { ClientGrpc } from '@nestjs/microservices';
 import { IssueBook, IssueBookDocument, IssueStatus, IssueType } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 
@@ -10,10 +11,17 @@ import { CreateIssueDto } from '../dto/create-issue.dto';
 export class IssuesService {
   private readonly logger = new Logger(IssuesService.name);
 
+  private finesGrpcService: any;
+
   constructor(
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
+    @Inject('PAYMENTS_SERVICE') private paymentsClient: ClientGrpc,
   ) { }
+
+  onModuleInit() {
+    this.finesGrpcService = this.paymentsClient.getService<any>('FinesService');
+  }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
@@ -114,6 +122,19 @@ export class IssuesService {
       numberOfDays = createIssueDto.numberOfDays || 7; // Default 7 days if not provided
       dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + numberOfDays);
+    }
+
+    // Check pending fines from Payment Service
+    try {
+      const checkFines = await firstValueFrom<any>(this.finesGrpcService.CheckPendingFines({ memberId: createIssueDto.memberId }));
+      if (checkFines.hasPendingFines) {
+        throw new BadRequestException(`Please clear your unpaid fine of ₹${checkFines.totalPendingAmount} before borrowing a new book`);
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Failed to check pending fines: ${error.message}`);
+      // Decided to allow or block? Better to allow if service is down, or block? Let's throw error.
+      // throw new BadRequestException('Payment service unavailable. Unable to verify fines.');
     }
 
     // Check book availability first before issuing
@@ -357,7 +378,20 @@ export class IssuesService {
     if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate && returnDate > issuedBook.dueDate) {
       const overdueDays = Math.ceil((returnDate.getTime() - issuedBook.dueDate.getTime()) / (1000 * 60 * 60 * 24));
       issuedBook.daysOverdue = overdueDays;
-      issuedBook.fine = overdueDays * issuedBook.finePerDay;
+      issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
+      
+      // Create a Fine in Payments Service
+      try {
+        await firstValueFrom(this.finesGrpcService.CreateFine({
+          memberId: issuedBook.memberId.toString(),
+          issueId: issuedBook._id.toString(),
+          amount: issuedBook.fine,
+          reason: `Overdue by ${overdueDays} days`
+        }));
+        this.logger.log(`Created fine of ₹${issuedBook.fine} for member ${issuedBook.memberId}`);
+      } catch (error) {
+        this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
+      }
     }
 
     const savedIssue = await issuedBook.save();

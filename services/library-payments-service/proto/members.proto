@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package library.members;
+
+service MembersService {
+  rpc CreateMember (CreateMemberRequest) returns (MemberResponse);
+  rpc GetMemberById (GetMemberByIdRequest) returns (MemberResponse);
+  rpc GetAllMembers (GetAllMembersRequest) returns (MembersListResponse);
+  rpc UpdateMember (UpdateMemberRequest) returns (MemberResponse);
+  rpc DeleteMember (DeleteMemberRequest) returns (DeleteResponse);
+  rpc SearchMembers (SearchMembersRequest) returns (MembersListResponse);
+  rpc RegisterMember (CreateMemberRequest) returns (MemberResponse);
+  rpc LoginMember (LoginRequest) returns (AuthResponse);
+  rpc GetMemberProfile (GetMemberByIdRequest) returns (MemberResponse);
+  rpc GetMemberStats (GetMemberByIdRequest) returns (MemberStatsResponse);
+}
+
+service StaffService {
+  rpc CreateStaff (CreateStaffRequest) returns (StaffResponse);
+  rpc GetStaffById (GetStaffByIdRequest) returns (StaffResponse);
+  rpc GetAllStaff (GetAllStaffRequest) returns (StaffListResponse);
+  rpc UpdateStaff (UpdateStaffRequest) returns (StaffResponse);
+  rpc DeleteStaff (DeleteStaffRequest) returns (DeleteResponse);
+  rpc LoginStaff (LoginRequest) returns (AuthResponse);
+  rpc GetStaffProfile (GetStaffByIdRequest) returns (StaffResponse);
+}
+
+message CreateMemberRequest {
+  string memberId = 1;
+  string fullName = 2;
+  string email = 3;
+  string phoneNumber = 4;
+  string address = 5;
+  string password = 6;
+}
+
+message CreateStaffRequest {
+  string staffId = 1;
+  string fullName = 2;
+  string email = 3;
+  string phone = 4;
+  string department = 5;
+  string shift = 6;
+  string password = 7;
+  string role = 8;
+}
+
+message GetMemberByIdRequest {
+  string id = 1;
+}
+
+message GetStaffByIdRequest {
+  string id = 1;
+}
+
+message GetAllMembersRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  bool isActive = 3;
+}
+
+message GetAllStaffRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string status = 3;
+}
+
+message UpdateMemberRequest {
+  string id = 1;
+  string fullName = 2;
+  string email = 3;
+  string phoneNumber = 4;
+  string address = 5;
+  bool isActive = 6;
+}
+
+message UpdateStaffRequest {
+  string id = 1;
+  string fullName = 2;
+  string email = 3;
+  string phone = 4;
+  string department = 5;
+  string shift = 6;
+  string status = 7;
+  string role = 8;
+}
+
+message DeleteMemberRequest {
+  string id = 1;
+}
+
+message DeleteStaffRequest {
+  string id = 1;
+}
+
+message SearchMembersRequest {
+  string query = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message MemberResponse {
+  string id = 1;
+  string memberId = 2;
+  string fullName = 3;
+  string email = 4;
+  string phoneNumber = 5;
+  string address = 6;
+  bool isActive = 7;
+  string membershipDate = 8;
+  string createdAt = 9;
+  string updatedAt = 10;
+}
+
+message StaffResponse {
+  string id = 1;
+  string staffId = 2;
+  string fullName = 3;
+  string email = 4;
+  string phone = 5;
+  string department = 6;
+  string shift = 7;
+  string status = 8;
+  string role = 9;
+  string createdAt = 10;
+  string updatedAt = 11;
+}
+
+message AuthResponse {
+  string token = 1;
+  MemberResponse member = 2;
+  StaffResponse staff = 3;
+  string role = 4;
+}
+
+message MemberStatsResponse {
+  int32 totalBorrowed = 1;
+  int32 overdueBooks = 2;
+  int32 totalRequests = 3;
+  int32 readingHistory = 4;
+}
+
+message MembersListResponse {
+  repeated MemberResponse members = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message StaffListResponse {
+  repeated StaffResponse staff = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}
