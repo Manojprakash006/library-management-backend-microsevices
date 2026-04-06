@@ -116,13 +116,8 @@ export class NotificationsService {
       const StaffSchema = this.notificationModel.db.model('Staff');
       const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian'] } }).exec();
       
-      // Fetch admins from User collection
-      const UserSchema = this.notificationModel.db.model('User');
-      const admins = await UserSchema.find({ role: 'admin' }).exec();
-      
       const allStaffToNotify = [
-        ...staffMembers.map(s => ({ _id: s._id, email: s.email, name: s.fullName || s.name })),
-        ...admins.map(a => ({ _id: a._id, email: a.email, name: a.name }))
+        ...staffMembers.map(s => ({ _id: s._id, email: s.email, name: s.fullName || s.name }))
       ];
       
       for (const staff of allStaffToNotify) {
