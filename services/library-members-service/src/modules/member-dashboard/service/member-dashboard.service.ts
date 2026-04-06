@@ -157,6 +157,8 @@ export class MemberDashboardService {
         dueDate: issue.dueDate,
         overDue: issue.daysOverdue || 0,
         status: issue.status,
+        issueType: issue.issueType, 
+        issueDate: issue.issueDate,
       };
     });
   }
