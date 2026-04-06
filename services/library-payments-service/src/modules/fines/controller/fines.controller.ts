@@ -25,6 +25,22 @@ export class FinesController {
     return this.finesService.getFineById(id);
   }
 
+  @Get('member/:memberId/pending-check')
+  @ApiOperation({ summary: 'Check pending fines for a member' })
+  @ApiParam({ name: 'memberId', required: true })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return pending fines status.' })
+  async checkPendingFines(@Param('memberId') memberId: string) {
+    return this.finesService.checkPendingFines(memberId);
+  }
+
+  @Post('create')
+  @ApiOperation({ summary: 'Create a new fine' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Fine successfully created.' })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createFine(@Body() createFineDto: { memberId: string; issueId: string; amount: number; reason: string }) {
+    return this.finesService.createFine(createFineDto);
+  }
+
   @Post(':id/pay')
   @ApiOperation({ summary: 'Pay a fine' })
   @ApiParam({ name: 'id', required: true })

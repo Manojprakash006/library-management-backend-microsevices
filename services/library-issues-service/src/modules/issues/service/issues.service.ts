@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { ClientGrpc } from '@nestjs/microservices';
 import { IssueBook, IssueBookDocument, IssueStatus, IssueType } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 
@@ -11,17 +10,10 @@ import { CreateIssueDto } from '../dto/create-issue.dto';
 export class IssuesService {
   private readonly logger = new Logger(IssuesService.name);
 
-  private finesGrpcService: any;
-
   constructor(
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
-    @Inject('PAYMENTS_SERVICE') private paymentsClient: ClientGrpc,
   ) { }
-
-  onModuleInit() {
-    this.finesGrpcService = this.paymentsClient.getService<any>('FinesService');
-  }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
@@ -126,7 +118,11 @@ export class IssuesService {
 
     // Check pending fines from Payment Service
     try {
-      const checkFines = await firstValueFrom<any>(this.finesGrpcService.CheckPendingFines({ memberId: createIssueDto.memberId }));
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+      const checkFinesResponse = await firstValueFrom(
+        this.httpService.get(`${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`)
+      );
+      const checkFines = checkFinesResponse.data;
       if (checkFines.hasPendingFines) {
         throw new BadRequestException(`Please clear your unpaid fine of ₹${checkFines.totalPendingAmount} before borrowing a new book`);
       }
@@ -382,7 +378,8 @@ export class IssuesService {
       
       // Create a Fine in Payments Service
       try {
-        await firstValueFrom(this.finesGrpcService.CreateFine({
+        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+        await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
           memberId: issuedBook.memberId.toString(),
           issueId: issuedBook._id.toString(),
           amount: issuedBook.fine,

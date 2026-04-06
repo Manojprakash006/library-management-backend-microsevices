@@ -97,7 +97,7 @@ services:
       - KAFKA_BROKER=localhost:9092
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
       - BOOKS_SERVICE_URL=http://library-books-service:3001
-      - PAYMENTS_GRPC_URL=library-payments-service:5005
+      - PAYMENTS_SERVICE_URL=http://library-payments-service:3005
       
     depends_on:
       - mongodb
@@ -153,10 +153,8 @@ services:
     container_name: library-payments-service
     ports:
       - "3005:3005"
-      - "5005:5005"
     environment:
       - PORT=3005
-      - GRPC_URL=0.0.0.0:5005
       - NODE_ENV=production
       - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
       - MONGODB_DB=PaymentServices
