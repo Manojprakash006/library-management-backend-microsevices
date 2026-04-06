@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { LibraryVisit, LibraryVisitDocument } from '../entities/library-visit.entity';
 import { CheckInDto, CheckOutDto } from '../dto/library-visit.dto';
+import { NotificationsService } from '../../notifications/service/notifications.service';
 
 @Injectable()
 export class LibraryVisitsService {
@@ -10,7 +11,35 @@ export class LibraryVisitsService {
 
   constructor(
     @InjectModel(LibraryVisit.name) private libraryVisitModel: Model<LibraryVisitDocument>,
+    private readonly notificationsService: NotificationsService,
   ) {}
+
+  private async getMemberDetails(memberIdStr: string): Promise<{ name: string; memberIdStr: string }> {
+    try {
+      const MemberSchema = this.libraryVisitModel.db.model('Member');
+      const member = await MemberSchema.findById(memberIdStr).exec();
+      if (member) {
+        return { name: member.name, memberIdStr: member.memberId || memberIdStr };
+      }
+    } catch (err) {
+      this.logger.error(`Failed to fetch member details: ${err.message}`);
+    }
+    return { name: 'Unknown Member', memberIdStr: memberIdStr };
+  }
+
+  private async getBookTitle(bookIdStr: string): Promise<string> {
+    try {
+      const ProductSchema = this.libraryVisitModel.db.model('Product');
+      const book = await ProductSchema.findById(bookIdStr).exec();
+      if (book) {
+        return book.title || book.name || bookIdStr;
+      }
+    } catch (err) {
+      this.logger.error(`Failed to fetch book details: ${err.message}`);
+    }
+    return bookIdStr;
+  }
+
 
   async checkIn(checkInDto: CheckInDto) {
     try {
@@ -25,6 +54,15 @@ export class LibraryVisitsService {
 
       const savedVisit = await visit.save();
       this.logger.log(`Member ${checkInDto.memberId} checked in at ${savedVisit.timeIn}`);
+
+      const memberDetails = await this.getMemberDetails(checkInDto.memberId.toString());
+
+      // Notify Staff about visitor check-in
+      await this.notificationsService.notifyStaff({
+        title: `${memberDetails.name} Visit In`,
+        message: `Member ID: ${memberDetails.memberIdStr} checked in at ${savedVisit.timeIn.toLocaleTimeString()}. Purpose: ${savedVisit.purpose}`,
+        type: 'VISITOR_IN'
+      });
 
       return {
         message: 'Check-in successful',
@@ -56,6 +94,15 @@ export class LibraryVisitsService {
 
       const updatedVisit = await visit.save();
       this.logger.log(`Member ${visit.memberId} checked out at ${updatedVisit.timeOut}`);
+
+      const memberDetails = await this.getMemberDetails(visit.memberId.toString());
+
+      // Notify Staff about visitor check-out
+      await this.notificationsService.notifyStaff({
+        title: `${memberDetails.name} Visit Out`,
+        message: `Member ID: ${memberDetails.memberIdStr} checked out at ${updatedVisit.timeOut.toLocaleTimeString()}.`,
+        type: 'VISITOR_OUT'
+      });
 
       return {
         message: 'Check-out successful',
@@ -155,6 +202,16 @@ export class LibraryVisitsService {
       const savedVisit = await visit.save();
       this.logger.log(`Auto-created new visit for book issue: Member ${memberId}, Book ${bookId}`);
 
+      const memberDetails = await this.getMemberDetails(memberId.toString());
+      const bookTitle = await this.getBookTitle(bookId.toString());
+
+      // Notify Staff about auto-created visit
+      await this.notificationsService.notifyStaff({
+        title: `${memberDetails.name} Visit In`,
+        message: `System auto-created a visit for Member ID: ${memberDetails.memberIdStr} due to book issue (Book Name: ${bookTitle}).`,
+        type: 'VISITOR_IN'
+      });
+
       return savedVisit;
     } catch (error) {
       this.logger.error(`Failed to create visit for book issue: ${error.message}`);
@@ -181,6 +238,15 @@ export class LibraryVisitsService {
           activeVisit.timeOut = new Date();
           activeVisit.isActive = false;
           this.logger.log(`All books returned. Visit completed for member ${memberId}`);
+          
+          const memberDetails = await this.getMemberDetails(memberId.toString());
+
+          // Notify Staff about auto-completed visit
+          await this.notificationsService.notifyStaff({
+            title: `${memberDetails.name} Visit Out`,
+            message: `System auto-completed visit for Member ID: ${memberDetails.memberIdStr} as all books were returned.`,
+            type: 'VISITOR_OUT'
+          });
         } else {
           this.logger.log(`Book ${bookId} removed. Member ${memberId} still has ${activeVisit.bookIds.length} book(s)`);
         }
@@ -201,6 +267,17 @@ export class LibraryVisitsService {
       });
       await returnVisit.save();
       this.logger.log(`Created return visit: Member ${memberId}, Book ${bookId}`);
+
+      const memberDetails = await this.getMemberDetails(memberId.toString());
+      const bookTitle = await this.getBookTitle(bookId.toString());
+
+      // Notify Staff about auto-created return log
+      await this.notificationsService.notifyStaff({
+        title: `${memberDetails.name} Visit Out`,
+        message: `System auto-created a return log for Member ID: ${memberDetails.memberIdStr} (Book Name: ${bookTitle}).`,
+        type: 'VISITOR_OUT'
+      });
+
       return returnVisit;
     } catch (error) {
       this.logger.error(`Failed to record return visit: ${error.message}`);

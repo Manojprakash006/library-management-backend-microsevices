@@ -19,7 +19,7 @@ export class NotificationsService {
     private readonly emailService: EmailService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
     let { memberId, issueId, type, title, message, memberEmail, memberName } = createNotificationDto;
@@ -33,12 +33,20 @@ export class NotificationsService {
           memberEmail = memberEmail || member.email;
           memberName = memberName || member.name;
         } else {
-          // Fallback for Admin notifications (they live in User collection)
-          const UserSchema = this.notificationModel.db.model('User');
-          const user = await UserSchema.findById(memberId).exec();
-          if (user) {
-            memberEmail = memberEmail || user.email;
-            memberName = memberName || user.name;
+          // Check Staff collection
+          const StaffSchema = this.notificationModel.db.model('Staff');
+          const staff = await StaffSchema.findById(memberId).exec();
+          if (staff) {
+            memberEmail = memberEmail || staff.email;
+            memberName = memberName || staff.fullName || staff.name;
+          } else {
+            // Fallback for Admin notifications (they live in User collection)
+            const UserSchema = this.notificationModel.db.model('User');
+            const user = await UserSchema.findById(memberId).exec();
+            if (user) {
+              memberEmail = memberEmail || user.email;
+              memberName = memberName || user.name;
+            }
           }
         }
       } catch (err) {
@@ -84,7 +92,7 @@ export class NotificationsService {
     try {
       const UserSchema = this.notificationModel.db.model('User');
       const admins = await UserSchema.find({ role: 'admin' }).exec();
-      
+
       for (const admin of admins) {
         await this.create({
           memberId: admin._id.toString(),
@@ -99,6 +107,38 @@ export class NotificationsService {
       this.logger.log(`Notified ${admins.length} admins about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify admins: ${err.message}`);
+    }
+  }
+
+  async notifyStaff(payload: { title: string; message: string; type: string; issueId?: string }): Promise<void> {
+    try {
+      // Fetch staff from Staff collection
+      const StaffSchema = this.notificationModel.db.model('Staff');
+      const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian'] } }).exec();
+      
+      // Fetch admins from User collection
+      const UserSchema = this.notificationModel.db.model('User');
+      const admins = await UserSchema.find({ role: 'admin' }).exec();
+      
+      const allStaffToNotify = [
+        ...staffMembers.map(s => ({ _id: s._id, email: s.email, name: s.fullName || s.name })),
+        ...admins.map(a => ({ _id: a._id, email: a.email, name: a.name }))
+      ];
+      
+      for (const staff of allStaffToNotify) {
+        await this.create({
+          memberId: staff._id.toString(),
+          title: payload.title,
+          message: payload.message,
+          type: payload.type as any,
+          issueId: payload.issueId,
+          memberEmail: staff.email,
+          memberName: staff.name
+        });
+      }
+      this.logger.log(`Notified ${allStaffToNotify.length} staff members about: ${payload.title}`);
+    } catch (err) {
+      this.logger.error(`Failed to notify staff: ${err.message}`);
     }
   }
 
