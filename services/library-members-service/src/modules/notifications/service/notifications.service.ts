@@ -137,6 +137,33 @@ export class NotificationsService {
     }
   }
 
+  async notifyMembers(payload: { title: string; message: string; type: string; issueId?: string }): Promise<void> {
+    try {
+      // Fetch members from Member collection
+      const MemberSchema = this.notificationModel.db.model('Member');
+      const members = await MemberSchema.find().exec();
+      
+      const allMembersToNotify = [
+        ...members.map(m => ({ _id: m._id, email: m.email, name: m.name }))
+      ];
+      
+      for (const member of allMembersToNotify) {
+        await this.create({
+          memberId: member._id.toString(),
+          title: payload.title,
+          message: payload.message,
+          type: payload.type as any,
+          issueId: payload.issueId,
+          memberEmail: member.email,
+          memberName: member.name
+        });
+      }
+      this.logger.log(`Notified ${allMembersToNotify.length} members about: ${payload.title}`);
+    } catch (err) {
+      this.logger.error(`Failed to notify members: ${err.message}`);
+    }
+  }
+
   private async sendEmailNotification(email: string, name: string, title: string, message: string, type: string): Promise<void> {
     try {
       // Determine color based on Notification Type

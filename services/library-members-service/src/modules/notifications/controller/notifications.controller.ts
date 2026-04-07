@@ -33,6 +33,24 @@ export class NotificationsController {
     return { message: 'Admins notified successfully' };
   }
 
+   @Public()
+   @Post('staff')
+  @ApiOperation({ summary: 'Notify all staff members' })
+  @ApiResponse({ status: 201, description: 'Staff members notified successfully' })
+  async notifyStaff(@Body() payload: { title: string; message: string; type: string; issueId?: string }): Promise<{ message: string }> {
+    await this.notificationsService.notifyStaff(payload);
+    return { message: 'Staff members notified successfully' };
+  }
+
+   @Public()
+   @Post('members')
+  @ApiOperation({ summary: 'Notify all members' })
+  @ApiResponse({ status: 201, description: 'Members notified successfully' })
+  async notifyMembers(@Body() payload: { title: string; message: string; type: string; issueId?: string }): Promise<{ message: string }> {
+    await this.notificationsService.notifyMembers(payload);
+    return { message: 'Members notified successfully' };
+  }
+
    @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all notifications' })
