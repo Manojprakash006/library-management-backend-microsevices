@@ -42,6 +42,15 @@ export class RequestsController {
     return { count };
   }
 
+  @Public()
+  @Get('member/:memberId')
+    async getRequestsByMember(
+    @Param('memberId') memberId: string
+    ): Promise<{ data: BookRequest[] }> {
+    const requests = await this.requestsService.getByMember(memberId);
+    return { data: requests };
+  }
+
   @Roles('admin')
   @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })

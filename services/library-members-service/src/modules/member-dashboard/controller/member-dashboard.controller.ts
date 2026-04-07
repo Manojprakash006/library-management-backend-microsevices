@@ -19,28 +19,28 @@ export class MemberDashboardController {
    @Get('stats')
   @ApiOperation({ summary: 'Get member dashboard stats' })
   async getMemberStats(@Request() req: any) {
-    const result = await this.memberDashboardService.getMemberStats(req.user.userId);
+    const result = await this.memberDashboardService.getDashboardStats(req.user.id);
     return { message: 'Stats retrieved successfully', data: result };
   }
 
    @Get('overdue-books')
   @ApiOperation({ summary: 'Get overdue books' })
   async getOverdueBooks(@Request() req: any) {
-    const result = await this.memberDashboardService.getOverdueBooks(req.user.userId);
+    const result = await this.memberDashboardService.getOverdueBooks(req.user.id);
     return { message: 'Overdue books retrieved', data: result };
   }
 
    @Get('recent-requests')
   @ApiOperation({ summary: 'Get recent book requests' })
   async getRecentRequests(@Request() req: any) {
-    const result = await this.memberDashboardService.getRecentRequests(req.user.userId);
+    const result = await this.memberDashboardService.getRecentRequests(req.user.id);
     return { message: 'Recent requests retrieved', data: result };
   }
 
    @Get('borrowed-books')
   @ApiOperation({ summary: 'Get currently borrowed books' })
   async getCurrentlyBorrowedBooks(@Request() req: any) {
-    const result = await this.memberDashboardService.getCurrentlyBorrowedBooks(req.user.userId);
+    const result = await this.memberDashboardService.getCurrentlyBorrowedBooks(req.user.id);
     return { message: 'Borrowed books retrieved', data: result };
   }
 
@@ -54,7 +54,7 @@ export class MemberDashboardController {
    @Get('my-books')
   @ApiOperation({ summary: 'Get my books' })
   async getMyBooks(@Request() req: any) {
-    const result = await this.memberDashboardService.getMyBooks(req.user.userId);
+    const result = await this.memberDashboardService.getMyBooks(req.user.id);
     return { message: 'My books retrieved', data: result };
   }
 
@@ -75,7 +75,7 @@ export class MemberDashboardController {
    @Post('submit-review')
   @ApiOperation({ summary: 'Submit a book review' })
   async submitReview(@Request() req: any, @Body() reviewDto: SubmitReviewDto) {
-    const result = await this.memberDashboardService.submitReview(req.user.userId, reviewDto);
+    const result = await this.memberDashboardService.submitReview(req.user.id, reviewDto);
     return { message: 'Review submitted', data: result };
   }
 }

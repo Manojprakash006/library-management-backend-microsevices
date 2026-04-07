@@ -62,13 +62,13 @@ export class MembersController {
     return { message: 'Member retrieved successfully', data: member };
   }
 
-  @Get('memberId/:memberId')
-  @Roles('admin', 'staff', 'member')
-  @ApiOperation({ summary: 'Get a member by Member ID' })
-  async findByMemberId(@Param('memberId') memberId: string) {
-    const member = await this.membersService.findByMemberId(memberId);
-    return { message: 'Member retrieved successfully', data: member };
-  }
+  // @Get('memberId/:memberId')
+  // @Roles('admin', 'staff', 'member')
+  // @ApiOperation({ summary: 'Get a member by Member ID' })
+  // async findByMemberId(@Param('memberId') memberId: string) {
+  //   const member = await this.membersService.findByMemberId(memberId);
+  //   return { message: 'Member retrieved successfully', data: member };
+  // }
 
   @Put(':id')
   @Roles('admin', 'staff', 'member')

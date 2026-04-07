@@ -2,15 +2,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+COPY package*.json package-lock.json ./
+RUN npm ci
 
 COPY . .
 RUN npm run build
 
-# Copy proto files for gRPC
-COPY proto/ dist/proto/
+RUN npm prune --production
 
-EXPOSE 3003
+# Copy proto files for gRPC
+# COPY proto/ dist/proto/
+
+EXPOSE 3013
 
 CMD ["node", "dist/main"]

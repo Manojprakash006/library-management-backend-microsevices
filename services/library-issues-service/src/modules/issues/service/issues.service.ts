@@ -17,7 +17,8 @@ export class IssuesService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -135,7 +136,7 @@ export class IssuesService {
 
     // Check book availability first before issuing
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -185,7 +186,7 @@ export class IssuesService {
     // Update book status: if all copies are issued, mark as 'issued' (out of stock), else keep it 'available'
     let newBookStatus = 'available';
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -260,7 +261,7 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
@@ -279,7 +280,7 @@ export class IssuesService {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
-        this.httpService.put(`${membersServiceUrl}/members/${memberId}/borrowing-history/${issueId}`, {
+        this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrow`, {
           returnedAt,
           fine,
           status: 'returned'
@@ -293,7 +294,7 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
@@ -330,30 +331,74 @@ export class IssuesService {
     return issuedBook;
   }
 
-  async findByMember(memberId: string): Promise<IssueBook[]> {
-    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).exec();
+  async findByMember(memberId: string): Promise<any[]> {
+    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).lean();
+
     const today = new Date();
 
-    return issuedBooks.map((issue) => {
-      const issueObj = issue.toObject();
-      if (issueObj.status !== IssueStatus.RETURNED &&
-        issueObj.issueType === IssueType.TAKING_HOME &&
-        issueObj.dueDate &&
-        new Date(issueObj.dueDate) < today) {
-        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-        issueObj.status = IssueStatus.OVERDUE;
-        issueObj.daysOverdue = overdueDays;
-        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
-      }
-      return issueObj as IssueBook;
-    });
+    const enriched = await Promise.all(issuedBooks.map(async (issue) => { let updatedIssue = { ...issue };
+
+        if (
+          issue.status !== IssueStatus.RETURNED &&
+          issue.issueType === 'Taking Home' &&
+          issue.dueDate &&
+          new Date(issue.dueDate) < today
+        ) {
+          const overdueDays = Math.ceil(
+            (today.getTime() - new Date(issue.dueDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+          );
+
+          updatedIssue.status = IssueStatus.OVERDUE;
+          updatedIssue.daysOverdue = overdueDays;
+          updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+        }
+
+        let book = null;
+
+        try {
+          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+
+          const response = await firstValueFrom(
+            this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`) );
+
+          book = response.data?.data;
+
+        } catch (error) {
+          console.log("BOOK FETCH FAILED:", error.message);
+        }
+
+        return { ...updatedIssue, book };
+      })
+    );
+
+    return enriched;
   }
 
-  async findActiveByMember(memberId: string): Promise<IssueBook[]> {
-    return this.issueBookModel.find({
+  async findActiveByMember(memberId: string): Promise<any[]> {
+
+    const issues = await this.issueBookModel.find({
       memberId: new Types.ObjectId(memberId),
-      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
-    }).exec();
+      status: { $in: ["Active"] },
+    }).lean();
+
+    const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+
+    const enrichedIssues = await Promise.all(
+      issues.map(async (issue) => {
+        try {
+          const bookResponse = await firstValueFrom(
+            this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`)
+          );
+
+          return { ...issue, bookId: bookResponse.data?.data || null };
+        } catch (error) {
+          return { ...issue, bookId: null };
+        }
+      })
+    );
+
+    return enrichedIssues;
   }
 
   async returnBook(id: string, adminId?: string): Promise<IssueBook> {
@@ -434,6 +479,13 @@ export class IssuesService {
     );
 
     return savedIssue;
+  }
+
+  async getCompletedCount(memberId: string): Promise<number> {
+    return this.issueBookModel.countDocuments({
+      memberId: new Types.ObjectId(memberId),
+      status: IssueStatus.RETURNED,
+    });
   }
 
   async update(id: string, updateIssueDto: any, adminId?: string): Promise<IssueBook> {

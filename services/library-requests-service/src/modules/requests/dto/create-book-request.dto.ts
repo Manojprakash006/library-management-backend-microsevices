@@ -1,4 +1,4 @@
-import { IsString, IsMongoId, IsOptional, IsDateString, IsNumber, Min } from 'class-validator';
+import { IsString, IsMongoId, IsOptional, IsDateString, IsNumber, Min, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateBookRequestDto {
@@ -10,6 +10,11 @@ export class CreateBookRequestDto {
   @ApiProperty({ description: 'Member ID' })
   @IsMongoId()
   memberId: string;
+
+  @ApiProperty({ description: 'Request Type'})
+  @IsString()
+  @MinLength(4)
+  requestType: string;
 
   @ApiProperty({ description: 'Request date', required: false })
   @IsOptional()

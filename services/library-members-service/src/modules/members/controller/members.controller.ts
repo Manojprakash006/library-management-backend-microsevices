@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MembersService } from '../service/members.service';
 import { CreateMemberDto } from '../dto/create-member.dto';
@@ -54,19 +54,24 @@ export class MembersController {
         return { message: 'Members retrieved successfully', data: members, count: members.length };
     }
 
+    @Get('me')
+    @Roles('admin', 'member', 'staff')
+    @ApiOperation({ summary: 'Get member stats'})
+      async getFooterStats(@Req() req: any) {
+          const userId = req.user.id;
+          const token = req.headers.authorization;
+          if (!userId) {
+            throw new BadRequestException('User ID is missing');
+          }
+          const footerStats = await this.membersService.getMyStats(userId, token);
+          return { message: 'Data retrieved successfully', data: footerStats };
+    }
+
     @Get(':id')
     @Roles('admin', 'staff', 'member')
     @ApiOperation({ summary: 'Get a member by ID' })
     async findOne(@Param('id') id: string) {
         const member = await this.membersService.findOne(id);
-        return { message: 'Member retrieved successfully', data: member };
-    }
-
-    @Get('memberId/:memberId')
-    @Roles('admin', 'staff', 'member')
-    @ApiOperation({ summary: 'Get a member by Member ID' })
-    async findByMemberId(@Param('memberId') memberId: string) {
-        const member = await this.membersService.findByMemberId(memberId);
         return { message: 'Member retrieved successfully', data: member };
     }
 
