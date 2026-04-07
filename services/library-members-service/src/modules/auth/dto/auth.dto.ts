@@ -27,6 +27,15 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
+  @ApiProperty({ description: 'User phone Number'})
+  @IsString()
+  @MinLength(10)
+  phone: string;
+
+  @ApiProperty({ description: 'User Address'})
+  @IsString()
+  address: string;
+
   @ApiProperty({ description: 'User role', enum: ['admin', 'staff', 'member'], required: false })
   @IsOptional()
   @IsEnum(['admin', 'staff', 'member'])

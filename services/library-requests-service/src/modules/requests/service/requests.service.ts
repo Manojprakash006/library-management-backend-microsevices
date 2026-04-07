@@ -18,7 +18,8 @@ export class RequestsService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -35,7 +36,7 @@ export class RequestsService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -51,7 +52,7 @@ export class RequestsService {
 
   private async notifyAdmins(type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
@@ -111,14 +112,14 @@ export class RequestsService {
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
       // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
 
-      const allIssues = response.data?.data || [];
+      const allIssues = response.data?.data || [];  
 
       // Get active (not returned) issues - Active or Overdue status
       const activeIssues = allIssues.filter((issue: any) =>
@@ -167,30 +168,55 @@ export class RequestsService {
     return enrichedRequests;
   }
 
+  async getByMember(memberId: string): Promise<BookRequest[]> {
+
+  const data = await this.bookRequestModel.find({ 
+    memberId: new Types.ObjectId(memberId) 
+  }).lean();
+
+
+  const enriched = await Promise.all(
+    data.map(async (req) => {
+
+      const bookId = req.bookId.toString();
+
+      if (!bookId) {
+        return { ...req, bookId: null };
+      }
+
+      try {
+        const bookServiceURL = "http://library-api-gateway:3000/library/books";
+        const bookResponse = await firstValueFrom(
+          this.httpService.get(`${bookServiceURL}/books/${bookId}`)
+        );
+
+        const book = bookResponse.data?.data;
+        return {
+          ...req,
+          bookId: book, 
+        };
+
+      } catch (error) {
+        console.log("❌ BOOK FETCH FAILED:", error.message);
+
+        return {
+          ...req,
+          bookId: null,
+        };
+      }
+    })
+  );
+
+
+  return enriched;
+}
+
   async findOne(id: string): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
     }
     return request;
-  }
-
-  async findByMember(memberId: string): Promise<any[]> {
-    const requests = await this.bookRequestModel.find({ memberId: new Types.ObjectId(memberId) }).sort({ requestDate: -1 }).exec();
-
-    // Get real-time member borrowing data once
-    const memberStats = await this.getMemberBorrowingDetails(memberId);
-
-    // Enrich all requests with the same member data
-    const enrichedRequests = requests.map((request) => ({
-      ...request.toObject(),
-      currentlyBorrowed: memberStats.currentlyBorrowed,
-      totalHistory: memberStats.totalHistory,
-      activeBookIds: memberStats.activeBookIds,
-      booklistBorrowed: memberStats.booklistBorrowed,
-    }));
-
-    return enrichedRequests;
   }
 
   async update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<BookRequest> {
@@ -239,6 +265,25 @@ export class RequestsService {
     request.status = RequestStatus.APPROVED;
     request.processedDate = new Date();
     const savedRequest = await request.save();
+
+    const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+
+    try {
+      await firstValueFrom(
+        this.httpService.post(
+          `${membersServiceUrl}/library/members/members/${request.memberId}/borrow`,
+          {
+            bookId: request.bookId.toString(),
+            issueId: request._id.toString(),
+            borrowedAt: new Date(),
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            status: 'borrowed',
+          }
+        )
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update borrowing history: ${error.message}`);
+    }
 
     if (adminId) {
       await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });

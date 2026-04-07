@@ -32,7 +32,7 @@ export class BooksService {
         })
       );
     } catch (error) {
-      this.logger.error(`Failed to log activity to member service: ${error.message}`);
+      this.logger.error(`Failed to log activity to member service: ${error}`);
     }
   }
 
@@ -47,7 +47,7 @@ export class BooksService {
         })
       );
     } catch (error) {
-      this.logger.error(`Failed to broadcast to admins: ${error.message}`);
+      this.logger.error(`Failed to broadcast to admins: ${error}`);
     }
   }
 
@@ -79,16 +79,51 @@ export class BooksService {
     return savedBook;
   }
 
-  async findAll(): Promise<Book[]> {
-    return this.bookModel.find().exec();
+  async findAll(): Promise<any[]> {
+    const books = await this.bookModel.find().exec();
+
+    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+    const updatedBooks = await Promise.all(
+      books.map(async (book) => {
+        try {
+          const response = await firstValueFrom( this.httpService.get(
+              `${issuesServiceUrl}/issues/count/book/${book._id}` ));
+
+          const issuedCount = response.data?.count || 0;
+
+          return { ...book.toObject(), available: book.quantity - issuedCount };
+        } catch (error) {
+          console.log("ISSUE COUNT FETCH FAILED:", error);
+          return { ...book.toObject(), available: book.quantity };
+        }
+      })
+    );
+
+    return updatedBooks;
   }
 
-  async findOne(id: string): Promise<Book> {
+  async findOne(id: string): Promise<any> {
     const book = await this.bookModel.findById(id).exec();
+
     if (!book) {
       throw new NotFoundException('Book not found');
     }
-    return book;
+
+    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+    try {
+      const response = await firstValueFrom( this.httpService.get(
+          `${issuesServiceUrl}/issues/count/book/${book._id}`) );
+
+      const issuedCount = response.data?.count || 0;
+
+      return { ...book.toObject(), available: book.quantity - issuedCount };
+    } catch (error) {
+      console.log("ISSUE COUNT FETCH FAILED:", error);
+
+      return { ...book.toObject(), available: book.quantity };
+    }
   }
 
   async findByBookId(bookId: string): Promise<Book> {

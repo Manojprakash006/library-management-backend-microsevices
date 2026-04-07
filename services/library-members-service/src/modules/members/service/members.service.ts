@@ -1,14 +1,13 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
-// Type that includes computed fields for member responses
 type MemberWithStats = Member & {
   booksHeld: number;
   booksAtHome: number;
@@ -28,7 +27,7 @@ export class MembersService {
   ) { }
 
   async create(createMemberDto: CreateMemberDto, adminId?: string): Promise<Member> {
-    // Validation: Check required fields
+    
     if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
       throw new ConflictException('Full name is required and must be at least 2 characters');
     }
@@ -49,7 +48,6 @@ export class MembersService {
       throw new ConflictException('Email already registered');
     }
 
-    // Map DTO fields to entity fields
     const memberData = {
       name: createMemberDto.fullName,
       email: createMemberDto.email,
@@ -77,7 +75,6 @@ export class MembersService {
   async findAll(): Promise<MemberWithStats[]> {
     const members = await this.memberModel.find().select('-password').exec();
 
-    // Fetch real-time stats from issues service for each member
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
         const memberObj = member.toObject();
@@ -106,30 +103,7 @@ export class MembersService {
 
     const memberObj = member.toObject();
 
-    // Get real-time stats from issues service
     const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(id);
-
-    return {
-      ...memberObj,
-      borrowingHistory: memberObj.borrowingHistory || [],
-      booksHeld,
-      booksAtHome,
-      readingInsideLibrary,
-      totalFines,
-      hasActiveIssues: booksHeld > 0,
-    };
-  }
-
-  async findByMemberId(memberId: string): Promise<MemberWithStats> {
-    const member = await this.memberModel.findOne({ memberId }).select('-password').exec();
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-
-    const memberObj = member.toObject();
-
-    // Get real-time stats from issues service
-    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
 
     return {
       ...memberObj,
@@ -249,9 +223,8 @@ export class MembersService {
     totalFines: number
   }> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
-      // Get detailed stats from new endpoint
       const statsResponse = await firstValueFrom(
         this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
           `${issuesServiceUrl}/issues/member/${memberId}/stats`
@@ -260,7 +233,6 @@ export class MembersService {
 
       const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
 
-      // Get all issues to calculate total fines
       const allIssuesResponse = await firstValueFrom(
         this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
@@ -286,4 +258,57 @@ export class MembersService {
       return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
     }
   }
+
+  async getMyStats(userId: string, token: string) {
+
+    if (!userId) {
+      throw new BadRequestException('User ID is missing');
+    }
+    
+    const member = await this.memberModel.findById(userId).exec();
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const borrowingHistory = member.borrowingHistory || [];
+
+    const totalRequests = borrowingHistory.length;
+
+    const memberId = member._id.toString();
+    const phone = member.phoneNumber;
+    const address = member.address;
+    const memId = member.memberId;
+
+    let booksRead = 0;
+
+    try {
+      const issueServiceURL = 'http://library-api-gateway:3000/library/issues';
+      const response = await firstValueFrom(
+        this.httpService.get(`${issueServiceURL}/issues/member/${memberId}/completed-count`,
+          {
+            headers: {
+              Authorization: token,
+            },
+          }
+        ));
+      booksRead = response.data.count;
+    } catch (error) {
+      console.error('Issue service error:', error.message);
+      booksRead = 0;
+    }
+
+    return {
+      name: member.name,
+      email: member.email,
+      memberId,
+      phone,
+      address,
+      memberSince: member.membershipDate,
+      totalRequests,
+      booksRead,
+      memId,
+    };
+  }
+
 }

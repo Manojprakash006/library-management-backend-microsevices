@@ -13,7 +13,7 @@ import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'staff')
+@Roles('admin', 'staff', 'member')
 @ApiTags('Books')
 @Controller('books')
 export class BooksController {

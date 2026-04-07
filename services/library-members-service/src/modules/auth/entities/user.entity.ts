@@ -17,7 +17,7 @@ export class User {
   @Prop({ trim: true, maxlength: 500 })
   address: string;
 
-  @Prop({ trim: true, maxlength: 20 })
+  @Prop({ trim: true, maxlength: 10 })
   phone: string;
 
   @Prop({ required: true, minlength: 6, maxlength: 100, select: false })

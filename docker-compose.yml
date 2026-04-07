@@ -158,6 +158,8 @@ services:
       - MONGODB_DB=PaymentServices
       - JWT_SECRET=your-secret-key
       - KAFKA_BROKER=localhost:9092
+      - RZP_KEY_ID=rzp_test_SaDCl7Au48PRQf
+      - RZP_KEY_SECRET=Ge4uiF1mxjvZZ5LSXgy5PAZt
     depends_on:
       - mongodb
     networks:

@@ -13,7 +13,6 @@ const config_module_1 = require("../../config/config.module");
 const fine_entity_1 = require("./entities/fine.entity");
 const fines_service_1 = require("./service/fines.service");
 const fines_controller_1 = require("./controller/fines.controller");
-const fines_grpc_controller_1 = require("./controller/fines-grpc.controller");
 let FinesModule = class FinesModule {
 };
 exports.FinesModule = FinesModule;
@@ -23,7 +22,7 @@ exports.FinesModule = FinesModule = __decorate([
             mongoose_1.MongooseModule.forFeature([{ name: fine_entity_1.Fine.name, schema: fine_entity_1.FineSchema }]),
             config_module_1.ConfigModule,
         ],
-        controllers: [fines_controller_1.FinesController, fines_grpc_controller_1.FinesGrpcController],
+        controllers: [fines_controller_1.FinesController],
         providers: [fines_service_1.FinesService],
         exports: [fines_service_1.FinesService],
     })

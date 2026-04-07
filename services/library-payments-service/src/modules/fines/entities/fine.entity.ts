@@ -39,6 +39,9 @@ export class Fine {
 
   @Prop({ required: false })
   referenceId?: string;
+
+  @Prop({ required: false })
+  razorpayOrderId?: string;
 }
 
 export const FineSchema = SchemaFactory.createForClass(Fine);

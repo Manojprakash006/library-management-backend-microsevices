@@ -9,6 +9,18 @@ COPY . .
 
 RUN npm run build
 
+
+
+
+
+
+
+
+
+
+
+
+
 RUN npm prune --production
 
 # Copy proto files for gRPC

@@ -2,9 +2,9 @@ import { IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RenewBookDto {
-  @ApiProperty({ description: 'Book ID' })
+  @ApiProperty({ description: 'Issue ID' })
   @IsString()
-  bookId: string;
+  issueId: string;
 
   @ApiProperty({ description: 'Reason for renewal', required: false })
   @IsOptional()

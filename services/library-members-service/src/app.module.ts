@@ -14,6 +14,7 @@ import { StaffDashboardModule } from './modules/staff-dashboard/staff-dashboard.
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { LibraryVisitsModule } from './modules/library-visits/library-visits.module';
+import { FavouriteModule } from './modules/favourite/favourite.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { LibraryVisitsModule } from './modules/library-visits/library-visits.mod
     ActivityLogModule,
     AdminModule,
     LibraryVisitsModule,
+    FavouriteModule,
   ],
 })
 export class AppModule { }

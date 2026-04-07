@@ -57,6 +57,10 @@ __decorate([
     (0, mongoose_1.Prop)({ required: false }),
     __metadata("design:type", String)
 ], Fine.prototype, "referenceId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ required: false }),
+    __metadata("design:type", String)
+], Fine.prototype, "razorpayOrderId", void 0);
 exports.Fine = Fine = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], Fine);

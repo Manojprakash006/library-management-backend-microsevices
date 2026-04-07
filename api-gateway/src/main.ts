@@ -21,7 +21,11 @@ async function bootstrap() {
         '^/library/books': '',
       },
       onProxyReq: (proxyReq, req) => {
+<<<<<<< HEAD
         if(req.headers.authorization) {
+=======
+        if (req.headers.authorization) {
+>>>>>>> 47ab91b4fad1e8d8dac370adf9224085a578f0a9
           proxyReq.setHeader('Authorization', req.headers.authorization);
         }
       },
@@ -37,7 +41,11 @@ async function bootstrap() {
         '^/library/members': '',
       },
       onProxyReq: (proxyReq, req) => {
+<<<<<<< HEAD
         if(req.headers.authorization) {
+=======
+        if (req.headers.authorization) {
+>>>>>>> 47ab91b4fad1e8d8dac370adf9224085a578f0a9
           proxyReq.setHeader('Authorization', req.headers.authorization);
         }
       },
@@ -53,7 +61,11 @@ async function bootstrap() {
         '^/library/issues': '',
       },
       onProxyReq: (proxyReq, req) => {
+<<<<<<< HEAD
         if(req.headers.authorization) {
+=======
+        if (req.headers.authorization) {
+>>>>>>> 47ab91b4fad1e8d8dac370adf9224085a578f0a9
           proxyReq.setHeader('Authorization', req.headers.authorization);
         }
       },
@@ -69,7 +81,11 @@ async function bootstrap() {
         '^/library/requests': '',
       },
       onProxyReq: (proxyReq, req) => {
+<<<<<<< HEAD
         if(req.headers.authorization) {
+=======
+        if (req.headers.authorization) {
+>>>>>>> 47ab91b4fad1e8d8dac370adf9224085a578f0a9
           proxyReq.setHeader('Authorization', req.headers.authorization);
         }
       },
