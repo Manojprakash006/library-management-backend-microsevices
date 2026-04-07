@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build
@@ -11,8 +11,8 @@ RUN npm run build
 RUN npm prune --production
 
 # Copy proto files for gRPC
-COPY proto/ dist/proto/
+# COPY proto/ dist/proto/
 
-EXPOSE 3004
+EXPOSE 3005
 
 CMD ["node", "dist/main"]
