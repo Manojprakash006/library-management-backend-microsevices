@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import axios, { AxiosResponse } from 'axios';
 import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
@@ -40,11 +39,6 @@ export class MembersService {
       throw new ConflictException('Password is required and must be at least 6 characters');
     }
 
-    // const existingMember = await this.memberModel.findOne({ memberId: createMemberDto.memberId }).exec();
-    // if (existingMember) {
-    //   throw new ConflictException('Member ID already exists');
-    // }
-
     const existingEmail = await this.memberModel.findOne({ email: createMemberDto.email }).exec();
     if (existingEmail) {
       throw new ConflictException('Email already registered');
@@ -80,19 +74,14 @@ export class MembersService {
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
         const memberObj = member.toObject();
-        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines, paidFines, fineHistory } = await this.getMemberStatsFromIssues(member._id.toString(), token);
+        const stats = await this.getMemberStatsFromIssues(member._id.toString(), token);
 
         return {
           ...memberObj,
           borrowingHistory: memberObj.borrowingHistory || [],
-          booksHeld,
-          booksAtHome,
-          readingInsideLibrary,
-          totalFines,
-          paidFines,
-          fineHistory,
-          hasActiveIssues: booksHeld > 0,
-        };
+          ...stats,
+          hasActiveIssues: stats.booksHeld > 0,
+        } as MemberWithStats;
       })
     );
 
@@ -106,20 +95,14 @@ export class MembersService {
     }
 
     const memberObj = member.toObject();
-
-    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines, paidFines, fineHistory } = await this.getMemberStatsFromIssues(id, token);
+    const stats = await this.getMemberStatsFromIssues(id, token);
 
     return {
       ...memberObj,
       borrowingHistory: memberObj.borrowingHistory || [],
-      booksHeld,
-      booksAtHome,
-      readingInsideLibrary,
-      totalFines,
-      paidFines,
-      fineHistory,
-      hasActiveIssues: booksHeld > 0,
-    };
+      ...stats,
+      hasActiveIssues: stats.booksHeld > 0,
+    } as MemberWithStats;
   }
 
   async update(id: string, updateData: Partial<CreateMemberDto>, adminId?: string): Promise<Member> {
@@ -188,7 +171,6 @@ export class MembersService {
   }
 
   async remove(id: string, adminId?: string): Promise<void> {
-    // Check if the member has active issues before deleting
     const stats = await this.getMemberStatsFromIssues(id);
     if (stats.booksHeld > 0) {
       throw new ConflictException('Cannot delete member: Member has active issued books that must be returned first.');
@@ -230,14 +212,15 @@ export class MembersService {
     paidFines: number;
     fineHistory: any[];
   }> {
+    let totalFinesIssues = 0;
     try {
       const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
       const statsResponse = await firstValueFrom(
         this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
           `${issuesServiceUrl}/issues/member/${memberId}/stats`, {
-            headers: token ? { Authorization: token } : {}
-          }
+          headers: token ? { Authorization: token } : {}
+        }
         )
       );
 
@@ -248,8 +231,9 @@ export class MembersService {
           headers: token ? { Authorization: token } : {}
         })
       );
+      
       const allIssues = allIssuesResponse.data?.data || [];
-      const totalFines = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
+      totalFinesIssues = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
 
       let paidFines = 0;
       let fineHistory = [];
@@ -277,16 +261,18 @@ export class MembersService {
         this.logger.error(`Failed to fetch fines from payments service: ${err.message}`);
       }
 
+      // ACCURATE BALANCE CALCULATION
+      const totalFines = Math.max(0, totalFinesIssues - paidFines);
+
       const computedStats = {
         booksHeld: stats.totalActive,
         booksAtHome: stats.booksAtHome,
         readingInsideLibrary: stats.readingInsideLibrary,
-        totalFines,
+        totalFines: totalFines,
         paidFines,
         fineHistory
       };
 
-      // Asynchronously sync the stats to MongoDB so they appear in DB queries
       this.memberModel.findByIdAndUpdate(memberId, {
         ...computedStats,
         hasActiveIssues: computedStats.booksHeld > 0
@@ -300,59 +286,48 @@ export class MembersService {
   }
 
   async getMyStats(userId: string, token: string) {
-
     if (!userId) {
       throw new BadRequestException('User ID is missing');
     }
 
     const member = await this.memberModel.findById(userId).exec();
-
     if (!member) {
       throw new NotFoundException('Member not found');
     }
 
     const borrowingHistory = member.borrowingHistory || [];
-
     const totalRequests = borrowingHistory.length;
-
     const memberId = member._id.toString();
-    const phone = member.phoneNumber;
-    const address = member.address;
-    const memId = member.memberId;
 
     let booksRead = 0;
-
     try {
       const issueServiceURL = 'http://library-api-gateway:3000/library/issues';
       const response = await firstValueFrom(
         this.httpService.get(`${issueServiceURL}/issues/member/${memberId}/completed-count`,
           {
-            headers: {
-              Authorization: token,
-            },
+            headers: { Authorization: token }
           }
         ));
       booksRead = response.data.count;
     } catch (error) {
-      console.error('Issue service error:', error.message);
       booksRead = 0;
     }
 
-      const memberStats = await this.getMemberStatsFromIssues(memberId, token);
+    const memberStats = await this.getMemberStatsFromIssues(memberId, token);
 
-      return {
-        name: member.name,
-        email: member.email,
-        memberId,
-        phone,
-        address,
-        memberSince: member.membershipDate,
-        totalRequests,
-        booksRead,
-        memId,
-        paidFines: memberStats.paidFines,
-        fineHistory: memberStats.fineHistory,
-      };
+    return {
+      name: member.name,
+      email: member.email,
+      memberId,
+      phone: member.phoneNumber,
+      address: member.address,
+      memberSince: member.membershipDate,
+      totalRequests,
+      booksRead,
+      memId: member.memberId,
+      paidFines: memberStats.paidFines,
+      fineHistory: memberStats.fineHistory,
+      totalFines: memberStats.totalFines,
+    };
   }
-
 }
