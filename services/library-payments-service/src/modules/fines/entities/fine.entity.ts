@@ -19,8 +19,11 @@ export class Fine {
   @Prop({ required: true })
   memberId: string;
 
-  @Prop({ required: true })
-  issueId: string;
+  @Prop({ required: false })
+  issueId?: string;
+
+  @Prop({ required: false })
+  bookId?: string;
 
   @Prop({ required: true })
   amount: number;

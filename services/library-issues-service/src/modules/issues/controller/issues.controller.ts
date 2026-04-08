@@ -21,7 +21,8 @@ export class IssuesController {
   @ApiResponse({ status: 201, description: 'Book issued successfully', type: IssueBook })
   async create(@Body() createIssueDto: CreateIssueDto, @Req() req: any): Promise<{ message: string; data: IssueBook }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
-    const issue = await this.issuesService.create(createIssueDto, adminId);
+    const authHeader = req.headers.authorization;
+    const issue = await this.issuesService.create(createIssueDto, adminId, authHeader);
     return { message: 'Book issued successfully', data: issue };
   }
 
@@ -163,7 +164,8 @@ export class IssuesController {
   @ApiResponse({ status: 404, description: 'Issued book not found' })
   async returnBook(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: IssueBook; fine: any }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
-    const issue = await this.issuesService.returnBook(id, adminId);
+    const authHeader = req.headers.authorization;
+    const issue = await this.issuesService.returnBook(id, adminId, authHeader);
     return {
       message: 'Book returned successfully',
       data: issue,

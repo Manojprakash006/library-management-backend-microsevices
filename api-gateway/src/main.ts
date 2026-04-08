@@ -84,6 +84,11 @@ async function bootstrap() {
       pathRewrite: {
         '^/library/payments': '',
       },
+      onProxyReq: (proxyReq, req) => {
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+      },
     }),
   );
 

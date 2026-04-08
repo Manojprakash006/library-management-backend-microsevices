@@ -104,7 +104,7 @@ export class IssuesService {
     }
   }
 
-  async create(createIssueDto: CreateIssueDto, adminId?: string): Promise<IssueBook> {
+  async create(createIssueDto: CreateIssueDto, adminId?: string, authHeader?: string): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
 
     let dueDate = null;
@@ -119,19 +119,21 @@ export class IssuesService {
 
     // Check pending fines from Payment Service
     try {
-      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
       const checkFinesResponse = await firstValueFrom(
-        this.httpService.get(`${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`)
+        this.httpService.get(`${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`, {
+          headers: authHeader ? { Authorization: authHeader } : {}
+        })
       );
-      const checkFines = checkFinesResponse.data;
-      if (checkFines.hasPendingFines) {
-        throw new BadRequestException(`Please clear your unpaid fine of ₹${checkFines.totalPendingAmount} before borrowing a new book`);
+      const result = checkFinesResponse.data;
+      if (result.data && result.data.hasPendingFines) {
+        throw new BadRequestException(`Please clear your unpaid fine of ₹${result.data.totalPendingAmount} before borrowing a new book`);
       }
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Failed to check pending fines: ${error.message}`);
       // Decided to allow or block? Better to allow if service is down, or block? Let's throw error.
-      // throw new BadRequestException('Payment service unavailable. Unable to verify fines.');
+      throw new BadRequestException('Payment service unavailable. Unable to verify fines.');
     }
 
     // Check book availability first before issuing
@@ -401,7 +403,7 @@ export class IssuesService {
     return enrichedIssues;
   }
 
-  async returnBook(id: string, adminId?: string): Promise<IssueBook> {
+  async returnBook(id: string, adminId?: string, authHeader?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -423,12 +425,15 @@ export class IssuesService {
       
       // Create a Fine in Payments Service
       try {
-        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
         await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
           memberId: issuedBook.memberId.toString(),
           issueId: issuedBook._id.toString(),
+          bookId: issuedBook.bookId.toString(),
           amount: issuedBook.fine,
           reason: `Overdue by ${overdueDays} days`
+        }, {
+          headers: authHeader ? { Authorization: authHeader } : {}
         }));
         this.logger.log(`Created fine of ₹${issuedBook.fine} for member ${issuedBook.memberId}`);
       } catch (error) {
