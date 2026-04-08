@@ -201,6 +201,10 @@ export class BooksService {
       memberId: new Types.ObjectId(createReviewDto.memberId),
     });
 
+    if(!createReviewDto.memberName) {
+      throw new BadRequestException("memberName missing from request");
+    }
+
     return review.save();
   }
 

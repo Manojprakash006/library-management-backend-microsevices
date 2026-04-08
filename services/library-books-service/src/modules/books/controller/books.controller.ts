@@ -98,9 +98,15 @@ export class BooksController {
   @ApiOperation({ summary: 'Create a book review' })
   @ApiResponse({ status: 201, description: 'Review created successfully', type: BookReview })
   @ApiResponse({ status: 409, description: 'Review already exists' })
-  async createReview(@Body() createReviewDto: CreateBookReviewDto): Promise<{ message: string; data: BookReview }> {
-    const review = await this.booksService.createReview(createReviewDto);
-    return { message: 'Review created successfully', data: review };
+  async createReview(@Body() createReviewDto: CreateBookReviewDto,
+    @Req() req:any): Promise<{ message: string; data: BookReview }> {
+      const user = req.user;
+      const review = await this.booksService.createReview({
+        ...createReviewDto,
+        memberId: createReviewDto.memberId,
+        memberName: createReviewDto.memberName,
+      });
+      return { message: 'Review created successfully', data: review };
   }
 
   @Get('reviews/:bookId')
