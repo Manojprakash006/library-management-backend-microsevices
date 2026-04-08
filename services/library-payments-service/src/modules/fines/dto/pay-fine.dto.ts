@@ -9,6 +9,6 @@ export class PayFineDto {
 
   @ApiPropertyOptional({ description: 'Reference ID from external payment system' })
   @IsOptional()
-  @IsString()
+  @IsString()    
   referenceId?: string;
 }

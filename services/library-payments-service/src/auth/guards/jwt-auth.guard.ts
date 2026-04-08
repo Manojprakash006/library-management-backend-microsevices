@@ -9,7 +9,7 @@ interface JwtPayload {
   role: string;
 }
 
-@Injectable()
+@Injectable()    
 export class JwtAuthGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 

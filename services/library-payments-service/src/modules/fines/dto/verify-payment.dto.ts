@@ -9,8 +9,8 @@ export class VerifyPaymentDto {
 
   @ApiProperty({ description: 'The Razorpay Order ID returned during creation' })
   @IsNotEmpty()
-  @IsString()
-  razorpayOrderId: string;
+     @IsString()
+  razorpayOrderId: string;       
 
   @ApiProperty({ description: 'The Razorpay Payment ID from successful payment' })
   @IsNotEmpty()

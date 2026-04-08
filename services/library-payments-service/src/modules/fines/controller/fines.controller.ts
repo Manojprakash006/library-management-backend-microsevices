@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { FinesService } from '../service/fines.service';
 import { PayFineDto } from '../dto/pay-fine.dto';
 import { VerifyPaymentDto } from '../dto/verify-payment.dto';
-
+  
 @ApiTags('fines')
 @Controller('fines')
 export class FinesController {

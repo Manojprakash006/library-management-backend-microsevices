@@ -328,7 +328,7 @@ export class StaffDashboardService {
         count: item.count || 0
       }));
     } catch (error) {
-      this.logger.error(`Failed to fetch books by category: ${error.message}`);
+      this.logger.error(`Failed to fetch books by category: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }

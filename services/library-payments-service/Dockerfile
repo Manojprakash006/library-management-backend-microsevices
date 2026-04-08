@@ -7,10 +7,11 @@ RUN npm install
 
 COPY . .
 RUN npm run build
+ RUN npm ci
 
 # Copy proto files for gRPC
 COPY proto/ dist/proto/
 
-EXPOSE 3004
+EXPOSE 3005
 
 CMD ["node", "dist/main"]
