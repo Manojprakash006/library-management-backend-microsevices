@@ -13,6 +13,8 @@ type MemberWithStats = Member & {
   booksAtHome: number;
   readingInsideLibrary: number;
   totalFines: number;
+  paidFines: number;
+  fineHistory: any[];
   hasActiveIssues: boolean;
 };
 
@@ -27,7 +29,7 @@ export class MembersService {
   ) { }
 
   async create(createMemberDto: CreateMemberDto, adminId?: string): Promise<Member> {
-    
+
     if (!createMemberDto.fullName || createMemberDto.fullName.trim().length < 2) {
       throw new ConflictException('Full name is required and must be at least 2 characters');
     }
@@ -72,13 +74,13 @@ export class MembersService {
     return savedMember;
   }
 
-  async findAll(): Promise<MemberWithStats[]> {
+  async findAll(token?: string): Promise<MemberWithStats[]> {
     const members = await this.memberModel.find().select('-password').exec();
 
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
         const memberObj = member.toObject();
-        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(member._id.toString());
+        const { booksHeld, booksAtHome, readingInsideLibrary, totalFines, paidFines, fineHistory } = await this.getMemberStatsFromIssues(member._id.toString(), token);
 
         return {
           ...memberObj,
@@ -87,6 +89,8 @@ export class MembersService {
           booksAtHome,
           readingInsideLibrary,
           totalFines,
+          paidFines,
+          fineHistory,
           hasActiveIssues: booksHeld > 0,
         };
       })
@@ -95,7 +99,7 @@ export class MembersService {
     return membersWithStats;
   }
 
-  async findOne(id: string): Promise<MemberWithStats> {
+  async findOne(id: string, token?: string): Promise<MemberWithStats> {
     const member = await this.memberModel.findById(id).select('-password').exec();
     if (!member) {
       throw new NotFoundException('Member not found');
@@ -103,7 +107,7 @@ export class MembersService {
 
     const memberObj = member.toObject();
 
-    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines } = await this.getMemberStatsFromIssues(id);
+    const { booksHeld, booksAtHome, readingInsideLibrary, totalFines, paidFines, fineHistory } = await this.getMemberStatsFromIssues(id, token);
 
     return {
       ...memberObj,
@@ -112,6 +116,8 @@ export class MembersService {
       booksAtHome,
       readingInsideLibrary,
       totalFines,
+      paidFines,
+      fineHistory,
       hasActiveIssues: booksHeld > 0,
     };
   }
@@ -216,34 +222,68 @@ export class MembersService {
     return this.memberModel.countDocuments();
   }
 
-  private async getMemberStatsFromIssues(memberId: string): Promise<{
+  private async getMemberStatsFromIssues(memberId: string, token?: string): Promise<{
     booksHeld: number;
     booksAtHome: number;
     readingInsideLibrary: number;
-    totalFines: number
+    totalFines: number;
+    paidFines: number;
+    fineHistory: any[];
   }> {
     try {
       const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
       const statsResponse = await firstValueFrom(
         this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
-          `${issuesServiceUrl}/issues/member/${memberId}/stats`
+          `${issuesServiceUrl}/issues/member/${memberId}/stats`, {
+            headers: token ? { Authorization: token } : {}
+          }
         )
       );
 
       const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
 
       const allIssuesResponse = await firstValueFrom(
-        this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`)
+        this.httpService.get<{ data: Array<{ fine?: number }> }>(`${issuesServiceUrl}/issues/member/${memberId}`, {
+          headers: token ? { Authorization: token } : {}
+        })
       );
       const allIssues = allIssuesResponse.data?.data || [];
       const totalFines = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
+
+      let paidFines = 0;
+      let fineHistory = [];
+
+      try {
+        const paymentsServiceUrl = 'http://library-api-gateway:3000/library/payments';
+        const finesResponse = await firstValueFrom(
+          this.httpService.get<{ data: any[] }>(`${paymentsServiceUrl}/fines/member/${memberId}`, {
+            headers: token ? { Authorization: token } : {}
+          })
+        );
+        const fines = finesResponse.data?.data || [];
+        paidFines = fines
+          .filter((f: any) => f.status === 'PAID')
+          .reduce((sum: number, f: any) => sum + f.amount, 0);
+        
+        fineHistory = fines.map((f: any) => ({
+          amount: f.amount,
+          reason: f.reason,
+          status: f.status,
+          paidAt: f.paidAt,
+          paymentMethod: f.paymentMethod
+        }));
+      } catch (err) {
+        this.logger.error(`Failed to fetch fines from payments service: ${err.message}`);
+      }
 
       const computedStats = {
         booksHeld: stats.totalActive,
         booksAtHome: stats.booksAtHome,
         readingInsideLibrary: stats.readingInsideLibrary,
-        totalFines
+        totalFines,
+        paidFines,
+        fineHistory
       };
 
       // Asynchronously sync the stats to MongoDB so they appear in DB queries
@@ -255,7 +295,7 @@ export class MembersService {
       return computedStats;
     } catch (error) {
       this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
-      return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
+      return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0, paidFines: 0, fineHistory: [] };
     }
   }
 
@@ -264,7 +304,7 @@ export class MembersService {
     if (!userId) {
       throw new BadRequestException('User ID is missing');
     }
-    
+
     const member = await this.memberModel.findById(userId).exec();
 
     if (!member) {
@@ -298,17 +338,21 @@ export class MembersService {
       booksRead = 0;
     }
 
-    return {
-      name: member.name,
-      email: member.email,
-      memberId,
-      phone,
-      address,
-      memberSince: member.membershipDate,
-      totalRequests,
-      booksRead,
-      memId,
-    };
+      const memberStats = await this.getMemberStatsFromIssues(memberId, token);
+
+      return {
+        name: member.name,
+        email: member.email,
+        memberId,
+        phone,
+        address,
+        memberSince: member.membershipDate,
+        totalRequests,
+        booksRead,
+        memId,
+        paidFines: memberStats.paidFines,
+        fineHistory: memberStats.fineHistory,
+      };
   }
 
 }

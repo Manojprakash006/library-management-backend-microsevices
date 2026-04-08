@@ -49,8 +49,9 @@ export class MembersController {
     @Get()
     @Roles('admin', 'staff')
     @ApiOperation({ summary: 'Get all members' })
-    async findAll() {
-        const members = await this.membersService.findAll();
+    async findAll(@Req() req: any) {
+        const token = req.headers.authorization;
+        const members = await this.membersService.findAll(token);
         return { message: 'Members retrieved successfully', data: members, count: members.length };
     }
 
@@ -70,8 +71,9 @@ export class MembersController {
     @Get(':id')
     @Roles('admin', 'staff', 'member')
     @ApiOperation({ summary: 'Get a member by ID' })
-    async findOne(@Param('id') id: string) {
-        const member = await this.membersService.findOne(id);
+    async findOne(@Param('id') id: string, @Req() req: any) {
+        const token = req.headers.authorization;
+        const member = await this.membersService.findOne(id, token);
         return { message: 'Member retrieved successfully', data: member };
     }
 
