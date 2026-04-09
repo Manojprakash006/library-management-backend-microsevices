@@ -7,6 +7,8 @@ import * as crypto from 'crypto';
 const Razorpay = require('razorpay');
 import { Fine, FineDocument, FineStatus, PaymentMethod } from '../entities/fine.entity';
 
+import { CreateFineDto } from '../dto/create-fine.dto';
+
 @Injectable()
 export class FinesService {
   private razorpayInstance: any;
@@ -37,7 +39,7 @@ export class FinesService {
     }
   }
 
-  async createFine(data: { memberId: string; issueId: string; amount: number; reason: string }): Promise<Fine> {
+  async createFine(data: CreateFineDto): Promise<Fine> {
     const newFine = new this.fineModel({
       ...data,
       status: FineStatus.UNPAID,
@@ -61,6 +63,10 @@ export class FinesService {
       throw new NotFoundException(`Fine with ID ${id} not found`);
     }
     return fine;
+  }
+
+  async getAllFines(): Promise<Fine[]> {
+    return this.fineModel.find().exec();
   }
 
   async getFinesByMemberId(memberId: string): Promise<Fine[]> {

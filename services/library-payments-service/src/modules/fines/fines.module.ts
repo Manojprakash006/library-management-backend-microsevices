@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { HttpModule } from '@nestjs/axios'; // Added HttpModule for cross-service notifications
+import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '../../config/config.module';
 import { Fine, FineSchema } from './entities/fine.entity';
 import { FinesService } from './service/fines.service';
@@ -10,7 +10,7 @@ import { FinesController } from './controller/fines.controller';
   imports: [
     MongooseModule.forFeature([{ name: Fine.name, schema: FineSchema }]),
     ConfigModule,
-    HttpModule, // Added HttpModule
+    HttpModule, 
   ],
   controllers: [FinesController],
   providers: [FinesService],

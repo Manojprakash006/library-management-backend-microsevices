@@ -52,17 +52,17 @@ export class IssuesService {
   private async autoRecordLibraryVisit(memberId: string, bookId: string, issueType: string) {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
-      
+
       // Map issueType to purpose
       // "Taking Home" -> "issue" (immediate in/out)
       // "Reading Inside Library" -> "reading" (only timeIn, staying in library)
       const purpose = issueType === 'Taking Home' ? 'issue' : 'reading';
-      
+
       // For issue (Taking Home), timeIn=timeOut (immediate exit)
       // For reading (Reading Inside), only timeIn (staying in library)
       const isImmediate = purpose === 'issue';
       const now = new Date().toISOString();
-      
+
       const payload = {
         memberId,
         bookId,
@@ -71,13 +71,13 @@ export class IssuesService {
         timeOut: isImmediate ? now : null,
         isAutoRecorded: true
       };
-      
+
       this.logger.log(`Calling auto-record API: ${membersServiceUrl}/library-visits/auto-record with payload: ${JSON.stringify(payload)}`);
-      
+
       const response = await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/library-visits/auto-record`, payload)
       );
-      
+
       this.logger.log(`Auto-recorded library visit success: ${JSON.stringify(response.data)}`);
     } catch (error) {
       this.logger.error(`Failed to auto-record library visit: ${error.message}`);
@@ -91,7 +91,7 @@ export class IssuesService {
   private async recordReturnVisit(memberId: string, bookId: string) {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
-      
+
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/library-visits/record-return`, {
           memberId,
@@ -104,7 +104,7 @@ export class IssuesService {
     }
   }
 
-  async create(createIssueDto: CreateIssueDto, adminId?: string): Promise<IssueBook> {
+  async create(createIssueDto: CreateIssueDto, adminId?: string, authHeader?: string): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
 
     let dueDate = null;
@@ -117,21 +117,47 @@ export class IssuesService {
       dueDate.setDate(dueDate.getDate() + numberOfDays);
     }
 
-    // Check pending fines from Payment Service
+    // SHARP FINE CHECK: Hybrid Calculation (Total Issue Fines - Total Paid Fines)
     try {
-      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
-      const checkFinesResponse = await firstValueFrom(
-        this.httpService.get(`${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`)
+      // 1. Get total fines from Issues records
+      const allIssues = await this.issueBookModel.find({
+        memberId: new Types.ObjectId(createIssueDto.memberId)
+      }).exec();
+      const totalIssueFines = allIssues.reduce((sum, issue) => sum + (issue.fine || 0), 0);
+
+      // 2. Get total paid amount from Payment records
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
+      const finesResponse = await firstValueFrom(
+        this.httpService.get<{ data: any[] }>(`${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}`, {
+          headers: authHeader ? { Authorization: authHeader } : {}
+        })
       );
-      const checkFines = checkFinesResponse.data;
-      if (checkFines.hasPendingFines) {
-        throw new BadRequestException(`Please clear your unpaid fine of ₹${checkFines.totalPendingAmount} before borrowing a new book`);
+      
+      const fines = finesResponse.data?.data || [];
+      const totalPaidFines = fines
+        .filter((f: any) => f.status === 'PAID')
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
+
+      // 3. Final Balance Check
+      const pendingBalance = totalIssueFines - totalPaidFines;
+
+      if (pendingBalance > 0) {
+        throw new BadRequestException(`Please clear your unpaid fine of ₹${pendingBalance} before borrowing a new book`);
       }
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-      this.logger.error(`Failed to check pending fines: ${error.message}`);
-      // Decided to allow or block? Better to allow if service is down, or block? Let's throw error.
-      // throw new BadRequestException('Payment service unavailable. Unable to verify fines.');
+      this.logger.error(`Failed to perform strict fine check: ${error.message}`);
+      throw new BadRequestException('Fine verification failed. Please try again later.');
+    }
+
+    // Check total active issues limit (Max 5 books per member)
+    const activeIssuesCount = await this.issueBookModel.countDocuments({
+      memberId: new Types.ObjectId(createIssueDto.memberId),
+      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+    });
+
+    if (activeIssuesCount >= 5) {
+      throw new BadRequestException('Borrowing limit reached: Members can only have a maximum of 5 active books at a time.');
     }
 
     // Check book availability first before issuing
@@ -167,8 +193,8 @@ export class IssuesService {
         throw new ConflictException('This member already has an active issue for this book.');
       }
     } catch (error) {
-       if (error instanceof BadRequestException) throw error;
-       throw new BadRequestException('Failed to verify book availability. Book may not exist.');
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Failed to verify book availability. Book may not exist.');
     }
 
     const issuedBook = new this.issueBookModel({
@@ -211,9 +237,9 @@ export class IssuesService {
     );
 
     if (adminId) {
-      await this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), { 
-        bookId: createIssueDto.bookId, 
-        memberId: createIssueDto.memberId 
+      await this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), {
+        bookId: createIssueDto.bookId,
+        memberId: createIssueDto.memberId
       });
     }
 
@@ -336,40 +362,41 @@ export class IssuesService {
 
     const today = new Date();
 
-    const enriched = await Promise.all(issuedBooks.map(async (issue) => { let updatedIssue = { ...issue };
+    const enriched = await Promise.all(issuedBooks.map(async (issue) => {
+      let updatedIssue = { ...issue };
 
-        if (
-          issue.status !== IssueStatus.RETURNED &&
-          issue.issueType === 'Taking Home' &&
-          issue.dueDate &&
-          new Date(issue.dueDate) < today
-        ) {
-          const overdueDays = Math.ceil(
-            (today.getTime() - new Date(issue.dueDate).getTime()) /
-            (1000 * 60 * 60 * 24)
-          );
+      if (
+        issue.status !== IssueStatus.RETURNED &&
+        issue.issueType === 'Taking Home' &&
+        issue.dueDate &&
+        new Date(issue.dueDate) < today
+      ) {
+        const overdueDays = Math.ceil(
+          (today.getTime() - new Date(issue.dueDate).getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
 
-          updatedIssue.status = IssueStatus.OVERDUE;
-          updatedIssue.daysOverdue = overdueDays;
-          updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
-        }
+        updatedIssue.status = IssueStatus.OVERDUE;
+        updatedIssue.daysOverdue = overdueDays;
+        updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+      }
 
-        let book = null;
+      let book = null;
 
-        try {
-          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+      try {
+        const bookServiceURL = "http://library-api-gateway:3000/library/books";
 
-          const response = await firstValueFrom(
-            this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`) );
+        const response = await firstValueFrom(
+          this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`));
 
-          book = response.data?.data;
+        book = response.data?.data;
 
-        } catch (error) {
-          console.log("BOOK FETCH FAILED:", error.message);
-        }
+      } catch (error) {
+        console.log("BOOK FETCH FAILED:", error.message);
+      }
 
-        return { ...updatedIssue, book };
-      })
+      return { ...updatedIssue, book };
+    })
     );
 
     return enriched;
@@ -401,7 +428,7 @@ export class IssuesService {
     return enrichedIssues;
   }
 
-  async returnBook(id: string, adminId?: string): Promise<IssueBook> {
+  async returnBook(id: string, adminId?: string, authHeader?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -420,15 +447,18 @@ export class IssuesService {
       const overdueDays = Math.ceil((returnDate.getTime() - issuedBook.dueDate.getTime()) / (1000 * 60 * 60 * 24));
       issuedBook.daysOverdue = overdueDays;
       issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
-      
+
       // Create a Fine in Payments Service
       try {
-        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
         await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
           memberId: issuedBook.memberId.toString(),
           issueId: issuedBook._id.toString(),
+          bookId: issuedBook.bookId.toString(),
           amount: issuedBook.fine,
           reason: `Overdue by ${overdueDays} days`
+        }, {
+          headers: authHeader ? { Authorization: authHeader } : {}
         }));
         this.logger.log(`Created fine of ₹${issuedBook.fine} for member ${issuedBook.memberId}`);
       } catch (error) {
@@ -451,9 +481,9 @@ export class IssuesService {
     );
 
     if (adminId) {
-      await this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), { 
-        bookId: issuedBook.bookId, 
-        memberId: issuedBook.memberId 
+      await this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
+        bookId: issuedBook.bookId,
+        memberId: issuedBook.memberId
       });
     }
 
