@@ -9,10 +9,12 @@ export class CreateBookReviewDto {
   bookId: string;
 
   @ApiProperty({ description: 'Member ID' })
+  @IsOptional()
   @IsString()
   memberId: string;
 
   @ApiProperty({ description: 'Member Name' })
+  @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(100)

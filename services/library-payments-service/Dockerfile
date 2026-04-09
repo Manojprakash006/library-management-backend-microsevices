@@ -3,14 +3,16 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build
 
-# Copy proto files for gRPC
-COPY proto/ dist/proto/
+RUN npm prune --production
 
-EXPOSE 3004
+# Copy proto files for gRPC
+# COPY proto/ dist/proto/
+
+EXPOSE 3005
 
 CMD ["node", "dist/main"]

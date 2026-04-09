@@ -211,11 +211,33 @@ export class MemberDashboardService {
   }
 
   async getMyBooks(userId: string) {
-    return this.issueModel
-      .find({ memberId: new Types.ObjectId(userId) })
-      .populate('bookId')
-      .sort({ createdAt: -1 })
-      .lean();
+    console.log("USER ID from getmybooks :", userId);
+    const testId = "69c217a09fd7549d5254181d"
+    try {
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+
+      const response = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/member/${testId}`)
+      );
+
+      const issues = response.data?.data || [];
+
+      return issues.map((issue: any) => ({
+        _id: issue._id,
+        bookId: issue.book, 
+        dueDate: issue.dueDate,
+        issueDate: issue.issueDate,
+        status: issue.status,
+        issueType: issue.issueType,
+        damageReported: issue.damageReported,
+        damageNote: issue.damageNote,
+        daysOverdue: issue.daysOverdue || 0,
+      }));
+
+    } catch (error) {
+      console.log("FAILED TO FETCH MY BOOKS:", error.message);
+      return [];
+    }
   }
 
   async reportBookDamage(damageDto: ReportDamageDto) {
