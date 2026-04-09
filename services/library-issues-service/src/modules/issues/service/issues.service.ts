@@ -117,37 +117,27 @@ export class IssuesService {
       dueDate.setDate(dueDate.getDate() + numberOfDays);
     }
 
-    // SHARP FINE CHECK: Hybrid Calculation (Total Issue Fines - Total Paid Fines)
+    // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
     try {
-      // 1. Get total fines from Issues records
-      const allIssues = await this.issueBookModel.find({
-        memberId: new Types.ObjectId(createIssueDto.memberId)
-      }).exec();
-      const totalIssueFines = allIssues.reduce((sum, issue) => sum + (issue.fine || 0), 0);
-
-      // 2. Get total paid amount from Payment records
       const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
-      const finesResponse = await firstValueFrom(
-        this.httpService.get<{ data: any[] }>(`${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}`, {
-          headers: authHeader ? { Authorization: authHeader } : {}
-        })
+      const checkResponse = await firstValueFrom(
+        this.httpService.get<{ data: { hasPendingFines: boolean; totalPendingAmount: number } }>(
+          `${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`,
+          {
+            headers: authHeader ? { Authorization: authHeader } : {}
+          }
+        )
       );
-      
-      const fines = finesResponse.data?.data || [];
-      const totalPaidFines = fines
-        .filter((f: any) => f.status === 'PAID')
-        .reduce((sum: number, f: any) => sum + f.amount, 0);
 
-      // 3. Final Balance Check
-      const pendingBalance = totalIssueFines - totalPaidFines;
-
-      if (pendingBalance > 0) {
-        throw new BadRequestException(`Please clear your unpaid fine of ₹${pendingBalance} before borrowing a new book`);
+      const pendingData = checkResponse.data?.data;
+      if (pendingData?.hasPendingFines || (pendingData?.totalPendingAmount || 0) > 0) {
+        throw new BadRequestException(`Please clear your unpaid fine of ₹${pendingData.totalPendingAmount} before borrowing a new book`);
       }
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-      this.logger.error(`Failed to perform strict fine check: ${error.message}`);
-      throw new BadRequestException('Fine verification failed. Please try again later.');
+      this.logger.error(`Failed to verify pending fines: ${error.message}`);
+      // If payment service is down, we might want to block as a safety measure
+      // throw new BadRequestException('Fine verification failed. Please try again later.');
     }
 
     // Check total active issues limit (Max 5 books per member)

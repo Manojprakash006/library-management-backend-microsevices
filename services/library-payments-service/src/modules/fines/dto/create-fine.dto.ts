@@ -7,6 +7,11 @@ export class CreateFineDto {
   @IsNotEmpty()
   memberId: string;
 
+  @ApiProperty({ example: '69c12fd4d5c26ff63522def8' })
+  @IsString()
+  @IsNotEmpty()
+  issueId: string;
+
   @ApiProperty({ example: '69ce751ca3666448d45dae9c', required: false })
   @IsString()
   @IsOptional()
