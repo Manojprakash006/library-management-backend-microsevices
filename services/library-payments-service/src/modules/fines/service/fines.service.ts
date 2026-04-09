@@ -1,17 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { HttpService } from '@nestjs/axios';
 import { Model } from 'mongoose';
 import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Razorpay = require('razorpay');
 import { Fine, FineDocument, FineStatus, PaymentMethod } from '../entities/fine.entity';
 
+import { CreateFineDto } from '../dto/create-fine.dto';
+
 @Injectable()
 export class FinesService {
   private razorpayInstance: any;
+  private readonly logger = new Logger(FinesService.name);
 
   constructor(
     @InjectModel(Fine.name) private fineModel: Model<FineDocument>,
+    private readonly httpService: HttpService,
   ) {
     this.razorpayInstance = new Razorpay({
       key_id: process.env.RZP_KEY_ID || 'rzp_test_SaDCl7Au48PRQf',
@@ -19,7 +24,22 @@ export class FinesService {
     });
   }
 
-  async createFine(data: { memberId: string; issueId: string; amount: number; reason: string }): Promise<Fine> {
+  private async sendPaymentNotification(memberId: string, amount: number, referenceId: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3011';
+      await this.httpService.post(`${membersServiceUrl}/notifications`, {
+        memberId,
+        type: 'PAYMENT_SUCCESS',
+        title: 'Payment Successful',
+        message: `Your payment of ₹${amount} has been successfully received. Reference ID: ${referenceId}`,
+      }).toPromise();
+      this.logger.log(`Payment notification sent for member ${memberId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send payment notification: ${error.message}`);
+    }
+  }
+
+  async createFine(data: CreateFineDto): Promise<Fine> {
     const newFine = new this.fineModel({
       ...data,
       status: FineStatus.UNPAID,
@@ -45,6 +65,10 @@ export class FinesService {
     return fine;
   }
 
+  async getAllFines(): Promise<Fine[]> {
+    return this.fineModel.find().exec();
+  }
+
   async getFinesByMemberId(memberId: string): Promise<Fine[]> {
     return this.fineModel.find({ memberId }).exec();
   }
@@ -61,7 +85,12 @@ export class FinesService {
     fine.paymentMethod = paymentMethod;
     fine.referenceId = referenceId;
     fine.paidAt = new Date();
-    return fine.save();
+    await fine.save();
+    
+    // Fire and forget notification
+    this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId || fine._id.toString());
+    
+    return fine;
   }
 
   async createRazorpayOrder(fineId: string) {
@@ -123,7 +152,12 @@ export class FinesService {
     fine.referenceId = razorpayPaymentId;
     fine.paidAt = new Date();
     
-    return fine.save();
+    await fine.save();
+    
+    // Fire and forget notification
+    this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId);
+    
+    return fine;
   }
 }
 
