@@ -43,6 +43,14 @@ export class AuthService {
       });
     }
 
+    if (user.role === 'staff') {
+      const staff = await this.staffModel.findOne({ email: user.email });
+      if (staff) {
+        staff.status = StaffStatus.ACTIVE;
+        await staff.save();
+      }
+    }
+
     return {
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role },

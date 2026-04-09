@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Staff, StaffDocument } from '../entities/staff.entity';
+import { Staff, StaffDocument, StaffStatus } from '../entities/staff.entity';
 import { CreateStaffDto } from '../dto/create-staff.dto';
 import { UpdateStaffDto } from '../dto/update-staff.dto';
 import { StaffLoginDto } from '../dto/staff-login.dto';
@@ -29,6 +29,14 @@ export class StaffService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    if (!staff.isActive) {
+      throw new UnauthorizedException('Account is disabled. Please contact admin.');
+    }
+
+    // Update status to Active on login
+    staff.status = StaffStatus.ACTIVE;
+    await staff.save();
 
     const token = this.jwtService.sign({
       userId: staff._id,
@@ -59,6 +67,10 @@ export class StaffService {
   async logout(staffId: string) {
     const staff = await this.staffModel.findById(staffId);
     if (staff) {
+      // Update status to Inactive on logout
+      staff.status = StaffStatus.INACTIVE;
+      await staff.save();
+
       await this.activityLogService.logAction({
         adminId: staff._id.toString(),
         action: 'STAFF_LOGOUT',

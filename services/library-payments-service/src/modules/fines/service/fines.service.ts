@@ -27,7 +27,7 @@ export class FinesService {
   private async sendPaymentNotification(memberId: string, amount: number, referenceId: string) {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
-      
+
       // Notify Member
       await this.httpService.post(`${membersServiceUrl}/notifications`, {
         memberId,
@@ -44,7 +44,7 @@ export class FinesService {
         message: `Member (ID: ${memberId}) has paid a fine of ₹${amount}. Reference ID: ${referenceId}`,
       }).toPromise();
       this.logger.log(`Payment notification sent to admins for member ${memberId}`);
-      
+
     } catch (error) {
       this.logger.error(`Failed to send payment notification: ${error.message}`);
     }
@@ -71,10 +71,10 @@ export class FinesService {
       status: FineStatus.UNPAID,
     });
     const savedFine = await newFine.save();
-    
+
     // Fire and forget notification
     this.sendFineCreationNotification(savedFine.memberId.toString(), savedFine.amount, savedFine.reason);
-    
+
     return savedFine;
   }
 
@@ -117,10 +117,10 @@ export class FinesService {
     fine.referenceId = referenceId;
     fine.paidAt = new Date();
     await fine.save();
-    
+
     // Fire and forget notification
     this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId || fine._id.toString());
-    
+
     return fine;
   }
 
@@ -153,9 +153,9 @@ export class FinesService {
   }
 
   async verifyRazorpayPayment(
-    fineId: string, 
-    razorpayOrderId: string, 
-    razorpayPaymentId: string, 
+    fineId: string,
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
     signature: string
   ): Promise<Fine> {
     const fine = await this.getFineById(fineId);
@@ -182,12 +182,12 @@ export class FinesService {
     fine.paymentMethod = PaymentMethod.UPI; // Default for online
     fine.referenceId = razorpayPaymentId;
     fine.paidAt = new Date();
-    
+
     await fine.save();
-    
+
     // Fire and forget notification
     this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId);
-    
+
     return fine;
   }
 }

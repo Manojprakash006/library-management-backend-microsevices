@@ -10,10 +10,10 @@ import { FinesController } from './controller/fines.controller';
   imports: [
     MongooseModule.forFeature([{ name: Fine.name, schema: FineSchema }]),
     ConfigModule,
-    HttpModule, 
+    HttpModule,
   ],
   controllers: [FinesController],
   providers: [FinesService],
   exports: [FinesService],
 })
-export class FinesModule {}
+export class FinesModule { }
