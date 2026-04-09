@@ -140,14 +140,17 @@ export class IssuesService {
       // throw new BadRequestException('Fine verification failed. Please try again later.');
     }
 
-    // Check total active issues limit (Max 5 books per member)
-    const activeIssuesCount = await this.issueBookModel.countDocuments({
-      memberId: new Types.ObjectId(createIssueDto.memberId),
-      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
-    });
+    // Check total active issues limit for "Taking Home" only (Max 5 books per member)
+    if (createIssueDto.issueType === IssueType.TAKING_HOME) {
+      const activeTakingHomeCount = await this.issueBookModel.countDocuments({
+        memberId: new Types.ObjectId(createIssueDto.memberId),
+        issueType: IssueType.TAKING_HOME,
+        status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+      });
 
-    if (activeIssuesCount >= 5) {
-      throw new BadRequestException('Borrowing limit reached: Members can only have a maximum of 5 active books at a time.');
+      if (activeTakingHomeCount >= 5) {
+        throw new BadRequestException('Borrowing limit reached: Members can only take a maximum of 5 books home at a time.');
+      }
     }
 
     // Check book availability first before issuing
