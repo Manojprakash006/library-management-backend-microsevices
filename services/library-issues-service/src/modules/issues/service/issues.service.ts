@@ -104,6 +104,49 @@ export class IssuesService {
     }
   }
 
+  private calculateOverdue(issue: any) {
+    const today = new Date();
+
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    if (
+      issue.status !== IssueStatus.RETURNED &&
+      issue.issueType === IssueType.TAKING_HOME &&
+      issue.dueDate
+    ) {
+      const due = new Date(issue.dueDate);
+      const dueOnly = new Date(
+        due.getFullYear(),
+        due.getMonth(),
+        due.getDate()
+      );
+
+      if (dueOnly < todayOnly) {
+        const overdueDays = Math.ceil(
+          (todayOnly.getTime() - dueOnly.getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
+
+        return {
+          ...issue,
+          status: IssueStatus.OVERDUE,
+          daysOverdue: overdueDays,
+          fine: overdueDays * (issue.finePerDay || 10),
+        };
+      }
+    }
+
+    return {
+      ...issue,
+      daysOverdue: 0,
+      fine: 0,
+    };
+  }
+
   async create(createIssueDto: CreateIssueDto, adminId?: string, authHeader?: string): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
 
@@ -358,45 +401,30 @@ export class IssuesService {
   }
 
   async findByMember(memberId: string): Promise<any[]> {
-    const issuedBooks = await this.issueBookModel.find({ memberId: new Types.ObjectId(memberId) }).lean();
+    const issuedBooks = await this.issueBookModel
+      .find({ memberId: new Types.ObjectId(memberId) })
+      .lean();
 
-    const today = new Date();
+    const enriched = await Promise.all(
+      issuedBooks.map(async (issue) => {
+        let updatedIssue = this.calculateOverdue(issue);
 
-    const enriched = await Promise.all(issuedBooks.map(async (issue) => {
-      let updatedIssue = { ...issue };
+        let book = null;
 
-      if (
-        issue.status !== IssueStatus.RETURNED &&
-        issue.issueType === 'Taking Home' &&
-        issue.dueDate &&
-        new Date(issue.dueDate) < today
-      ) {
-        const overdueDays = Math.ceil(
-          (today.getTime() - new Date(issue.dueDate).getTime()) /
-          (1000 * 60 * 60 * 24)
-        );
+        try {
+          const bookServiceURL = "http://library-api-gateway:3000/library/books";
 
-        updatedIssue.status = IssueStatus.OVERDUE;
-        updatedIssue.daysOverdue = overdueDays;
-        updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
-      }
+          const response = await firstValueFrom(
+            this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`)
+          );
 
-      let book = null;
+          book = response.data?.data;
+        } catch (error) {
+          console.log("BOOK FETCH FAILED:", error.message);
+        }
 
-      try {
-        const bookServiceURL = "http://library-api-gateway:3000/library/books";
-
-        const response = await firstValueFrom(
-          this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`));
-
-        book = response.data?.data;
-
-      } catch (error) {
-        console.log("BOOK FETCH FAILED:", error.message);
-      }
-
-      return { ...updatedIssue, book };
-    })
+        return { ...updatedIssue, book };
+      })
     );
 
     return enriched;
@@ -591,6 +619,46 @@ export class IssuesService {
       bookId: new Types.ObjectId(bookId),
       status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
     });
+  }
+
+  async renewBook(issueId: string) {
+    const issue = await this.issueBookModel.findById(issueId);
+
+    if (!issue) {
+      throw new NotFoundException('Issue not found');
+    }
+
+    if (issue.status === 'Returned') {
+      throw new BadRequestException('Cannot renew a returned book');
+    }
+
+    if (issue.renewCount >= 2) {
+      throw new BadRequestException('Renewal limit reached (Max 2 times)');
+    }
+
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const due = new Date(issue.dueDate);
+    const dueOnly = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+
+    if (dueOnly < todayOnly) {
+      throw new BadRequestException('Cannot renew overdue book. Please clear fine.');
+    }
+
+    const newDueDate = new Date(issue.dueDate);
+    newDueDate.setDate(newDueDate.getDate() + 7);
+
+    issue.dueDate = newDueDate;
+    issue.renewCount = (issue.renewCount || 0) + 1;
+
+    await issue.save();
+
+    return {
+      message: 'Book renewed successfully',
+      newDueDate,
+      renewCount: issue.renewCount,
+    };
   }
 
   async remove(id: string, adminId?: string): Promise<void> {
