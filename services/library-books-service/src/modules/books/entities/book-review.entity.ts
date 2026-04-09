@@ -28,7 +28,7 @@ export class BookReview {
   @Prop({ required: true, trim: true, minlength: 10, maxlength: 2000 })
   review: string;
 
-  @Prop({ default: true })
+  @Prop({ default: false })
   recommended: boolean;
 
   @Prop({ type: String, enum: ReviewStatus, default: ReviewStatus.PUBLISHED })

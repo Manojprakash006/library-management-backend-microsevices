@@ -54,7 +54,8 @@ export class MemberDashboardController {
    @Get('my-books')
   @ApiOperation({ summary: 'Get my books' })
   async getMyBooks(@Request() req: any) {
-    const result = await this.memberDashboardService.getMyBooks(req.user.id);
+    console.log("REQ USER for my-books:", req.user);
+    const result = await this.memberDashboardService.getMyBooks(req.user.userId);
     return { message: 'My books retrieved', data: result };
   }
 
