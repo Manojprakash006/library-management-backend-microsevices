@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../entities/user.entity';
+import { Staff, StaffDocument, StaffStatus } from '../../staff/entities/staff.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
 
@@ -10,6 +11,7 @@ import { ActivityLogService } from '../../activity-log/service/activity-log.serv
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Staff.name) private staffModel: Model<StaffDocument>,
     private jwtService: JwtService,
     private readonly activityLogService: ActivityLogService,
   ) { }
@@ -41,6 +43,14 @@ export class AuthService {
       });
     }
 
+    if (user.role === 'staff') {
+      const staff = await this.staffModel.findOne({ email: user.email });
+      if (staff) {
+        staff.status = StaffStatus.ACTIVE;
+        await staff.save();
+      }
+    }
+
     return {
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
@@ -69,7 +79,22 @@ export class AuthService {
     return { message: 'Refresh token not implemented' };
   }
 
-  async logout(): Promise<{ message: string }> {
+  async logout(userId: string, role: string): Promise<{ message: string }> {
+    if (role === 'staff') {
+      const staff = await this.staffModel.findById(userId);
+      if (staff) {
+        staff.status = StaffStatus.INACTIVE;
+        await staff.save();
+
+        await this.activityLogService.logAction({
+          adminId: userId,
+          action: 'STAFF_LOGOUT',
+          entityType: 'AUTH',
+          entityId: userId,
+          details: { email: staff.email, fullName: staff.fullName }
+        });
+      }
+    }
     return { message: 'Logged out' };
   }
 }

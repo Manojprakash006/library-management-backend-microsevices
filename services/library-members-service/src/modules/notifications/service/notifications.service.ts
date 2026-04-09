@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { Member, MemberDocument } from '../../members/entities/member.entity';
+import { User, UserDocument } from '../../auth/entities/user.entity';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -16,6 +18,10 @@ export class NotificationsService {
   constructor(
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,
+    @InjectModel(Member.name)
+    private memberModel: Model<MemberDocument>,
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
     private readonly emailService: EmailService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly httpService: HttpService,
@@ -27,22 +33,20 @@ export class NotificationsService {
     // Fetch member details if email/name not provided
     if (!memberEmail || !memberName) {
       try {
-        const MemberSchema = this.notificationModel.db.model('Member');
-        const member = await MemberSchema.findById(memberId).exec();
+        const member = await this.memberModel.findById(memberId).exec();
         if (member) {
           memberEmail = memberEmail || member.email;
           memberName = memberName || member.name;
         } else {
-          // Check Staff collection
+          // Check Staff collection (Leaving staff as is for now since I didn't inject it yet)
           const StaffSchema = this.notificationModel.db.model('Staff');
           const staff = await StaffSchema.findById(memberId).exec();
           if (staff) {
             memberEmail = memberEmail || staff.email;
             memberName = memberName || staff.fullName || staff.name;
           } else {
-            // Fallback for Admin notifications (they live in User collection)
-            const UserSchema = this.notificationModel.db.model('User');
-            const user = await UserSchema.findById(memberId).exec();
+            // Check User collection for admins
+            const user = await this.userModel.findById(memberId).exec();
             if (user) {
               memberEmail = memberEmail || user.email;
               memberName = memberName || user.name;
@@ -90,8 +94,7 @@ export class NotificationsService {
 
   async notifyAdmins(payload: { title: string; message: string; type: string; issueId?: string }): Promise<void> {
     try {
-      const UserSchema = this.notificationModel.db.model('User');
-      const admins = await UserSchema.find({ role: 'admin' }).exec();
+      const admins = await this.userModel.find({ role: 'admin' }).exec();
 
       for (const admin of admins) {
         await this.create({
@@ -169,9 +172,9 @@ export class NotificationsService {
       // Determine color based on Notification Type
       let color = '#4f46e5'; // Default Blue
       let icon = '🔔';
-      if (type.includes('APPROVE') || type.includes('ADDED') || type.includes('ISSUE')) { color = '#10b981'; icon = '✅'; }
+      if (type.includes('APPROVE') || type.includes('ADDED') || type.includes('ISSUE') || type.includes('PAYMENT')) { color = '#10b981'; icon = '✅'; }
       if (type.includes('REJECT') || type.includes('OVERDUE')) { color = '#ef4444'; icon = '⚠️'; }
-      if (type.includes('DUE')) { color = '#f59e0b'; icon = '⏳'; }
+      if (type.includes('DUE') || type.includes('FINE')) { color = '#f59e0b'; icon = '⏳'; }
 
       // Build Beautiful HTML Template Wrapper
       const htmlTemplate = `

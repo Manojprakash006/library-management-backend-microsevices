@@ -211,13 +211,11 @@ export class MemberDashboardService {
   }
 
   async getMyBooks(userId: string) {
-    console.log("USER ID from getmybooks :", userId);
-    const testId = "69c217a09fd7549d5254181d"
     try {
       const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
       const response = await firstValueFrom(
-        this.httpService.get(`${issuesServiceUrl}/issues/member/${testId}`)
+        this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}`)
       );
 
       const issues = response.data?.data || [];
