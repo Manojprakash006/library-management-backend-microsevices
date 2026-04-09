@@ -8,6 +8,8 @@ import { NotificationsService } from './service/notifications.service';
 import { NotificationsGateway } from './gateway/notifications.gateway';
 import { EmailService } from './service/email.service';
 import { Notification, NotificationSchema } from './entities/notification.entity';
+import { Member, MemberSchema } from '../members/entities/member.entity';
+import { User, UserSchema } from '../auth/entities/user.entity';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { Notification, NotificationSchema } from './entities/notification.entity
     }),
     MongooseModule.forFeature([
       { name: Notification.name, schema: NotificationSchema },
+      { name: Member.name, schema: MemberSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   controllers: [NotificationsController],

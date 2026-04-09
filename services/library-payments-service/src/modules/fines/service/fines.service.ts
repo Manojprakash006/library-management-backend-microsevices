@@ -26,7 +26,9 @@ export class FinesService {
 
   private async sendPaymentNotification(memberId: string, amount: number, referenceId: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3011';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      
+      // Notify Member
       await this.httpService.post(`${membersServiceUrl}/notifications`, {
         memberId,
         type: 'PAYMENT_SUCCESS',
@@ -34,8 +36,32 @@ export class FinesService {
         message: `Your payment of ₹${amount} has been successfully received. Reference ID: ${referenceId}`,
       }).toPromise();
       this.logger.log(`Payment notification sent for member ${memberId}`);
+
+      // Notify Admin
+      await this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
+        type: 'PAYMENT_RECEIVED',
+        title: 'New Payment Received',
+        message: `Member (ID: ${memberId}) has paid a fine of ₹${amount}. Reference ID: ${referenceId}`,
+      }).toPromise();
+      this.logger.log(`Payment notification sent to admins for member ${memberId}`);
+      
     } catch (error) {
       this.logger.error(`Failed to send payment notification: ${error.message}`);
+    }
+  }
+
+  private async sendFineCreationNotification(memberId: string, amount: number, reason: string) {
+    try {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      await this.httpService.post(`${membersServiceUrl}/notifications`, {
+        memberId,
+        type: 'FINE_ADDED',
+        title: 'New Fine Added',
+        message: `A new fine of ₹${amount} has been added to your account. Reason: ${reason}. Please pay it as soon as possible.`,
+      }).toPromise();
+      this.logger.log(`Fine creation notification sent for member ${memberId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send fine creation notification: ${error.message}`);
     }
   }
 
@@ -44,7 +70,12 @@ export class FinesService {
       ...data,
       status: FineStatus.UNPAID,
     });
-    return newFine.save();
+    const savedFine = await newFine.save();
+    
+    // Fire and forget notification
+    this.sendFineCreationNotification(savedFine.memberId.toString(), savedFine.amount, savedFine.reason);
+    
+    return savedFine;
   }
 
   async checkPendingFines(memberId: string): Promise<{ hasPendingFines: boolean; totalPendingAmount: number; pendingFines: Fine[] }> {
