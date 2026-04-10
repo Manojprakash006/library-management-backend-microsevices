@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 export type BookReviewDocument = HydratedDocument<BookReview>;
 
@@ -10,8 +10,8 @@ export enum ReviewStatus {
 
 @Schema({ timestamps: true })
 export class BookReview {
-  @Prop({ required: true, index: true })
-  bookId: string;
+  @Prop({ type: Types.ObjectId, ref: 'Book' , required: true, index: true })
+  bookId: Types.ObjectId;
 
   @Prop({ required: true, index: true })
   memberId: string;
@@ -36,6 +36,12 @@ export class BookReview {
 
   @Prop({ default: Date.now })
   reviewDate: Date;
+
+  @Prop({ type: [String], default: [] })
+  likedBy: string[];
+
+  @Prop({ default: 0})
+  likeCount: number;
 }
 
 export const BookReviewSchema = SchemaFactory.createForClass(BookReview);

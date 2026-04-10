@@ -299,4 +299,19 @@ export class MemberDashboardService {
       ...reviewDto,
     };
   }
+
+  async getBookReviews(bookId: string) {
+    try {
+      const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
+
+      const response = await firstValueFrom(
+        this.httpService.get(`${bookServiceUrl}/books/${bookId}/reviews`)
+      );
+
+      return response.data?.data || [];
+    } catch (error) {
+      console.log("FAILED TO FETCH REVIEWS:", error.message);
+      return [];
+    }
+  }
 }
