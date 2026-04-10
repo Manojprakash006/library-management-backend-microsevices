@@ -251,6 +251,7 @@ export class MembersService {
           .reduce((sum: number, f: any) => sum + f.amount, 0);
         
         fineHistory = fines.map((f: any) => ({
+          id: f._id,
           amount: f.amount,
           reason: f.reason,
           status: f.status,

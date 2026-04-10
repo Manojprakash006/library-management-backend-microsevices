@@ -13,10 +13,10 @@ import { Public } from '../../../auth/guards/public.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(private readonly notificationsService: NotificationsService) { }
 
-   @Public()
-   @Post()
+  @Public()
+  @Post()
   @ApiOperation({ summary: 'Create a new notification' })
   @ApiResponse({ status: 201, description: 'Notification created successfully', type: Notification })
   async create(@Body() createNotificationDto: CreateNotificationDto): Promise<{ message: string; data: Notification }> {
@@ -24,8 +24,8 @@ export class NotificationsController {
     return { message: 'Notification created successfully', data: notification };
   }
 
-   @Public()
-   @Post('admin')
+  @Public()
+  @Post('admin')
   @ApiOperation({ summary: 'Notify all admins' })
   @ApiResponse({ status: 201, description: 'Admins notified successfully' })
   async notifyAdmins(@Body() payload: { title: string; message: string; type: string; issueId?: string }): Promise<{ message: string }> {
@@ -33,8 +33,8 @@ export class NotificationsController {
     return { message: 'Admins notified successfully' };
   }
 
-   @Public()
-   @Post('staff')
+  @Public()
+  @Post('staff')
   @ApiOperation({ summary: 'Notify all staff members' })
   @ApiResponse({ status: 201, description: 'Staff members notified successfully' })
   async notifyStaff(@Body() payload: { title: string; message: string; type: string; issueId?: string }): Promise<{ message: string }> {
@@ -42,8 +42,8 @@ export class NotificationsController {
     return { message: 'Staff members notified successfully' };
   }
 
-   @Public()
-   @Post('members')
+  @Public()
+  @Post('members')
   @ApiOperation({ summary: 'Notify all members' })
   @ApiResponse({ status: 201, description: 'Members notified successfully' })
   async notifyMembers(@Body() payload: { title: string; message: string; type: string; issueId?: string }): Promise<{ message: string }> {
@@ -51,7 +51,7 @@ export class NotificationsController {
     return { message: 'Members notified successfully' };
   }
 
-   @Get()
+  @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'Get all notifications' })
   @ApiResponse({ status: 200, description: 'Notifications retrieved successfully', type: [Notification] })
@@ -60,7 +60,7 @@ export class NotificationsController {
     return { message: 'Notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
-   @Get('member/my-notifications')
+  @Get('member/my-notifications')
   @Roles('member', 'admin', 'staff')
   @ApiOperation({ summary: 'Get member/admin notifications' })
   @ApiResponse({ status: 200, description: 'Notifications retrieved successfully', type: [Notification] })
@@ -70,7 +70,7 @@ export class NotificationsController {
     return { message: 'Notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
-   @Get('member/unread')
+  @Get('member/unread')
   @Roles('member', 'admin', 'staff')
   @ApiOperation({ summary: 'Get unread notifications' })
   @ApiResponse({ status: 200, description: 'Unread notifications retrieved successfully', type: [Notification] })
@@ -80,7 +80,7 @@ export class NotificationsController {
     return { message: 'Unread notifications retrieved successfully', data: notifications, count: notifications.length };
   }
 
-   @Post(':id/read')
+  @Post(':id/read')
   @Roles('member', 'admin', 'staff')
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read', type: Notification })
@@ -91,7 +91,7 @@ export class NotificationsController {
     return { message: 'Notification marked as read', data: notification };
   }
 
-   @Post('mark-all-read')
+  @Post('mark-all-read')
   @Roles('member', 'admin', 'staff')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
@@ -101,7 +101,7 @@ export class NotificationsController {
     return { message: 'All notifications marked as read' };
   }
 
-   @Delete(':id')
+  @Delete(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Delete notification' })
   @ApiResponse({ status: 200, description: 'Notification deleted successfully' })
@@ -111,7 +111,7 @@ export class NotificationsController {
     return { message: 'Notification deleted successfully' };
   }
 
-   @Post('send-due-reminders')
+  @Post('send-due-reminders')
   @Roles('admin')
   @ApiOperation({ summary: 'Send due date reminders to members' })
   @ApiResponse({ status: 200, description: 'Due date reminders sent successfully' })
@@ -119,7 +119,7 @@ export class NotificationsController {
     return this.notificationsService.sendDueDateReminders();
   }
 
-   @Post('send-overdue')
+  @Post('send-overdue')
   @Roles('admin')
   @ApiOperation({ summary: 'Send overdue notifications to members' })
   @ApiResponse({ status: 200, description: 'Overdue notifications sent successfully' })

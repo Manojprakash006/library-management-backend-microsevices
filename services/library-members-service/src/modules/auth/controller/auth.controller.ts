@@ -1,8 +1,9 @@
-import { Controller, Post, Body, Version } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, Version, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from '../service/auth.service';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { Public } from "../../../auth/guards/public.decorator";
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -35,9 +36,13 @@ export class AuthController {
   }
 
    @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'User logout' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
-  async logout(): Promise<{ message: string }> {
-    return this.authService.logout();
+  async logout(@Req() req: any): Promise<{ message: string }> {
+    const userId = req.user?.id || req.user?.userId;
+    const role = req.user?.role;
+    return this.authService.logout(userId, role);
   }
 }
