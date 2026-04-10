@@ -16,6 +16,9 @@ export enum IssueStatus {
 
 @Schema({ timestamps: true })
 export class IssueBook {
+  @Prop({ unique: true, index: true, sparse: true })
+  issueId: string;
+
   @Prop({ type: Types.ObjectId, required: true, ref: 'Book' })
   bookId: Types.ObjectId;
 
@@ -51,6 +54,16 @@ export class IssueBook {
 }
 
 export const IssueBookSchema = SchemaFactory.createForClass(IssueBook);
+
+IssueBookSchema.pre('save', async function (next) {
+  if (this.issueId) return next();
+  
+  const count = await (this.constructor as any).countDocuments();
+  this.issueId = `ISSUE${count + 1}`;
+  next();
+});
+
+IssueBookSchema.index({ issueId: 1 });
 
 IssueBookSchema.index({ memberId: 1, status: 1 });
 IssueBookSchema.index({ bookId: 1, status: 1 });

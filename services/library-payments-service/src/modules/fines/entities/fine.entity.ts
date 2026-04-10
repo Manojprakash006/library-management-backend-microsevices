@@ -16,6 +16,9 @@ export enum PaymentMethod {
 
 @Schema({ timestamps: true })
 export class Fine {
+  @Prop({ unique: true, index: true, sparse: true })
+  fineId: string;
+
   @Prop({ required: true, index: true })
   memberId: string;
 
@@ -48,3 +51,11 @@ export class Fine {
 }
 
 export const FineSchema = SchemaFactory.createForClass(Fine);
+
+FineSchema.pre('save', async function (next) {
+  if (this.fineId) return next();
+  
+  const count = await (this.constructor as any).countDocuments();
+  this.fineId = `FINE${count + 1}`;
+  next();
+});
