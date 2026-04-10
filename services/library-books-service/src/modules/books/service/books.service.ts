@@ -79,16 +79,21 @@ export class BooksService {
     return savedBook;
   }
 
-  async findAll(): Promise<any[]> {
-    const books = await this.bookModel.find().exec();
+  async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    
+    const [books, total] = await Promise.all([
+      this.bookModel.find().skip(skip).limit(limit).exec(),
+      this.bookModel.countDocuments().exec(),
+    ]);
 
     const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
     const updatedBooks = await Promise.all(
       books.map(async (book) => {
         try {
-          const response = await firstValueFrom( this.httpService.get(
-              `${issuesServiceUrl}/issues/count/book/${book._id}` ));
+          const response = await firstValueFrom(this.httpService.get(
+            `${issuesServiceUrl}/issues/count/book/${book._id}`));
 
           const issuedCount = response.data?.count || 0;
 
@@ -100,7 +105,13 @@ export class BooksService {
       })
     );
 
-    return updatedBooks;
+    return {
+      data: updatedBooks,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string): Promise<any> {

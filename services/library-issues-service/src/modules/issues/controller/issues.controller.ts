@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Version, Query, UseGua
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IssuesService } from '../service/issues.service';
 import { CreateIssueDto } from '../dto/create-issue.dto';
-import { IssueBook } from '../entities/issue-book.entity';
+import { IssueBook, IssueStatus } from '../entities/issue-book.entity';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
@@ -30,9 +30,23 @@ export class IssuesController {
   @Get()
   @ApiOperation({ summary: 'Get all issued books' })
   @ApiResponse({ status: 200, description: 'Issued books retrieved successfully', type: [IssueBook] })
-  async findAll(): Promise<{ message: string; data: IssueBook[]; count: number }> {
-    const issues = await this.issuesService.findAll();
-    return { message: 'Issued books retrieved successfully', data: issues, count: issues.length };
+  async findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+    @Query('status') status?: string
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    const result = await this.issuesService.findAll(pageNum, limitNum, status);
+    return { 
+      message: 'Issued books retrieved successfully', 
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    };
   }
 
   @Public()
@@ -133,8 +147,8 @@ export class IssuesController {
   @ApiOperation({ summary: 'Get overdue issued books' })
   @ApiResponse({ status: 200, description: 'Overdue books retrieved successfully', type: [IssueBook] })
   async findOverdue(): Promise<{ message: string; data: IssueBook[]; count: number }> {
-    const issues = await this.issuesService.findAll();
-    const overdueIssues = issues.filter(issue => issue.status === 'Overdue');
+    const result = await this.issuesService.findAll(1, 1000); // Fetch a large set for overdue check
+    const overdueIssues = result.data.filter(issue => issue.status === IssueStatus.OVERDUE);
     return { message: 'Overdue books retrieved successfully', data: overdueIssues, count: overdueIssues.length };
   }
 

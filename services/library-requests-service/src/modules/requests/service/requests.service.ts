@@ -148,8 +148,13 @@ export class RequestsService {
     }
   }
 
-  async findAll(): Promise<any[]> {
-    const requests = await this.bookRequestModel.find().sort({ requestDate: -1 }).exec();
+  async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    
+    const [requests, total] = await Promise.all([
+      this.bookRequestModel.find().sort({ requestDate: -1 }).skip(skip).limit(limit).exec(),
+      this.bookRequestModel.countDocuments().exec(),
+    ]);
 
     // Enrich each request with real-time member borrowing data
     const enrichedRequests = await Promise.all(
@@ -165,7 +170,13 @@ export class RequestsService {
       })
     );
 
-    return enrichedRequests;
+    return {
+      data: enrichedRequests,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getByMember(memberId: string): Promise<BookRequest[]> {

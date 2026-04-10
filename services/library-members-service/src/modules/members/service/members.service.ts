@@ -68,8 +68,13 @@ export class MembersService {
     return savedMember;
   }
 
-  async findAll(token?: string): Promise<MemberWithStats[]> {
-    const members = await this.memberModel.find().select('-password').exec();
+  async findAll(token?: string, page: number = 1, limit: number = 10): Promise<{ data: MemberWithStats[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    
+    const [members, total] = await Promise.all([
+      this.memberModel.find().select('-password').skip(skip).limit(limit).exec(),
+      this.memberModel.countDocuments().exec(),
+    ]);
 
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
@@ -85,7 +90,13 @@ export class MembersService {
       })
     );
 
-    return membersWithStats;
+    return {
+      data: membersWithStats,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string, token?: string): Promise<MemberWithStats> {

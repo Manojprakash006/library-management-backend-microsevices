@@ -33,9 +33,22 @@ export class BooksController {
   @Get()
   @ApiOperation({ summary: 'Get all books' })
   @ApiResponse({ status: 200, description: 'Books retrieved successfully', type: [Book] })
-  async findAll(): Promise<{ message: string; data: Book[]; count: number }> {
-    const books = await this.booksService.findAll();
-    return { message: 'Books retrieved successfully', data: books, count: books.length };
+  async findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10'
+  ): Promise<{ message: string; data: Book[]; total: number; page: number; limit: number; totalPages: number }> {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    const result = await this.booksService.findAll(pageNum, limitNum);
+    return { 
+      message: 'Books retrieved successfully', 
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    };
   }
 
   @Get('search')

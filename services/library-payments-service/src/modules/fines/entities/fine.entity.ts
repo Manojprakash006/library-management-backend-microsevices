@@ -16,10 +16,10 @@ export enum PaymentMethod {
 
 @Schema({ timestamps: true })
 export class Fine {
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   memberId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   issueId: string;
 
   @Prop({ required: false })
@@ -31,7 +31,7 @@ export class Fine {
   @Prop({ required: true })
   reason: string;
 
-  @Prop({ required: true, enum: FineStatus, default: FineStatus.UNPAID })
+  @Prop({ required: true, enum: FineStatus, default: FineStatus.UNPAID, index: true })
   status: FineStatus;
 
   @Prop({ required: false, enum: PaymentMethod })

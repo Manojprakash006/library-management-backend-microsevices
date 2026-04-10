@@ -322,13 +322,28 @@ export class IssuesService {
     }
   }
 
-  async findAll(): Promise<IssueBook[]> {
-    const issuedBooks = await this.issueBookModel.find().exec();
+  async findAll(page: number = 1, limit: number = 10, status?: string): Promise<{ data: IssueBook[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    
+    const filter: any = {};
+    if (status) {
+      const normalizedStatus = status.toLowerCase();
+      if (normalizedStatus === 'returned') {
+        filter.status = IssueStatus.RETURNED;
+      } else if (normalizedStatus === 'active') {
+        filter.status = { $ne: IssueStatus.RETURNED };
+      }
+    }
+
+    const [issuedBooks, total] = await Promise.all([
+      this.issueBookModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      this.issueBookModel.countDocuments(filter).exec(),
+    ]);
+
     const today = new Date();
 
-    return issuedBooks.map((issue) => {
+    const data = issuedBooks.map((issue) => {
       const issueObj = issue.toObject();
-      // Skip overdue check for Reading Inside Library (no due date) or returned books
       if (issueObj.status !== IssueStatus.RETURNED &&
         issueObj.issueType === IssueType.TAKING_HOME &&
         issueObj.dueDate &&
@@ -340,6 +355,14 @@ export class IssuesService {
       }
       return issueObj as IssueBook;
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string): Promise<IssueBook> {
