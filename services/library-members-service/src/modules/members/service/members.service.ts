@@ -106,7 +106,15 @@ export class MembersService {
   }
 
   async update(id: string, updateData: Partial<CreateMemberDto>, adminId?: string): Promise<Member> {
-    const member = await this.memberModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
+    const dataToUpdate: any = { ...updateData };
+
+    if (updateData.fullName) {
+      dataToUpdate.name = updateData.fullName;
+      delete dataToUpdate.fullName;
+    }
+
+    const member = await this.memberModel.findByIdAndUpdate(id, dataToUpdate, { new: true }).select('-password').exec();
+    
     if (!member) {
       throw new NotFoundException('Member not found');
     }
