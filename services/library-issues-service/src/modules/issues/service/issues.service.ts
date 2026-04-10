@@ -154,12 +154,13 @@ export class IssuesService {
     }
 
     // Check book availability first before issuing
+    let bookData: any;
     try {
       const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
-      const bookData = bookResponse.data?.data;
+      bookData = bookResponse.data?.data;
       if (!bookData) {
         throw new BadRequestException('Book not found');
       }
@@ -202,50 +203,41 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
-    // Update book status: if all copies are issued, mark as 'issued' (out of stock), else keep it 'available'
+    // Re-use already fetched bookData instead of re-fetching
+    const currentIssuesCountAfterThis = await this.getBookIssueCount(createIssueDto.bookId);
     let newBookStatus = 'available';
-    try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
-      const bookResponse = await firstValueFrom(
-        this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
-      );
-      const bookData = bookResponse.data?.data;
-      const maxQuantity = bookData?.quantity || 1;
-      const currentIssuesCountAfterThis = await this.getBookIssueCount(createIssueDto.bookId);
-      if (currentIssuesCountAfterThis >= maxQuantity) {
-        newBookStatus = 'issued';
-      }
-    } catch (e) {
-      newBookStatus = 'issued'; // fallback
+    if (currentIssuesCountAfterThis >= (bookData.quantity || 1)) {
+      newBookStatus = 'issued';
     }
-    await this.updateBookStatus(createIssueDto.bookId, newBookStatus);
 
-    // Add to member's borrowing history
-    await this.addToBorrowingHistory(
-      createIssueDto.memberId,
-      createIssueDto.bookId,
-      savedIssue._id.toString(),
-      startDate,
-      dueDate
-    );
+    // Parallel execution of critical updates
+    await Promise.all([
+      this.updateBookStatus(createIssueDto.bookId, newBookStatus),
+      this.addToBorrowingHistory(
+        createIssueDto.memberId,
+        createIssueDto.bookId,
+        savedIssue._id.toString(),
+        startDate,
+        dueDate
+      )
+    ]);
 
+    // Fire and forget non-critical operations (don't await)
     if (adminId) {
-      await this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), {
+      this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), {
         bookId: createIssueDto.bookId,
         memberId: createIssueDto.memberId
       });
     }
 
-    // Send generic notification to the member about their new book
-    await this.sendNotification(
+    this.sendNotification(
       createIssueDto.memberId,
       'BOOK_ISSUED',
       'Book Issued Successfully',
       `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`
     );
 
-    // Auto-record library visit for tracking
-    await this.autoRecordLibraryVisit(
+    this.autoRecordLibraryVisit(
       createIssueDto.memberId,
       createIssueDto.bookId,
       createIssueDto.issueType
@@ -324,7 +316,7 @@ export class IssuesService {
 
   async findAll(page: number = 1, limit: number = 10, status?: string): Promise<{ data: IssueBook[], total: number, page: number, limit: number, totalPages: number }> {
     const skip = (page - 1) * limit;
-    
+
     const filter: any = {};
     if (status) {
       const normalizedStatus = status.toLowerCase();
@@ -484,42 +476,41 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
-    // Update book status back to available
+    // Parallel execution of critical updates
     const bookId = issuedBook.bookId.toString();
-    await this.updateBookStatus(bookId, 'available');
+    await Promise.all([
+      this.updateBookStatus(bookId, 'available'),
+      this.updateBorrowingHistory(
+        issuedBook.memberId.toString(),
+        issuedBook._id.toString(),
+        returnDate,
+        issuedBook.fine || 0
+      )
+    ]);
 
-    // Update member's borrowing history
-    await this.updateBorrowingHistory(
-      issuedBook.memberId.toString(),
-      issuedBook._id.toString(),
-      returnDate,
-      issuedBook.fine || 0
-    );
-
+    // Fire and forget non-critical operations (don't await)
     if (adminId) {
-      await this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
+      this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
         bookId: issuedBook.bookId,
         memberId: issuedBook.memberId
       });
     }
 
-    // Send generic notification to the member about their book return
-    await this.sendNotification(
+    this.sendNotification(
       issuedBook.memberId.toString(),
       'BOOK_RETURNED',
       'Book Returned Successfully',
       `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`
     );
 
-    // Auto-record library visit for return (member came to return book)
-    await this.autoRecordLibraryVisit(
+    this.autoRecordLibraryVisit(
       issuedBook.memberId.toString(),
       issuedBook.bookId.toString(),
       'return'
     );
 
     // Record return visit (update timeOut for reading visits)
-    await this.recordReturnVisit(
+    this.recordReturnVisit(
       issuedBook.memberId.toString(),
       issuedBook.bookId.toString()
     );

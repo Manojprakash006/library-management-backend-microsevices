@@ -297,11 +297,11 @@ export class RequestsService {
     }
 
     if (adminId) {
-      await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
+      this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
-    // Send notification to member
-    await this.sendNotification(
+    // Send notification to member (fire and forget)
+    this.sendNotification(
       request.memberId.toString(),
       'REQUEST_APPROVED',
       'Book Request Approved',
@@ -326,11 +326,11 @@ export class RequestsService {
     const savedRequest = await request.save();
 
     if (adminId) {
-      await this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
+      this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
-    // Send notification to member
-    await this.sendNotification(
+    // Send notification to member (fire and forget)
+    this.sendNotification(
       request.memberId.toString(),
       'REQUEST_REJECTED',
       'Book Request Rejected',
