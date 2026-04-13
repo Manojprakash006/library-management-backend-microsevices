@@ -110,7 +110,7 @@ export class BooksService {
             available: book.quantity - issuedCount,
             totalReviews,
             rating: Number(rating.toFixed(1)),
-          };
+          };  
 
         } catch (error) {
           console.log("ERROR:", error);
