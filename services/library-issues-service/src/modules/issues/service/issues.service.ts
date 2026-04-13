@@ -56,6 +56,7 @@ export class IssuesService {
       // Map issueType to purpose
       // "Taking Home" -> "issue" (immediate in/out)
       // "Reading Inside Library" -> "reading" (only timeIn, staying in library)
+
       const purpose = issueType === 'Taking Home' ? 'issue' : 'reading';
 
       // For issue (Taking Home), timeIn=timeOut (immediate exit)
@@ -115,6 +116,7 @@ export class IssuesService {
       numberOfDays = createIssueDto.numberOfDays || 7; // Default 7 days if not provided
       dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + numberOfDays);
+      dueDate.setHours(23, 59, 59, 999);
     }
 
     // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
@@ -338,12 +340,17 @@ export class IssuesService {
       const issueObj = issue.toObject();
       if (issueObj.status !== IssueStatus.RETURNED &&
         issueObj.issueType === IssueType.TAKING_HOME &&
-        issueObj.dueDate &&
-        new Date(issueObj.dueDate) < today) {
-        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-        issueObj.status = IssueStatus.OVERDUE;
-        issueObj.daysOverdue = overdueDays;
-        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
+        issueObj.dueDate) {
+        
+        const dueDateEnd = new Date(issueObj.dueDate);
+        dueDateEnd.setHours(23, 59, 59, 999);
+
+        if (dueDateEnd < today) {
+          const overdueDays = Math.ceil((today.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24));
+          issueObj.status = IssueStatus.OVERDUE;
+          issueObj.daysOverdue = overdueDays;
+          issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
+        }
       }
       return issueObj as IssueBook;
     });
@@ -376,17 +383,21 @@ export class IssuesService {
       if (
         issue.status !== IssueStatus.RETURNED &&
         issue.issueType === 'Taking Home' &&
-        issue.dueDate &&
-        new Date(issue.dueDate) < today
+        issue.dueDate
       ) {
-        const overdueDays = Math.ceil(
-          (today.getTime() - new Date(issue.dueDate).getTime()) /
-          (1000 * 60 * 60 * 24)
-        );
+        const dueDateEnd = new Date(issue.dueDate);
+        dueDateEnd.setHours(23, 59, 59, 999);
 
-        updatedIssue.status = IssueStatus.OVERDUE;
-        updatedIssue.daysOverdue = overdueDays;
-        updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+        if (dueDateEnd < today) {
+          const overdueDays = Math.ceil(
+            (today.getTime() - dueDateEnd.getTime()) /
+            (1000 * 60 * 60 * 24)
+          );
+
+          updatedIssue.status = IssueStatus.OVERDUE;
+          updatedIssue.daysOverdue = overdueDays;
+          updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+        }
       }
 
       let book = null;
@@ -414,7 +425,7 @@ export class IssuesService {
 
     const issues = await this.issueBookModel.find({
       memberId: new Types.ObjectId(memberId),
-      status: { $in: ["Active"] },
+      status: { $ne: IssueStatus.RETURNED },
     }).lean();
 
     const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
@@ -451,10 +462,14 @@ export class IssuesService {
     issuedBook.status = IssueStatus.RETURNED;
 
     // Calculate fine only for Taking Home books that have due date
-    if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate && returnDate > issuedBook.dueDate) {
-      const overdueDays = Math.ceil((returnDate.getTime() - issuedBook.dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      issuedBook.daysOverdue = overdueDays;
-      issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
+    if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate) {
+      const dueDateEnd = new Date(issuedBook.dueDate);
+      dueDateEnd.setHours(23, 59, 59, 999);
+
+      if (returnDate > dueDateEnd) {
+        const overdueDays = Math.ceil((returnDate.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24));
+        issuedBook.daysOverdue = overdueDays;
+        issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
 
       // Create a Fine in Payments Service
       try {
@@ -473,8 +488,9 @@ export class IssuesService {
         this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
       }
     }
+  }
 
-    const savedIssue = await issuedBook.save();
+  const savedIssue = await issuedBook.save();
 
     // Parallel execution of critical updates
     const bookId = issuedBook.bookId.toString();
@@ -535,6 +551,7 @@ export class IssuesService {
       const startDate = new Date(updateIssueDto.issueDate);
       const dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + updateIssueDto.numberOfDays);
+      dueDate.setHours(23, 59, 59, 999);
       updateIssueDto.dueDate = dueDate;
     }
 
