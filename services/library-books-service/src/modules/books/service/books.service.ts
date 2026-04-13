@@ -107,7 +107,7 @@ export class BooksService {
             totalReviews > 0
               ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
                 totalReviews
-              : 0;
+              : book.rating || 0;
 
           return {
             ...book.toObject(),
