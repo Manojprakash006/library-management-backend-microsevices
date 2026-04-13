@@ -221,6 +221,7 @@ export class BooksService {
   }
 
   async createReview(createReviewDto: CreateBookReviewDto): Promise<BookReview> {
+
     const existingReview = await this.bookReviewModel.findOne({
       bookId: new Types.ObjectId(createReviewDto.bookId),
       memberId: new Types.ObjectId(createReviewDto.memberId),
@@ -230,15 +231,24 @@ export class BooksService {
       throw new ConflictException('Review already exists for this book by this member');
     }
 
+    let memberName = "Member";
+
+    try {
+      const response = await firstValueFrom( this.httpService.get(
+          `http://localhost:3000/api-gateway/library/members/${createReviewDto.memberId}`) );
+
+      memberName = response.data?.name || "Member";
+
+    } catch (error) {
+      console.log("Failed to fetch member name:", error.message);
+    }
+
     const review = new this.bookReviewModel({
       ...createReviewDto,
       bookId: new Types.ObjectId(createReviewDto.bookId),
       memberId: new Types.ObjectId(createReviewDto.memberId),
+      memberName,
     });
-
-    if(!createReviewDto.memberName) {
-      throw new BadRequestException("memberName missing from request");
-    }
 
     return review.save();
   }
@@ -256,7 +266,7 @@ export class BooksService {
       throw new Error("User not Authenticated");
     }
 
-    const alreadyLiked = review.likedBy.includes(userId);
+    const alreadyLiked = review.likedBy.some((id) => id.toString() === userId);
 
     if (alreadyLiked) {
       review.likedBy = review.likedBy.filter(id => id !== userId);

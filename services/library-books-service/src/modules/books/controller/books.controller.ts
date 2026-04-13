@@ -141,8 +141,7 @@ export class BooksController {
       const user = req.user;
       const review = await this.booksService.createReview({
         ...createReviewDto,
-        memberId: createReviewDto.memberId,
-        memberName: createReviewDto.memberName,
+        memberId: user.id,
       });
       return { message: 'Review created successfully', data: review };
   }
