@@ -34,10 +34,10 @@ export class RequestsController {
   ) {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
-    
+
     const result = await this.requestsService.findAll(pageNum, limitNum);
-    return { 
-      message: 'Book requests retrieved successfully', 
+    return {
+      message: 'Book requests retrieved successfully',
       data: result.data,
       total: result.total,
       page: result.page,
@@ -57,9 +57,9 @@ export class RequestsController {
 
   @Public()
   @Get('member/:memberId')
-    async getRequestsByMember(
+  async getRequestsByMember(
     @Param('memberId') memberId: string
-    ): Promise<{ data: BookRequest[] }> {
+  ): Promise<{ data: BookRequest[] }> {
     const requests = await this.requestsService.getByMember(memberId);
     return { data: requests };
   }
@@ -82,11 +82,12 @@ export class RequestsController {
     return { message: 'Book request updated successfully', data: request };
   }
 
+  @Roles('member')
   @Put(':id/cancel')
   @ApiOperation({ summary: 'Cancel book request' })
   @ApiResponse({ status: 200, description: 'Book request cancelled successfully', type: BookRequest })
-  async cancel(@Param('id') id: string, @Req() req): Promise<{ message: string; data: BookRequest }> {
-    const memberId = req.user.id;
+  async cancel(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
+    const memberId = req.user?.id || req.user?.userId;
     const request = await this.requestsService.cancel(id, memberId);
     return { message: 'Book request cancelled successfully', data: request };
   }

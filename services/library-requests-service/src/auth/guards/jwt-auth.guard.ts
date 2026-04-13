@@ -37,8 +37,12 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret') as JwtPayload;
-      request['user'] = { id: decoded.id, role: decoded.role };
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret') as any;
+      request['user'] = { 
+        id: decoded.id || decoded.userId || decoded.sub, 
+        role: decoded.role || decoded.userType 
+      };
+      Object.assign(request['user'], decoded); // Ensure all standard claims are available
       return true;
     } catch (error: any) {
       if (error.name === 'TokenExpiredError') {
