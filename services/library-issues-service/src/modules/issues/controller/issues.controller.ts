@@ -199,6 +199,13 @@ export class IssuesController {
     return { count };
   }
 
+  @Public()
+  @Put('renew/:id')
+  async renewBook(@Param('id') id: string) {
+    const result = await this.issuesService.renewBook(id);
+    return { message: 'Book renewed successfully', data: result };
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete issued book record' })
   @ApiResponse({ status: 200, description: 'Issued book record deleted successfully' })

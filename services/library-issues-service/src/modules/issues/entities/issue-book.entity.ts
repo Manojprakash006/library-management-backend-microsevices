@@ -51,6 +51,9 @@ export class IssueBook {
 
   @Prop({ default: 10, min: 0 })
   finePerDay: number;
+
+  @Prop({ default: 0 })
+  renewCount: number;
 }
 
 export const IssueBookSchema = SchemaFactory.createForClass(IssueBook);

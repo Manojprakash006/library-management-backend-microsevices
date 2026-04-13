@@ -78,4 +78,11 @@ export class MemberDashboardController {
     const result = await this.memberDashboardService.submitReview(req.user.id, reviewDto);
     return { message: 'Review submitted', data: result };
   }
+
+  @Get('book-reviews/:bookId')
+  @ApiOperation({ summary: 'Get reviews for a book' })
+  async getBookReviews(@Param('bookId') bookId: string) {
+    const result = await this.memberDashboardService.getBookReviews(bookId);
+    return { message: 'Book reviews fetched', data: result };
+  }
 }

@@ -21,8 +21,6 @@ export class MemberAuthController {
   @ApiResponse({ status: 400, description: 'Invalid input' })
   async register(@Body() registerDto: MemberRegisterDto) {
     const result = await this.memberAuthService.register(registerDto);
-    console.log("register DTO :", registerDto);
-    console.log("post register :", result);
     return { message: 'Member registered successfully', data: result };
   }
 
