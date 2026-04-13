@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { Member } from '../../members/entities/member.entity';
@@ -25,7 +25,8 @@ export class MemberDashboardService {
       booksHeld: number;
       booksAtHome: number;
       readingInsideLibrary: number;
-      totalFines: number
+      totalFines: number;
+      overdueCount: number;
     }> {
       try {
         const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
@@ -46,30 +47,41 @@ export class MemberDashboardService {
 
         const today = new Date();
 
-        const totalFines = allIssues.reduce((sum: number, issue: any) => {
-          if (issue.dueDate && new Date(issue.dueDate) < today) {
-            const dueDate = new Date(issue.dueDate);
+        const todayOnly = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
 
-            if (dueDate < today) {
-              const daysOverdue = Math.max(1, Math.floor(
-                (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
-              ));
+        const overDueBooks = allIssues.filter((issue: any) => {
+          return issue.status === "Overdue";
+        });
 
-              return sum + daysOverdue * 10;
-            }
-          }
-          return sum;
+        const totalFines = overDueBooks.reduce((sum: number, issue: any) => {
+          const due = new Date(issue.dueDate);
+          const today = new Date();
+
+          const days = Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)) || 0;
+
+          return sum + (days > 0 ? days * 10 : 0);
         }, 0);
 
         return {
           booksHeld: stats.totalActive,
           booksAtHome: stats.booksAtHome,
           readingInsideLibrary: stats.readingInsideLibrary,
-          totalFines
+          totalFines,
+          overdueCount: overDueBooks.length,
         };
       } catch (error) {
         this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
-        return { booksHeld: 0, booksAtHome: 0, readingInsideLibrary: 0, totalFines: 0 };
+        return { 
+          booksHeld: 0, 
+          booksAtHome: 0, 
+          readingInsideLibrary: 0, 
+          totalFines: 0, 
+          overdueCount: 0 
+        };
       }
     }
   
@@ -83,16 +95,6 @@ export class MemberDashboardService {
       let booksHeld = 0;
       let readingInsideLibrary = 0;
       let totalFines = 0;
-  
-      try {
-        const stats = await this.getMemberStatsFromIssues(userId);
-        booksHeld = stats.booksHeld;
-        readingInsideLibrary = stats.readingInsideLibrary;
-        totalFines = stats.totalFines;
-      } catch (e) {
-        console.log("ISSUE SERVICE FAILED :", e);
-    }
-  
       let pendingRequests = 0;
   
       try {
@@ -114,11 +116,15 @@ export class MemberDashboardService {
       }
   
       let overdueBooks = 0;
+
       try {
-        const overdue = await this.getOverdueBooks(userId);
-        overdueBooks = overdue.length;
-      } catch (error) {
-        console.log("OverDue fetch Failed :", error.message);
+        const stats = await this.getMemberStatsFromIssues(userId);
+        booksHeld = stats.booksHeld;
+        readingInsideLibrary = stats.readingInsideLibrary;
+        totalFines = stats.totalFines;
+        overdueBooks = stats.overdueCount;
+      } catch (e) {
+        console.log("ISSUE SERVICE FAILED :", e);
       }
   
     return {
@@ -141,11 +147,24 @@ export class MemberDashboardService {
 
     const today = new Date();
 
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
     const overDueBooks = allIssues.filter((issue: any) => {
+      if (issue.issueType !== "Taking Home" || !issue.dueDate) return false;
+
+      const today = new Date();
+      const due = new Date(issue.dueDate);
+
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const dueOnly = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+
       return (
-        issue.issueType === "Taking Home" &&
-        issue.dueDate &&
-        new Date(issue.dueDate) < today
+        issue.status !== "Returned" &&
+        dueOnly < todayOnly
       );
     });
 
@@ -220,17 +239,25 @@ export class MemberDashboardService {
 
       const issues = response.data?.data || [];
 
-      return issues.map((issue: any) => ({
-        _id: issue._id,
-        bookId: issue.book, 
-        dueDate: issue.dueDate,
-        issueDate: issue.issueDate,
-        status: issue.status,
-        issueType: issue.issueType,
-        damageReported: issue.damageReported,
-        damageNote: issue.damageNote,
-        daysOverdue: issue.daysOverdue || 0,
-      }));
+      return issues.map((issue: any) => {
+  const today = new Date();
+
+  const daysOverdue = issue.dueDate ? Math.max( 0, Math.ceil(
+    (today.getTime() - new Date(issue.dueDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+    return {
+      _id: issue._id,
+      bookId: issue.book, 
+      dueDate: issue.dueDate,
+      issueDate: issue.issueDate,
+      status: issue.status,
+      issueType: issue.issueType,
+      damageReported: issue.damageReported,
+      damageNote: issue.damageNote,
+      daysOverdue,
+      renewCount: issue.renewCount || 0,
+    };
+  });
 
     } catch (error) {
       console.log("FAILED TO FETCH MY BOOKS:", error.message);
@@ -251,24 +278,18 @@ export class MemberDashboardService {
   }
 
   async renewBook(renewDto: RenewBookDto) {
-    console.log("Received ID:", renewDto.issueId);
-    const issue = await this.issueModel.findById(new mongoose.Types.ObjectId(renewDto.issueId));
-    console.log("Found Isuues :", issue);
+    const issueServiceURL = "http://library-api-gateway:3000/library/issues";
 
-    if (!issue) {
-      throw new NotFoundException('Issue not found');
+    try {
+      const response = await firstValueFrom(this.httpService.put(
+        `${issueServiceURL}/issues/renew/${renewDto.issueId}`
+      ));
+      return response.data;
+    } catch (error: any) {
+      console.log("error from Issue service :", error.response?.data);
+
+      throw new BadRequestException( error.response?.data?.message || "Renew failed");
     }
-
-    const newDueDate = new Date(issue.dueDate);
-    newDueDate.setDate(newDueDate.getDate() + 7);
-
-    issue.dueDate = newDueDate;
-    await issue.save();
-
-    return {
-      message: 'Book renewed successfully',
-      newDueDate,
-    };
   }
 
   async submitReview(userId: string, reviewDto: SubmitReviewDto) {
@@ -277,5 +298,20 @@ export class MemberDashboardService {
       userId,
       ...reviewDto,
     };
+  }
+
+  async getBookReviews(bookId: string) {
+    try {
+      const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
+
+      const response = await firstValueFrom(
+        this.httpService.get(`${bookServiceUrl}/books/${bookId}/reviews`)
+      );
+
+      return response.data?.data || [];
+    } catch (error) {
+      console.log("FAILED TO FETCH REVIEWS:", error.message);
+      return [];
+    }
   }
 }

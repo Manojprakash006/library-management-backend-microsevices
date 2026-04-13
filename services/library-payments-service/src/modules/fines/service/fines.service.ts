@@ -96,8 +96,21 @@ export class FinesService {
     return fine;
   }
 
-  async getAllFines(): Promise<Fine[]> {
-    return this.fineModel.find().exec();
+  async getAllFines(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    
+    const [fines, total] = await Promise.all([
+      this.fineModel.find().skip(skip).limit(limit).exec(),
+      this.fineModel.countDocuments().exec(),
+    ]);
+
+    return {
+      data: fines,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getFinesByMemberId(memberId: string): Promise<Fine[]> {

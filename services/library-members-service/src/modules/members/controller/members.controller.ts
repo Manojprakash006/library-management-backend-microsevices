@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MembersService } from '../service/members.service';
 import { CreateMemberDto } from '../dto/create-member.dto';
@@ -49,10 +49,24 @@ export class MembersController {
     @Get()
     @Roles('admin', 'staff')
     @ApiOperation({ summary: 'Get all members' })
-    async findAll(@Req() req: any) {
+    async findAll(
+        @Req() req: any,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10'
+    ) {
         const token = req.headers.authorization;
-        const members = await this.membersService.findAll(token);
-        return { message: 'Members retrieved successfully', data: members, count: members.length };
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 10;
+        
+        const result = await this.membersService.findAll(token, pageNum, limitNum);
+        return { 
+            message: 'Members retrieved successfully', 
+            data: result.data,
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages
+        };
     }
 
     @Get('me')
@@ -93,5 +107,22 @@ export class MembersController {
         const adminId = req.user?.id || req.user?.userId;
         await this.membersService.remove(id, adminId);
         return { message: 'Member deleted successfully' };
+    }
+
+    @Post(':id/borrowing-history')
+    @Roles('admin', 'staff', 'member')
+    @ApiOperation({ summary: 'Add a book to member borrowing history' })
+    async addBorrowingHistory(@Param('id') id: string, @Body() historyData: any) {
+        await this.membersService.addBorrowingHistory(id, historyData);
+        return { message: 'Borrowing history added successfully' };
+    }
+
+    @Post(':id/borrow')
+    @Roles('admin', 'staff', 'member')
+    @ApiOperation({ summary: 'Update member borrowing history (return book)' })
+    async updateBorrowingHistory(@Param('id') id: string, @Body() updateData: any) {
+        const issueId = updateData.issueId;
+        await this.membersService.updateBorrowingHistory(id, issueId, updateData);
+        return { message: 'Borrowing history updated successfully' };
     }
 }

@@ -104,8 +104,21 @@ export class StaffService {
     return savedStaff;
   }
 
-  async findAll() {
-    return this.staffModel.find().select('-password');
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    
+    const [staff, total] = await Promise.all([
+      this.staffModel.find().select('-password').skip(skip).limit(limit).exec(),
+      this.staffModel.countDocuments().exec(),
+    ]);
+
+    return {
+      data: staff,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findById(id: string) {

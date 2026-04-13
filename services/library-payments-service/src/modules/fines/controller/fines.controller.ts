@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UsePipes, ValidationPipe, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UsePipes, ValidationPipe, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { FinesService } from '../service/fines.service';
 import { PayFineDto } from '../dto/pay-fine.dto';
@@ -21,9 +21,22 @@ export class FinesController {
   @Roles('admin', 'staff')
   @ApiOperation({ summary: 'Get all fines' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return all fines.' })
-  async getAllFines() {
-    const data = await this.finesService.getAllFines();
-    return { message: 'All fines retrieved successfully', data };
+  async getAllFines(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10'
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    const result = await this.finesService.getAllFines(pageNum, limitNum);
+    return { 
+      message: 'All fines retrieved successfully', 
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    };
   }
 
   @Get('member/:memberId')

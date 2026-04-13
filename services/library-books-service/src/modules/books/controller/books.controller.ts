@@ -33,9 +33,22 @@ export class BooksController {
   @Get()
   @ApiOperation({ summary: 'Get all books' })
   @ApiResponse({ status: 200, description: 'Books retrieved successfully', type: [Book] })
-  async findAll(): Promise<{ message: string; data: Book[]; count: number }> {
-    const books = await this.booksService.findAll();
-    return { message: 'Books retrieved successfully', data: books, count: books.length };
+  async findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10'
+  ): Promise<{ message: string; data: Book[]; total: number; page: number; limit: number; totalPages: number }> {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    const result = await this.booksService.findAll(pageNum, limitNum);
+    return { 
+      message: 'Books retrieved successfully', 
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    };
   }
 
   @Get('search')
@@ -62,6 +75,31 @@ export class BooksController {
   async findOne(@Param('id') id: string): Promise<{ message: string; data: Book }> {
     const book = await this.booksService.findOne(id);
     return { message: 'Book retrieved successfully', data: book };
+  }
+  
+  @Public()
+  @Get(':bookId/reviews')
+  @ApiOperation({ summary: 'Get reviews by book ID' })
+  async getReviewsByBook(@Param('bookId') bookId: string) {
+    const reviews = await this.booksService.findReviewsByBook(bookId);
+    return {
+      message: 'Reviews fetched successfully',
+      data: reviews,
+    };
+  }
+
+  @Post(':reviewId/like')
+  toggleLike(
+    @Param('reviewId') reviewId: string,
+    @Req() req
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    console.log("UserId from token in book service :", req.user);
+    if(!userId) {
+      throw new Error("User not Authenticated");
+    }
+    console.log("book service auth :", req.user?.userId);
+    return this.booksService.toggleLike(reviewId, userId);
   }
 
   @Put(':id')
@@ -103,17 +141,9 @@ export class BooksController {
       const user = req.user;
       const review = await this.booksService.createReview({
         ...createReviewDto,
-        memberId: createReviewDto.memberId,
-        memberName: createReviewDto.memberName,
+        memberId: user.id,
       });
       return { message: 'Review created successfully', data: review };
   }
-
-  @Get('reviews/:bookId')
-  @ApiOperation({ summary: 'Get reviews by book ID' })
-  @ApiResponse({ status: 200, description: 'Reviews retrieved successfully', type: [BookReview] })
-  async findReviewsByBook(@Param('bookId') bookId: string): Promise<{ message: string; data: BookReview[]; count: number }> {
-    const reviews = await this.booksService.findReviewsByBook(bookId);
-    return { message: 'Reviews retrieved successfully', data: reviews, count: reviews.length };
-  }
+  
 }
