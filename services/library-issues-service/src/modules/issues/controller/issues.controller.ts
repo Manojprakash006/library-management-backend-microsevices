@@ -63,8 +63,12 @@ export class IssuesController {
   }> {
     const issues = await this.issuesService.findActiveByMember(memberId);
 
-    const booksAtHome = issues.filter(issue => issue.issueType === 'Taking Home').length;
-    const readingInsideLibrary = issues.filter(issue => issue.issueType === 'Reading Inside Library').length;
+    const booksAtHome = issues.filter(issue => 
+      issue.issueType?.toLowerCase() === 'taking home'
+    ).length;
+    const readingInsideLibrary = issues.filter(issue => 
+      issue.issueType?.toLowerCase() === 'reading inside library'
+    ).length;
 
     return {
       message: 'Member stats retrieved successfully',

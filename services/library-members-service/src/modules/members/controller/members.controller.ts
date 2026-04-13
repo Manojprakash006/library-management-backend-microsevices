@@ -108,4 +108,21 @@ export class MembersController {
         await this.membersService.remove(id, adminId);
         return { message: 'Member deleted successfully' };
     }
+
+    @Post(':id/borrowing-history')
+    @Roles('admin', 'staff', 'member')
+    @ApiOperation({ summary: 'Add a book to member borrowing history' })
+    async addBorrowingHistory(@Param('id') id: string, @Body() historyData: any) {
+        await this.membersService.addBorrowingHistory(id, historyData);
+        return { message: 'Borrowing history added successfully' };
+    }
+
+    @Post(':id/borrow')
+    @Roles('admin', 'staff', 'member')
+    @ApiOperation({ summary: 'Update member borrowing history (return book)' })
+    async updateBorrowingHistory(@Param('id') id: string, @Body() updateData: any) {
+        const issueId = updateData.issueId;
+        await this.membersService.updateBorrowingHistory(id, issueId, updateData);
+        return { message: 'Borrowing history updated successfully' };
+    }
 }

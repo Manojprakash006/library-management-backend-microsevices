@@ -15,6 +15,37 @@ export class IssuesService {
     private readonly httpService: HttpService,
   ) { }
 
+  private calculateOverdue(issue: any): any {
+    const today = new Date();
+    const updatedIssue = { ...issue };
+
+    if (
+      issue.status !== IssueStatus.RETURNED &&
+      issue.issueType === IssueType.TAKING_HOME &&
+      issue.dueDate
+    ) {
+      const dueDateEnd = new Date(issue.dueDate);
+      dueDateEnd.setHours(23, 59, 59, 999);
+
+      if (dueDateEnd < today) {
+        const overdueDays = Math.ceil(
+          (today.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        updatedIssue.status = IssueStatus.OVERDUE;
+        updatedIssue.daysOverdue = overdueDays;
+        updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+      } else {
+        updatedIssue.daysOverdue = 0;
+        updatedIssue.fine = 0;
+      }
+    } else {
+      updatedIssue.daysOverdue = 0;
+      updatedIssue.fine = 0;
+    }
+
+    return updatedIssue;
+  }
+
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
       // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
@@ -56,6 +87,7 @@ export class IssuesService {
       // Map issueType to purpose
       // "Taking Home" -> "issue" (immediate in/out)
       // "Reading Inside Library" -> "reading" (only timeIn, staying in library)
+
       const purpose = issueType === 'Taking Home' ? 'issue' : 'reading';
 
       // For issue (Taking Home), timeIn=timeOut (immediate exit)
@@ -104,48 +136,7 @@ export class IssuesService {
     }
   }
 
-  private calculateOverdue(issue: any) {
-    const today = new Date();
 
-    const todayOnly = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-
-    if (
-      issue.status !== IssueStatus.RETURNED &&
-      issue.issueType === IssueType.TAKING_HOME &&
-      issue.dueDate
-    ) {
-      const due = new Date(issue.dueDate);
-      const dueOnly = new Date(
-        due.getFullYear(),
-        due.getMonth(),
-        due.getDate()
-      );
-
-      if (dueOnly < todayOnly) {
-        const overdueDays = Math.ceil(
-          (todayOnly.getTime() - dueOnly.getTime()) /
-          (1000 * 60 * 60 * 24)
-        );
-
-        return {
-          ...issue,
-          status: IssueStatus.OVERDUE,
-          daysOverdue: overdueDays,
-          fine: overdueDays * (issue.finePerDay || 10),
-        };
-      }
-    }
-
-    return {
-      ...issue,
-      daysOverdue: 0,
-      fine: 0,
-    };
-  }
 
   async create(createIssueDto: CreateIssueDto, adminId?: string, authHeader?: string): Promise<IssueBook> {
     const startDate = createIssueDto.issueDate ? new Date(createIssueDto.issueDate) : new Date();
@@ -158,6 +149,7 @@ export class IssuesService {
       numberOfDays = createIssueDto.numberOfDays || 7; // Default 7 days if not provided
       dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + numberOfDays);
+      dueDate.setHours(23, 59, 59, 999);
     }
 
     // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
@@ -261,7 +253,8 @@ export class IssuesService {
         createIssueDto.bookId,
         savedIssue._id.toString(),
         startDate,
-        dueDate
+        dueDate,
+        bookData?.title // Pass book title
       )
     ]);
 
@@ -294,14 +287,16 @@ export class IssuesService {
     bookId: string,
     issueId: string,
     borrowedAt: Date,
-    dueDate: Date
+    dueDate: Date,
+    bookTitle?: string
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
           issueId,
+          bookTitle,
           borrowedAt,
           dueDate,
           status: 'borrowed'
@@ -332,9 +327,10 @@ export class IssuesService {
     fine: number
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-api-gateway:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrow`, {
+          issueId, // Critical: Missing in original code
           returnedAt,
           fine,
           status: 'returned'
@@ -379,16 +375,7 @@ export class IssuesService {
 
     const data = issuedBooks.map((issue) => {
       const issueObj = issue.toObject();
-      if (issueObj.status !== IssueStatus.RETURNED &&
-        issueObj.issueType === IssueType.TAKING_HOME &&
-        issueObj.dueDate &&
-        new Date(issueObj.dueDate) < today) {
-        const overdueDays = Math.ceil((today.getTime() - new Date(issueObj.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-        issueObj.status = IssueStatus.OVERDUE;
-        issueObj.daysOverdue = overdueDays;
-        issueObj.fine = overdueDays * (issueObj.finePerDay || 10);
-      }
-      return issueObj as IssueBook;
+      return this.calculateOverdue(issueObj);
     });
 
     return {
@@ -413,11 +400,9 @@ export class IssuesService {
       .find({ memberId: new Types.ObjectId(memberId) })
       .lean();
 
-    const enriched = await Promise.all(
-      issuedBooks.map(async (issue) => {
-        let updatedIssue = this.calculateOverdue(issue);
-
-        let book = null;
+    const enriched = await Promise.all(issuedBooks.map(async (issue) => {
+      let updatedIssue = this.calculateOverdue(issue);
+      let book = null;
 
         try {
           const bookServiceURL = "http://library-api-gateway:3000/library/books";
@@ -442,21 +427,22 @@ export class IssuesService {
 
     const issues = await this.issueBookModel.find({
       memberId: new Types.ObjectId(memberId),
-      status: { $in: ["Active"] },
+      status: { $ne: IssueStatus.RETURNED },
     }).lean();
 
     const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
 
     const enrichedIssues = await Promise.all(
       issues.map(async (issue) => {
+        const updatedIssue = this.calculateOverdue(issue);
         try {
           const bookResponse = await firstValueFrom(
             this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`)
           );
 
-          return { ...issue, bookId: bookResponse.data?.data || null };
+          return { ...updatedIssue, bookId: bookResponse.data?.data || null };
         } catch (error) {
-          return { ...issue, bookId: null };
+          return { ...updatedIssue, bookId: null };
         }
       })
     );
@@ -479,10 +465,14 @@ export class IssuesService {
     issuedBook.status = IssueStatus.RETURNED;
 
     // Calculate fine only for Taking Home books that have due date
-    if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate && returnDate > issuedBook.dueDate) {
-      const overdueDays = Math.ceil((returnDate.getTime() - issuedBook.dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      issuedBook.daysOverdue = overdueDays;
-      issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
+    if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate) {
+      const dueDateEnd = new Date(issuedBook.dueDate);
+      dueDateEnd.setHours(23, 59, 59, 999);
+
+      if (returnDate > dueDateEnd) {
+        const overdueDays = Math.ceil((returnDate.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24));
+        issuedBook.daysOverdue = overdueDays;
+        issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
 
       // Create a Fine in Payments Service
       try {
@@ -501,8 +491,9 @@ export class IssuesService {
         this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
       }
     }
+  }
 
-    const savedIssue = await issuedBook.save();
+  const savedIssue = await issuedBook.save();
 
     // Parallel execution of critical updates
     const bookId = issuedBook.bookId.toString();
@@ -563,6 +554,7 @@ export class IssuesService {
       const startDate = new Date(updateIssueDto.issueDate);
       const dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + updateIssueDto.numberOfDays);
+      dueDate.setHours(23, 59, 59, 999);
       updateIssueDto.dueDate = dueDate;
     }
 
