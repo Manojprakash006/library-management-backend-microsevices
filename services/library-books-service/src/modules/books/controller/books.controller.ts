@@ -139,10 +139,11 @@ export class BooksController {
   async createReview(@Body() createReviewDto: CreateBookReviewDto,
     @Req() req:any): Promise<{ message: string; data: BookReview }> {
       const user = req.user;
+      const token = req.headers.authorization;
       const review = await this.booksService.createReview({
         ...createReviewDto,
         memberId: user.id,
-      });
+      }, token);
       return { message: 'Review created successfully', data: review };
   }
   

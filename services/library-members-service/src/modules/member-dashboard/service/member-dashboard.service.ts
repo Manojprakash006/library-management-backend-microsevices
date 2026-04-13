@@ -256,6 +256,7 @@ export class MemberDashboardService {
       damageNote: issue.damageNote,
       daysOverdue,
       renewCount: issue.renewCount || 0,
+      issueId: issue.issueId,
     };
   });
 

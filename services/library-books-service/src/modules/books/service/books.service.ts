@@ -103,11 +103,7 @@ export class BooksService {
 
           const totalReviews = reviews.length;
 
-          const rating =
-            totalReviews > 0
-              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
-                totalReviews
-              : book.rating || 0;
+          const rating = book.rating || 0;
 
           return {
             ...book.toObject(),
@@ -220,7 +216,7 @@ export class BooksService {
     return this.bookModel.find({ rackNumber }).exec();
   }
 
-  async createReview(createReviewDto: CreateBookReviewDto): Promise<BookReview> {
+  async createReview(createReviewDto: CreateBookReviewDto, token: string): Promise<BookReview> {
 
     const existingReview = await this.bookReviewModel.findOne({
       bookId: new Types.ObjectId(createReviewDto.bookId),
@@ -232,12 +228,18 @@ export class BooksService {
     }
 
     let memberName = "Member";
+    const memberServiceUrl = "http://library-api-gateway:3000/library/members";
 
     try {
       const response = await firstValueFrom( this.httpService.get(
-          `http://localhost:3000/api-gateway/library/members/${createReviewDto.memberId}`) );
+          `${memberServiceUrl}/members/${createReviewDto.memberId}`,
+          {
+            headers: {
+              Authorization: token,
+            }
+          }) );
 
-      memberName = response.data?.name || "Member";
+      memberName = response.data?.data?.name || "Member";
 
     } catch (error) {
       console.log("Failed to fetch member name:", error.message);
