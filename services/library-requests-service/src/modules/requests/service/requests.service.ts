@@ -148,8 +148,13 @@ export class RequestsService {
     }
   }
 
-  async findAll(): Promise<any[]> {
-    const requests = await this.bookRequestModel.find().sort({ requestDate: -1 }).exec();
+  async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    
+    const [requests, total] = await Promise.all([
+      this.bookRequestModel.find().sort({ requestDate: -1 }).skip(skip).limit(limit).exec(),
+      this.bookRequestModel.countDocuments().exec(),
+    ]);
 
     // Enrich each request with real-time member borrowing data
     const enrichedRequests = await Promise.all(
@@ -165,7 +170,13 @@ export class RequestsService {
       })
     );
 
-    return enrichedRequests;
+    return {
+      data: enrichedRequests,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getByMember(memberId: string): Promise<BookRequest[]> {
@@ -286,11 +297,11 @@ export class RequestsService {
     }
 
     if (adminId) {
-      await this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
+      this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
-    // Send notification to member
-    await this.sendNotification(
+    // Send notification to member (fire and forget)
+    this.sendNotification(
       request.memberId.toString(),
       'REQUEST_APPROVED',
       'Book Request Approved',
@@ -315,11 +326,11 @@ export class RequestsService {
     const savedRequest = await request.save();
 
     if (adminId) {
-      await this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
+      this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
-    // Send notification to member
-    await this.sendNotification(
+    // Send notification to member (fire and forget)
+    this.sendNotification(
       request.memberId.toString(),
       'REQUEST_REJECTED',
       'Book Request Rejected',

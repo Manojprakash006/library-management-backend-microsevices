@@ -16,10 +16,13 @@ export enum PaymentMethod {
 
 @Schema({ timestamps: true })
 export class Fine {
-  @Prop({ required: true })
+  @Prop({ unique: true, index: true, sparse: true })
+  fineId: string;
+
+  @Prop({ required: true, index: true })
   memberId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   issueId: string;
 
   @Prop({ required: false })
@@ -31,7 +34,7 @@ export class Fine {
   @Prop({ required: true })
   reason: string;
 
-  @Prop({ required: true, enum: FineStatus, default: FineStatus.UNPAID })
+  @Prop({ required: true, enum: FineStatus, default: FineStatus.UNPAID, index: true })
   status: FineStatus;
 
   @Prop({ required: false, enum: PaymentMethod })
@@ -48,3 +51,11 @@ export class Fine {
 }
 
 export const FineSchema = SchemaFactory.createForClass(Fine);
+
+FineSchema.pre('save', async function (next) {
+  if (this.fineId) return next();
+  
+  const count = await (this.constructor as any).countDocuments();
+  this.fineId = `FINE${count + 1}`;
+  next();
+});

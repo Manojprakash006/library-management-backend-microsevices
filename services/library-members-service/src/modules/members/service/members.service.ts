@@ -68,8 +68,13 @@ export class MembersService {
     return savedMember;
   }
 
-  async findAll(token?: string): Promise<MemberWithStats[]> {
-    const members = await this.memberModel.find().select('-password').exec();
+  async findAll(token?: string, page: number = 1, limit: number = 10): Promise<{ data: MemberWithStats[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    
+    const [members, total] = await Promise.all([
+      this.memberModel.find().select('-password').skip(skip).limit(limit).exec(),
+      this.memberModel.countDocuments().exec(),
+    ]);
 
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
@@ -85,7 +90,13 @@ export class MembersService {
       })
     );
 
-    return membersWithStats;
+    return {
+      data: membersWithStats,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string, token?: string): Promise<MemberWithStats> {
@@ -106,7 +117,15 @@ export class MembersService {
   }
 
   async update(id: string, updateData: Partial<CreateMemberDto>, adminId?: string): Promise<Member> {
-    const member = await this.memberModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
+    const dataToUpdate: any = { ...updateData };
+
+    if (updateData.fullName) {
+      dataToUpdate.name = updateData.fullName;
+      delete dataToUpdate.fullName;
+    }
+
+    const member = await this.memberModel.findByIdAndUpdate(id, dataToUpdate, { new: true }).select('-password').exec();
+    
     if (!member) {
       throw new NotFoundException('Member not found');
     }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Version, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Version, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from '../service/staff.service';
 import { CreateStaffDto } from '../dto/create-staff.dto';
@@ -61,9 +61,22 @@ export class StaffController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all staff' })
   @ApiResponse({ status: 200, description: 'Staff retrieved successfully' })
-  async getAllStaff() {
-    const result = await this.staffService.findAll();
-    return { message: 'Staff retrieved successfully', data: result, count: result.length };
+  async getAllStaff(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10'
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    const result = await this.staffService.findAll(pageNum, limitNum);
+    return { 
+      message: 'Staff retrieved successfully', 
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    };
   }
 
   @Get(':id')

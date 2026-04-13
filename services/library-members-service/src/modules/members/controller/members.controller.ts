@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MembersService } from '../service/members.service';
 import { CreateMemberDto } from '../dto/create-member.dto';
@@ -49,10 +49,24 @@ export class MembersController {
     @Get()
     @Roles('admin', 'staff')
     @ApiOperation({ summary: 'Get all members' })
-    async findAll(@Req() req: any) {
+    async findAll(
+        @Req() req: any,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10'
+    ) {
         const token = req.headers.authorization;
-        const members = await this.membersService.findAll(token);
-        return { message: 'Members retrieved successfully', data: members, count: members.length };
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 10;
+        
+        const result = await this.membersService.findAll(token, pageNum, limitNum);
+        return { 
+            message: 'Members retrieved successfully', 
+            data: result.data,
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages
+        };
     }
 
     @Get('me')

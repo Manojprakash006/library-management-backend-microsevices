@@ -10,7 +10,7 @@ export class Member {
   @Prop({ unique: true, trim: true, index: true, sparse: true })
   memberId: string;
 
-  @Prop({ required: true, trim: true, minlength: 2, maxlength: 100 })
+  @Prop({ required: true, trim: true, minlength: 2, maxlength: 100, index: true })
   name: string;
 
   @Prop({ required: true, unique: true, lowercase: true, trim: true, index: true, match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ })
