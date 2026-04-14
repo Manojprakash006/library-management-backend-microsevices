@@ -68,6 +68,15 @@ export class BooksController {
   }
 
   @Public()
+  @Get('/check')
+  async checkReview (
+      @Query('bookId') bookId: string,
+      @Query('memberId') memberId: string,
+    ) {
+      return this.booksService.checkReview(bookId, memberId);
+  }
+
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get book by ID' })
   @ApiResponse({ status: 200, description: 'Book retrieved successfully', type: Book })
@@ -146,5 +155,5 @@ export class BooksController {
       }, token);
       return { message: 'Review created successfully', data: review };
   }
-  
+
 }

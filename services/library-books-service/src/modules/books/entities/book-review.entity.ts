@@ -13,8 +13,8 @@ export class BookReview {
   @Prop({ type: Types.ObjectId, ref: 'Book' , required: true, index: true })
   bookId: Types.ObjectId;
 
-  @Prop({ required: true, index: true })
-  memberId: string;
+  @Prop({ type: Types.ObjectId, required: true, index: true })
+  memberId: Types.ObjectId;
 
   @Prop({ required: true, trim: true })
   memberName: string;

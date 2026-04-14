@@ -255,6 +255,14 @@ export class BooksService {
     return review.save();
   }
 
+  async checkReview(bookId: string, memberId: string) {
+    const review = await this.bookReviewModel.findOne({
+      bookId: new Types.ObjectId(bookId),
+      memberId: new Types.ObjectId(memberId),
+    });
+    return { reviewed: !!review }
+  }
+
   async findReviewsByBook(bookId: string): Promise<BookReview[]> {
     return this.bookReviewModel.find({ bookId: new Types.ObjectId(bookId) }).exec();
   }

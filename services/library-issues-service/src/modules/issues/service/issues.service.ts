@@ -403,20 +403,33 @@ export class IssuesService {
     const enriched = await Promise.all(issuedBooks.map(async (issue) => {
       let updatedIssue = this.calculateOverdue(issue);
       let book = null;
+      let reviewed = false;
 
         try {
           const bookServiceURL = "http://library-api-gateway:3000/library/books";
 
+
           const response = await firstValueFrom(
             this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`)
           );
+
+          const reviewResponse = await firstValueFrom(
+            this.httpService.get(`${bookServiceURL}/books/check`, {
+              params: {
+                bookId: issue.bookId,
+                memberId: issue.memberId,
+              },
+            })
+          );
+
+          reviewed = reviewResponse.data?.reviewed || false;
 
           book = response.data?.data;
         } catch (error) {
           console.log("BOOK FETCH FAILED:", error.message);
         }
 
-        return { ...updatedIssue, book };
+        return { ...updatedIssue, book, reviewed: reviewed };
       })
     );
 

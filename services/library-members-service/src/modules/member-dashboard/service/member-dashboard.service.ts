@@ -257,6 +257,8 @@ export class MemberDashboardService {
       daysOverdue,
       renewCount: issue.renewCount || 0,
       issueId: issue.issueId,
+      returnDate: issue.returnDate,
+      reviewed: issue.reviewed,
     };
   });
 
