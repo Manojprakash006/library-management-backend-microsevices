@@ -255,6 +255,10 @@ export class BooksService {
     return review.save();
   }
 
+  async findReviewsByUser(userId: string) {
+    return this.bookReviewModel.find({ memberId: userId }).exec();
+  }
+
   async checkReview(bookId: string, memberId: string) {
     const review = await this.bookReviewModel.findOne({
       bookId: new Types.ObjectId(bookId),
@@ -292,5 +296,25 @@ export class BooksService {
 
   async findReviewsByMember(memberId: string): Promise<BookReview[]> {
     return this.bookReviewModel.find({ memberId: new Types.ObjectId(memberId) }).sort({ reviewDate: -1 }).exec();
+  }
+
+  async updateReview(reviewId: string, userId: string, updateData: any) {
+    const review = await this.bookReviewModel.findById(reviewId);
+
+    if (!review) {
+      throw new Error('Review not found');
+    }
+
+    if (review.memberId.toString() !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    review.rating = updateData.rating;
+    review.reviewTitle = updateData.reviewTitle;
+    review.review = updateData.review;
+
+    await review.save();
+
+    return review;
   }
 }

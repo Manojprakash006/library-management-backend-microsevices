@@ -150,6 +150,7 @@ export class IssuesService {
       dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + numberOfDays);
       dueDate.setHours(23, 59, 59, 999);
+      dueDate.setMinutes(dueDate.getMinutes() - 330);
     }
 
     // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
@@ -568,6 +569,7 @@ export class IssuesService {
       const dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + updateIssueDto.numberOfDays);
       dueDate.setHours(23, 59, 59, 999);
+      dueDate.setMinutes(dueDate.getMinutes() - 330);
       updateIssueDto.dueDate = dueDate;
     }
 

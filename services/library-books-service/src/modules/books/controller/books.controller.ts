@@ -103,11 +103,9 @@ export class BooksController {
     @Req() req
   ) {
     const userId = req.user?.id || req.user?.userId;
-    console.log("UserId from token in book service :", req.user);
     if(!userId) {
       throw new Error("User not Authenticated");
     }
-    console.log("book service auth :", req.user?.userId);
     return this.booksService.toggleLike(reviewId, userId);
   }
 
@@ -154,6 +152,34 @@ export class BooksController {
         memberId: user.id,
       }, token);
       return { message: 'Review created successfully', data: review };
+  }
+
+  @Get('my-reviews/:userId')
+  async getMyReviews(@Param('userId') userId: string) {
+    const reviews = await this.booksService.findReviewsByUser(userId);
+    return {
+      message: 'My reviews fetched',
+      data: reviews,
+    };
+  }
+
+  @Put('reviews/:reviewId')
+  @ApiOperation({ summary: 'Update a book review' })
+  async updateReview(
+    @Param('reviewId') reviewId: string,
+    @Body() updateData: any,
+    @Req() req: any
+  ) {
+    const userId = req.user?.id;
+    const updated = await this.booksService.updateReview(
+      reviewId,
+      userId,
+      updateData
+    );
+    return {
+      message: 'Review updated successfully',
+      data: updated,
+    };
   }
 
 }

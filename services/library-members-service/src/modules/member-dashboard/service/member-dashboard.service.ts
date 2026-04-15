@@ -178,6 +178,7 @@ export class MemberDashboardService {
         status: issue.status,
         issueType: issue.issueType, 
         issueDate: issue.issueDate,
+        issueId: issue.issueId,
       };
     });
   }
@@ -289,7 +290,6 @@ export class MemberDashboardService {
       ));
       return response.data;
     } catch (error: any) {
-      console.log("error from Issue service :", error.response?.data);
 
       throw new BadRequestException( error.response?.data?.message || "Renew failed");
     }
@@ -303,7 +303,22 @@ export class MemberDashboardService {
     };
   }
 
-  async getBookReviews(bookId: string) {
+  async getMyReviews(userId: string) {
+    try {
+      const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
+
+      const response = await firstValueFrom(
+        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`)
+      );
+
+      return response.data?.data || [];
+    } catch (error) {
+      console.log("FAILED TO FETCH MY REVIEWS:", error.message);
+      return [];
+    }
+  }
+
+  async getBookReviews(bookId: string, userId: string) {
     try {
       const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
 
@@ -311,10 +326,37 @@ export class MemberDashboardService {
         this.httpService.get(`${bookServiceUrl}/books/${bookId}/reviews`)
       );
 
-      return response.data?.data || [];
+      const reviews =  response.data?.data || [];
+
+      return reviews.map((review: any) => ({
+        ...review, isCurrentUser: review.memberId === userId,
+      }))
     } catch (error) {
       console.log("FAILED TO FETCH REVIEWS:", error.message);
       return [];
+    }
+  }
+
+  async updateReview(reviewId: string, userId: string, data: any, token: string) {
+    try {
+      const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
+
+      const response = await firstValueFrom(
+        this.httpService.put(
+          `${bookServiceUrl}/books/reviews/${reviewId}`,
+          data,
+          {
+            headers: {
+              Authorization: token,
+            },
+          }
+        )
+      );
+
+      return response.data?.data;
+    } catch (error) {
+      console.log("FAILED TO UPDATE REVIEW:", error.message);
+      throw error;
     }
   }
 }
