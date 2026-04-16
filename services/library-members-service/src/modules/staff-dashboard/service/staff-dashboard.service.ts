@@ -404,7 +404,7 @@ export class StaffDashboardService {
       this.logger.log(`Found ${visits.length} explicit visitors and ${todaysIssues.length} issues today`);
 
       // Extract unique member IDs from visits
-      const visitMemberIds = new Set(visits.map(v => 
+      const visitMemberIds = new Set(visits.map(v =>
         v.memberId?._id?.toString() || (v.memberId as any)?.toString()
       ));
 
@@ -428,18 +428,24 @@ export class StaffDashboardService {
 
         const virtualVisits = additionalMembers.map(member => {
           const issue = uniqueIssueMembers.get(member._id.toString());
+          const isTakingHome = issue.issueType === 'Taking Home';
+          const isReturned = issue.status === 'Returned';
+
           return {
             _id: `auto-${issue._id || issue.issueId}`,
             memberId: member,
             timeIn: issue.issueDate,
-            purpose: issue.issueType === 'Reading Inside Library' ? 'reading' : 'issue',
+            // If taking home, they leave immediately. If reading, only set timeOut if returned.
+            timeOut: isTakingHome ? issue.issueDate : (isReturned ? (issue.returnDate || new Date()) : null),
+            purpose: isTakingHome ? 'issue' : 'reading',
             isAutoRecorded: true,
-            isActive: false,
+            // Active only if it's a reading session that hasn't been returned yet
+            isActive: !isTakingHome && !isReturned,
             notes: 'Auto-included from book issue'
           };
         });
 
-        const allVisitors = [...visits, ...virtualVisits].sort((a, b) => 
+        const allVisitors = [...visits, ...virtualVisits].sort((a, b) =>
           new Date(b.timeIn).getTime() - new Date(a.timeIn).getTime()
         );
 
