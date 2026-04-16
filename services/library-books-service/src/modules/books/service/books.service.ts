@@ -317,4 +317,21 @@ export class BooksService {
 
     return review;
   }
+
+  async deleteReview(reviewId: string, userId: string, role: string) {
+    const review = await this.bookReviewModel.findById(reviewId);
+
+    if (!review) {
+      throw new Error('Review not found');
+    }
+
+    if (role !== 'admin' && role !== 'staff' && review.memberId.toString() !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    await this.bookReviewModel.findByIdAndDelete(reviewId);
+    
+    // Also update book rating or reviews count if needed later, 
+    // but right now totalReviews is calculated dynamically when fetching books.
+  }
 }
