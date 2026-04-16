@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards, Req, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BooksService } from '../service/books.service';
 import { CreateBookDto } from '../dto/create-book.dto';
@@ -180,6 +180,27 @@ export class BooksController {
       message: 'Review updated successfully',
       data: updated,
     };
+  }
+
+  @Delete('reviews/:reviewId')
+  @ApiOperation({ summary: 'Delete a book review' })
+  async deleteReview(
+    @Param('reviewId') reviewId: string,
+    @Req() req: any
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    const role = req.user?.role;
+    try {
+      await this.booksService.deleteReview(reviewId, userId, role);
+      return {
+        message: 'Review deleted successfully',
+      };
+    } catch (error) {
+      if (error.message === 'Review not found') {
+        throw new NotFoundException(error.message);
+      }
+      throw new ForbiddenException(error.message);
+    }
   }
 
 }

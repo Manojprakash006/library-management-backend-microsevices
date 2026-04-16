@@ -255,6 +255,7 @@ export class MembersService {
       totalFinesIssues = allIssues.reduce((sum: number, issue: { fine?: number }) => sum + (issue.fine || 0), 0);
 
       let paidFines = 0;
+      let unpaidFines = 0;
       let fineHistory = [];
 
       try {
@@ -267,6 +268,10 @@ export class MembersService {
         const fines = finesResponse.data?.data || [];
         paidFines = fines
           .filter((f: any) => f.status === 'PAID')
+          .reduce((sum: number, f: any) => sum + f.amount, 0);
+          
+        unpaidFines = fines
+          .filter((f: any) => f.status === 'UNPAID')
           .reduce((sum: number, f: any) => sum + f.amount, 0);
         
         fineHistory = fines.map((f: any) => ({
@@ -282,7 +287,7 @@ export class MembersService {
       }
 
       // ACCURATE BALANCE CALCULATION
-      const totalFines = Math.max(0, totalFinesIssues - paidFines);
+      const totalFines = totalFinesIssues + unpaidFines;
 
       const computedStats = {
         booksHeld: stats.totalActive,
