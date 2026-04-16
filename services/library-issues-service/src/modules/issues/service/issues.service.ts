@@ -48,8 +48,7 @@ export class IssuesService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
-      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = 'http://localhost:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -66,7 +65,7 @@ export class IssuesService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -82,7 +81,7 @@ export class IssuesService {
 
   private async autoRecordLibraryVisit(memberId: string, bookId: string, issueType: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3000/library/members';
 
       // Map issueType to purpose
       // "Taking Home" -> "issue" (immediate in/out)
@@ -122,7 +121,7 @@ export class IssuesService {
 
   private async recordReturnVisit(memberId: string, bookId: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3000/library/members';
 
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/library-visits/record-return`, {
@@ -155,7 +154,7 @@ export class IssuesService {
 
     // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
     try {
-      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3000/library/payments';
       const checkResponse = await firstValueFrom(
         this.httpService.get<{ data: { hasPendingFines: boolean; totalPendingAmount: number } }>(
           `${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`,
@@ -192,7 +191,7 @@ export class IssuesService {
     // Check book availability first before issuing
     let bookData: any;
     try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+      const booksServiceUrl = 'http://localhost:3000/library/books';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -292,7 +291,7 @@ export class IssuesService {
     bookTitle?: string
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
@@ -311,7 +310,7 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+      const booksServiceUrl = 'http://localhost:3000/library/books';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
@@ -328,7 +327,7 @@ export class IssuesService {
     fine: number
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3000/library/members';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrow`, {
           issueId, // Critical: Missing in original code
@@ -345,7 +344,7 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+      const booksServiceUrl = 'http://localhost:3000/library/books';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
@@ -407,7 +406,7 @@ export class IssuesService {
       let reviewed = false;
 
         try {
-          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+          const bookServiceURL = "http://localhost:3000/library/books";
 
 
           const response = await firstValueFrom(
@@ -444,7 +443,7 @@ export class IssuesService {
       status: { $ne: IssueStatus.RETURNED },
     }).lean();
 
-    const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+    const booksServiceUrl = 'http://localhost:3000/library/books';
 
     const enrichedIssues = await Promise.all(
       issues.map(async (issue) => {
@@ -490,7 +489,7 @@ export class IssuesService {
 
       // Create a Fine in Payments Service
       try {
-        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
+        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3000/library/payments';
         await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
           memberId: issuedBook.memberId.toString(),
           issueId: issuedBook._id.toString(),
@@ -599,6 +598,17 @@ export class IssuesService {
       dueDate: { $lt: today },
     }).exec();
     return issues.length;
+  }
+
+  async getTodaysIssuesData(): Promise<IssueBook[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    return this.issueBookModel.find({
+      issueDate: { $gte: today, $lt: tomorrow },
+    }).sort({ issueDate: -1 }).exec();
   }
 
   async getIssuesCount(date?: string): Promise<number> {

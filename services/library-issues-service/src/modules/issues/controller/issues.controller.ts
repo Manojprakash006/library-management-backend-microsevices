@@ -147,6 +147,15 @@ export class IssuesController {
   }
 
   @Public()
+  @Get('today')
+  @ApiOperation({ summary: 'Get issues created today' })
+  @ApiResponse({ status: 200, description: 'Todays issues retrieved successfully', type: [IssueBook] })
+  async getTodaysIssues(): Promise<{ message: string; data: IssueBook[] }> {
+    const issues = await this.issuesService.getTodaysIssuesData();
+    return { message: 'Today\'s issues retrieved successfully', data: issues };
+  }
+
+  @Public()
   @Get('overdue')
   @ApiOperation({ summary: 'Get overdue issued books' })
   @ApiResponse({ status: 200, description: 'Overdue books retrieved successfully', type: [IssueBook] })
