@@ -195,7 +195,7 @@ export class StaffDashboardService {
       if (staffId) {
         await this.activityLogService.logAction({
           adminId: staffId,
-          action: 'BOOKSADDED',
+          action: 'BOOKSADDED',   
           entityType: 'BOOK',
           entityId: createdBook._id || createdBook.id || 'unknown',
           details: {
@@ -228,7 +228,7 @@ export class StaffDashboardService {
       action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
     };
     const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
-
+  
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todaysActivities = await this.activityLogService.getLogs(1, 1, {
