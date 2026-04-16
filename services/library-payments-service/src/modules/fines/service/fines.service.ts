@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { HttpService } from '@nestjs/axios';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Razorpay = require('razorpay');
@@ -24,42 +24,44 @@ export class FinesService {
     });
   }
 
-  private async sendPaymentNotification(memberId: string, amount: number, referenceId: string) {
+  private async sendPaymentNotification(memberId: string | Types.ObjectId, amount: number, referenceId: string) {
+    const memberIdStr = memberId.toString();
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
 
       // Notify Member
       await this.httpService.post(`${membersServiceUrl}/notifications`, {
-        memberId,
+        memberId: memberIdStr,
         type: 'PAYMENT_SUCCESS',
         title: 'Payment Successful',
         message: `Your payment of ₹${amount} has been successfully received. Reference ID: ${referenceId}`,
       }).toPromise();
-      this.logger.log(`Payment notification sent for member ${memberId}`);
+      this.logger.log(`Payment notification sent for member ${memberIdStr}`);
 
       // Notify Admin
       await this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
         type: 'PAYMENT_RECEIVED',
         title: 'New Payment Received',
-        message: `Member (ID: ${memberId}) has paid a fine of ₹${amount}. Reference ID: ${referenceId}`,
+        message: `Member (ID: ${memberIdStr}) has paid a fine of ₹${amount}. Reference ID: ${referenceId}`,
       }).toPromise();
-      this.logger.log(`Payment notification sent to admins for member ${memberId}`);
+      this.logger.log(`Payment notification sent to admins for member ${memberIdStr}`);
 
     } catch (error) {
       this.logger.error(`Failed to send payment notification: ${error.message}`);
     }
   }
 
-  private async sendFineCreationNotification(memberId: string, amount: number, reason: string) {
+  private async sendFineCreationNotification(memberId: string | Types.ObjectId, amount: number, reason: string) {
+    const memberIdStr = memberId.toString();
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await this.httpService.post(`${membersServiceUrl}/notifications`, {
-        memberId,
+        memberId: memberIdStr,
         type: 'FINE_ADDED',
         title: 'New Fine Added',
         message: `A new fine of ₹${amount} has been added to your account. Reason: ${reason}. Please pay it as soon as possible.`,
       }).toPromise();
-      this.logger.log(`Fine creation notification sent for member ${memberId}`);
+      this.logger.log(`Fine creation notification sent for member ${memberIdStr}`);
     } catch (error) {
       this.logger.error(`Failed to send fine creation notification: ${error.message}`);
     }
