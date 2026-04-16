@@ -19,120 +19,148 @@ export class MemberDashboardService {
     @InjectModel(Member.name) private memberModel: Model<Member>, private readonly httpService: HttpService,
     @InjectModel(IssueBook.name) private issueModel: Model<IssueBook>,
     @InjectModel(BookRequest.name) private requestModel: Model<BookRequest>,
-  ) {}
+  ) { }
 
   private async getMemberStatsFromIssues(memberId: string): Promise<{
-      booksHeld: number;
-      booksAtHome: number;
-      readingInsideLibrary: number;
-      totalFines: number;
-      overdueCount: number;
-    }> {
-      try {
-        const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
-  
-        const statsResponse = await firstValueFrom(
-          this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
-            `${issuesServiceUrl}/issues/member/${memberId}/stats`
-          )
-        );
-  
-        const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
-  
-        const allIssuesResponse = await firstValueFrom(
-          this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
-        );
+    booksHeld: number;
+    booksAtHome: number;
+    readingInsideLibrary: number;
+    totalFines: number;
+    overdueCount: number;
+    takingHome: number;
+    inLibrary: number;
+  }> {
+    try {
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
-        const allIssues = allIssuesResponse.data?.data || [];
+      const statsResponse = await firstValueFrom(
+        this.httpService.get<{ data: { booksAtHome: number; readingInsideLibrary: number; totalActive: number } }>(
+          `${issuesServiceUrl}/issues/member/${memberId}/stats`
+        )
+      );
 
+      const stats = statsResponse.data?.data || { booksAtHome: 0, readingInsideLibrary: 0, totalActive: 0 };
+
+      const allIssuesResponse = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
+      );
+
+      const allIssues = allIssuesResponse.data?.data || [];
+
+      const today = new Date();
+
+      const todayOnly = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+
+      const overDueBooks = allIssues.filter((issue: any) => {
+        return issue.status === "Overdue";
+      });
+
+      const totalFines = overDueBooks.reduce((sum: number, issue: any) => {
+        const due = new Date(issue.dueDate);
         const today = new Date();
 
-        const todayOnly = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        );
+        const days = Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)) || 0;
 
-        const overDueBooks = allIssues.filter((issue: any) => {
-          return issue.status === "Overdue";
-        });
+        return sum + (days > 0 ? days * 10 : 0);
+      }, 0);
 
-        const totalFines = overDueBooks.reduce((sum: number, issue: any) => {
-          const due = new Date(issue.dueDate);
-          const today = new Date();
+      const takingHome = allIssues.filter((issue: any) => 
+        issue.issueType === "Taking Home" && issue.status !== "Returned").length;
 
-          const days = Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)) || 0;
+      const inLibrary = allIssues.filter((issue: any) => 
+      issue.issueType === "Reading Inside Library" && issue.status !== "Returned").length;
 
-          return sum + (days > 0 ? days * 10 : 0);
-        }, 0);
-
-        return {
-          booksHeld: stats.totalActive,
-          booksAtHome: stats.booksAtHome,
-          readingInsideLibrary: stats.readingInsideLibrary,
-          totalFines,
-          overdueCount: overDueBooks.length,
-        };
-      } catch (error) {
-        this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
-        return { 
-          booksHeld: 0, 
-          booksAtHome: 0, 
-          readingInsideLibrary: 0, 
-          totalFines: 0, 
-          overdueCount: 0 
-        };
-      }
+      return {
+        booksHeld: stats.totalActive,
+        booksAtHome: stats.booksAtHome,
+        readingInsideLibrary: stats.readingInsideLibrary,
+        totalFines,
+        overdueCount: overDueBooks.length,
+        takingHome,
+        inLibrary,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
+      return {
+        booksHeld: 0,
+        booksAtHome: 0,
+        readingInsideLibrary: 0,
+        totalFines: 0,
+        overdueCount: 0,
+        takingHome: 0,
+        inLibrary: 0,
+      };
     }
-  
+  }
+
   async getDashboardStats(userId: string) {
     const member = await this.memberModel.findById(userId).exec();
 
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-  
-      let booksHeld = 0;
-      let readingInsideLibrary = 0;
-      let totalFines = 0;
-      let pendingRequests = 0;
-  
-      try {
-        const requestServiceUrl = "http://library-api-gateway:3000/library/requests";
 
-        const url = `${requestServiceUrl}/requests/member/${userId}`;
-  
-        const response = await firstValueFrom(
-          this.httpService.get(url)
-        );
-  
-        const requests = response.data?.data || [];
-  
-        pendingRequests = requests.filter(
-          (req: any) => req.status === "Pending").length;
-  
-      } catch (e) {
-        console.log("REQUEST SERVICE FAILED :", e.message);
-      }
-  
-      let overdueBooks = 0;
+    let booksHeld = 0;
+    let readingInsideLibrary = 0;
+    let totalFines = 0;
+    let pendingRequests = 0;
+    let takingHome = 0;
+    let inLibrary = 0;
 
-      try {
-        const stats = await this.getMemberStatsFromIssues(userId);
-        booksHeld = stats.booksHeld;
-        readingInsideLibrary = stats.readingInsideLibrary;
-        totalFines = stats.totalFines;
-        overdueBooks = stats.overdueCount;
-      } catch (e) {
-        console.log("ISSUE SERVICE FAILED :", e);
-      }
-  
+    try {
+      const requestServiceUrl = "http://library-api-gateway:3000/library/requests";
+
+      const url = `${requestServiceUrl}/requests/member/${userId}`;
+
+      const response = await firstValueFrom(
+        this.httpService.get(url)
+      );
+
+      const requests = response.data?.data || [];
+
+      pendingRequests = requests.filter(
+        (req: any) => req.status === "Pending").length;
+
+    } catch (e) {
+      console.log("REQUEST SERVICE FAILED :", e.message);
+    }
+
+    let overdueBooks = 0;
+
+    try {
+      const stats = await this.getMemberStatsFromIssues(userId);
+      booksHeld = stats.booksHeld;
+      readingInsideLibrary = stats.readingInsideLibrary;
+      totalFines = stats.totalFines;
+      overdueBooks = stats.overdueCount;
+      takingHome = stats.takingHome;
+      inLibrary = stats.inLibrary;
+    } catch (e) {
+      console.log("ISSUE SERVICE FAILED :", e);
+    }
+
+    try {
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
+      const response = await firstValueFrom(
+        this.httpService.get(`${paymentsServiceUrl}/fines/member/${userId}/pending-check`)
+      );
+      totalFines += response.data?.data?.totalPendingAmount || 0;
+    } catch (e) {
+      console.log("PAYMENTS SERVICE FAILED :", e.message);
+    }
+
     return {
       issuedBooks: booksHeld,
       pendingRequests,
       activeReservations: readingInsideLibrary,
       overdueBooks,
       totalFines,
+      takingHome,
+      inLibrary,
     };
   }
 
@@ -141,7 +169,7 @@ export class MemberDashboardService {
     const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
     const response = await firstValueFrom(
-      this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}`) );
+      this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}`));
 
     const allIssues = response.data?.data || [];
 
@@ -176,7 +204,7 @@ export class MemberDashboardService {
         dueDate: issue.dueDate,
         overDue: issue.daysOverdue || 0,
         status: issue.status,
-        issueType: issue.issueType, 
+        issueType: issue.issueType,
         issueDate: issue.issueDate,
         issueId: issue.issueId,
       };
@@ -192,8 +220,8 @@ export class MemberDashboardService {
 
       const requests = response.data?.data || [];
 
-    return requests?.sort((a: any, b: any) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return requests?.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     } catch (error) {
       console.log("FAILED TO FETCH RECENT REQUESTS:", error.message);
@@ -202,20 +230,20 @@ export class MemberDashboardService {
   }
 
   async getCurrentlyBorrowedBooks(userId: string) {
-  try {
-    const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+    try {
+      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
-    const response = await firstValueFrom(
-      this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}/active`)
-    );
+      const response = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}/active`)
+      );
 
-    return response.data?.data || [];
+      return response.data?.data || [];
 
-  } catch (error) {
-    console.log('FAILED TO FETCH BORROWED BOOKS:', error.message);
-    return [];
+    } catch (error) {
+      console.log('FAILED TO FETCH BORROWED BOOKS:', error.message);
+      return [];
+    }
   }
-}
 
   async getBookDetails(issueId: string) {
     const issue = await this.issueModel
@@ -241,27 +269,27 @@ export class MemberDashboardService {
       const issues = response.data?.data || [];
 
       return issues.map((issue: any) => {
-  const today = new Date();
+        const today = new Date();
 
-  const daysOverdue = issue.dueDate ? Math.max( 0, Math.ceil(
-    (today.getTime() - new Date(issue.dueDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
+        const daysOverdue = issue.dueDate ? Math.max(0, Math.ceil(
+          (today.getTime() - new Date(issue.dueDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
-    return {
-      _id: issue._id,
-      bookId: issue.book, 
-      dueDate: issue.dueDate,
-      issueDate: issue.issueDate,
-      status: issue.status,
-      issueType: issue.issueType,
-      damageReported: issue.damageReported,
-      damageNote: issue.damageNote,
-      daysOverdue,
-      renewCount: issue.renewCount || 0,
-      issueId: issue.issueId,
-      returnDate: issue.returnDate,
-      reviewed: issue.reviewed,
-    };
-  });
+        return {
+          _id: issue._id,
+          bookId: issue.book,
+          dueDate: issue.dueDate,
+          issueDate: issue.issueDate,
+          status: issue.status,
+          issueType: issue.issueType,
+          damageReported: issue.damageReported,
+          damageNote: issue.damageNote,
+          daysOverdue,
+          renewCount: issue.renewCount || 0,
+          issueId: issue.issueId,
+          returnDate: issue.returnDate,
+          reviewed: issue.reviewed,
+        };
+      });
 
     } catch (error) {
       console.log("FAILED TO FETCH MY BOOKS:", error.message);
@@ -291,7 +319,7 @@ export class MemberDashboardService {
       return response.data;
     } catch (error: any) {
 
-      throw new BadRequestException( error.response?.data?.message || "Renew failed");
+      throw new BadRequestException(error.response?.data?.message || "Renew failed");
     }
   }
 
@@ -303,18 +331,21 @@ export class MemberDashboardService {
     };
   }
 
-  async getMyReviews(userId: string) {
+  async  getMyReviews(userId: string, token: string) {
     try {
       const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
 
       const response = await firstValueFrom(
-        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`)
+        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`, {
+          headers: {
+            Authorization: token,
+          },
+        })
       );
-
       return response.data?.data || [];
     } catch (error) {
       console.log("FAILED TO FETCH MY REVIEWS:", error.message);
-      return [];
+      throw error;
     }
   }
 
@@ -326,7 +357,7 @@ export class MemberDashboardService {
         this.httpService.get(`${bookServiceUrl}/books/${bookId}/reviews`)
       );
 
-      const reviews =  response.data?.data || [];
+      const reviews = response.data?.data || [];
 
       return reviews.map((review: any) => ({
         ...review, isCurrentUser: review.memberId === userId,

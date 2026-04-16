@@ -384,11 +384,12 @@ export class StaffDashboardService {
     }
   }
 
-  async getTodaysVisitors() {
+  async getTodaysVisitors(authHeader?: string) {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // Get explicit library visits
       const visits = await this.libraryVisitModel
         .find({
           timeIn: { $gte: today },
@@ -397,7 +398,61 @@ export class StaffDashboardService {
         .sort({ timeIn: -1 })
         .exec();
 
-      this.logger.log(`Found ${visits.length} visitors today`);
+      // Also get today's issues to include those members as visitors
+      const todaysIssues = await this.getTodaysIssues(authHeader);
+
+      this.logger.log(`Found ${visits.length} explicit visitors and ${todaysIssues.length} issues today`);
+
+      // Extract unique member IDs from visits
+      const visitMemberIds = new Set(visits.map(v =>
+        v.memberId?._id?.toString() || (v.memberId as any)?.toString()
+      ));
+
+      // Filter issues to find members who didn't have an explicit visit record
+      const uniqueIssueMembers = new Map();
+      todaysIssues.forEach(issue => {
+        const memberIdStr = issue.memberId?.toString();
+        if (memberIdStr && !visitMemberIds.has(memberIdStr)) {
+          // Keep the earliest issue as the "visit" time
+          if (!uniqueIssueMembers.has(memberIdStr) || new Date(issue.issueDate) < new Date(uniqueIssueMembers.get(memberIdStr).issueDate)) {
+            uniqueIssueMembers.set(memberIdStr, issue);
+          }
+        }
+      });
+
+      if (uniqueIssueMembers.size > 0) {
+        const additionalMemberIds = Array.from(uniqueIssueMembers.keys());
+        const additionalMembers = await this.memberModel.find({
+          _id: { $in: additionalMemberIds }
+        }).select('name email memberId').lean();
+
+        const virtualVisits = additionalMembers.map(member => {
+          const issue = uniqueIssueMembers.get(member._id.toString());
+          const isTakingHome = issue.issueType === 'Taking Home';
+          const isReturned = issue.status === 'Returned';
+
+          return {
+            _id: `auto-${issue._id || issue.issueId}`,
+            memberId: member,
+            timeIn: issue.issueDate,
+            // If taking home, they leave immediately. If reading, only set timeOut if returned.
+            timeOut: isTakingHome ? issue.issueDate : (isReturned ? (issue.returnDate || new Date()) : null),
+            purpose: isTakingHome ? 'issue' : 'reading',
+            isAutoRecorded: true,
+            // Active only if it's a reading session that hasn't been returned yet
+            isActive: !isTakingHome && !isReturned,
+            notes: 'Auto-included from book issue'
+          };
+        });
+
+        const allVisitors = [...visits, ...virtualVisits].sort((a, b) =>
+          new Date(b.timeIn).getTime() - new Date(a.timeIn).getTime()
+        );
+
+        this.logger.log(`Total combined visitors: ${allVisitors.length}`);
+        return allVisitors;
+      }
+
       return visits;
     } catch (error) {
       this.logger.error(`Failed to get today's visitors: ${error instanceof Error ? error.message : String(error)}`);

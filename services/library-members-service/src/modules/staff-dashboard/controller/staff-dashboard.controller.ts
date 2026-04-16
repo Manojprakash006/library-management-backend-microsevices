@@ -148,8 +148,9 @@ export class StaffDashboardController {
   @Get('todays-visitors')
   @Roles('staff')
   @ApiOperation({ summary: 'Get todays library visitors' })
-  async getTodaysVisitors() {
-    const result = await this.staffDashboardService.getTodaysVisitors();
+  async getTodaysVisitors(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getTodaysVisitors(authHeader);
     return { message: 'Today\'s visitors retrieved', count: result.length, data: result };
   }
 

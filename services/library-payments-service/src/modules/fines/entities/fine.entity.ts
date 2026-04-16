@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export type FineDocument = Fine & Document;
 
@@ -19,14 +19,14 @@ export class Fine {
   @Prop({ unique: true, index: true, sparse: true })
   fineId: string;
 
-  @Prop({ required: true, index: true })
-  memberId: string;
+  @Prop({ type: Types.ObjectId, required: true, index: true })
+  memberId: Types.ObjectId;
 
-  @Prop({ required: true, index: true })
-  issueId: string;
+  @Prop({ type: Types.ObjectId, required: true, index: true })
+  issueId: Types.ObjectId;
 
-  @Prop({ required: false })
-  bookId?: string;
+  @Prop({ type: Types.ObjectId, required: false })
+  bookId?: Types.ObjectId;
 
   @Prop({ required: true })
   amount: number;

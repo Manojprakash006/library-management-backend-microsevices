@@ -60,7 +60,7 @@ export const IssueBookSchema = SchemaFactory.createForClass(IssueBook);
 
 IssueBookSchema.pre('save', async function (next) {
   if (this.issueId) return next();
-  
+
   const count = await (this.constructor as any).countDocuments();
   this.issueId = `ISSUE${count + 1}`;
   next();

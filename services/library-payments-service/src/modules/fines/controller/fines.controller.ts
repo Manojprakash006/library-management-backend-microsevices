@@ -60,6 +60,7 @@ export class FinesController {
     return { message: 'Fine retrieved successfully', data };
   }
 
+  @Public()
   @Get('member/:memberId/pending-check')
   @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Check pending fines for a member' })

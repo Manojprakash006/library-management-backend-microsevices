@@ -48,8 +48,7 @@ export class IssuesService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
-      const membersServiceUrl = 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -155,7 +154,7 @@ export class IssuesService {
 
     // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
     try {
-      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
       const checkResponse = await firstValueFrom(
         this.httpService.get<{ data: { hasPendingFines: boolean; totalPendingAmount: number } }>(
           `${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`,
@@ -189,10 +188,20 @@ export class IssuesService {
       }
     }
 
+    // Strict ID validation to prevent 500 errors
+    let memberObjectId: Types.ObjectId;
+    let bookObjectId: Types.ObjectId;
+    try {
+      memberObjectId = new Types.ObjectId(createIssueDto.memberId);
+      bookObjectId = new Types.ObjectId(createIssueDto.bookId);
+    } catch (e) {
+      throw new BadRequestException('Invalid Member ID or Book ID format');
+    }
+
     // Check book availability first before issuing
     let bookData: any;
     try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -214,8 +223,8 @@ export class IssuesService {
 
       // Check if this specific member already has this exact book actively issued
       const existingIssue = await this.issueBookModel.findOne({
-        bookId: new Types.ObjectId(createIssueDto.bookId),
-        memberId: new Types.ObjectId(createIssueDto.memberId),
+        bookId: bookObjectId,
+        memberId: memberObjectId,
         status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
       }).exec();
 
@@ -223,13 +232,14 @@ export class IssuesService {
         throw new ConflictException('This member already has an active issue for this book.');
       }
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to verify book availability. Book may not exist.');
+      if (error instanceof BadRequestException || error instanceof ConflictException) throw error;
+      this.logger.error(`Book verification failed: ${error.message}`);
+      throw new BadRequestException('Failed to verify book availability. Service might be down.');
     }
 
     const issuedBook = new this.issueBookModel({
-      bookId: new Types.ObjectId(createIssueDto.bookId),
-      memberId: new Types.ObjectId(createIssueDto.memberId),
+      bookId: bookObjectId,
+      memberId: memberObjectId,
       issueType: createIssueDto.issueType,
       numberOfDays,
       issueDate: startDate,
@@ -292,7 +302,7 @@ export class IssuesService {
     bookTitle?: string
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
@@ -311,7 +321,7 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
@@ -328,7 +338,7 @@ export class IssuesService {
     fine: number
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-api-gateway:3000/library/members';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrow`, {
           issueId, // Critical: Missing in original code
@@ -345,7 +355,7 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
@@ -406,32 +416,32 @@ export class IssuesService {
       let book = null;
       let reviewed = false;
 
-        try {
-          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+      try {
+        const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://localhost:3001";
 
 
-          const response = await firstValueFrom(
-            this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`)
-          );
+        const response = await firstValueFrom(
+          this.httpService.get(`${bookServiceURL}/books/${issue.bookId}`)
+        );
 
-          const reviewResponse = await firstValueFrom(
-            this.httpService.get(`${bookServiceURL}/books/check`, {
-              params: {
-                bookId: issue.bookId,
-                memberId: issue.memberId,
-              },
-            })
-          );
+        const reviewResponse = await firstValueFrom(
+          this.httpService.get(`${bookServiceURL}/books/check`, {
+            params: {
+              bookId: issue.bookId,
+              memberId: issue.memberId,
+            },
+          })
+        );
 
-          reviewed = reviewResponse.data?.reviewed || false;
+        reviewed = reviewResponse.data?.reviewed || false;
 
-          book = response.data?.data;
-        } catch (error) {
-          console.log("BOOK FETCH FAILED:", error.message);
-        }
+        book = response.data?.data;
+      } catch (error) {
+        console.log("BOOK FETCH FAILED:", error.message);
+      }
 
-        return { ...updatedIssue, book, reviewed: reviewed };
-      })
+      return { ...updatedIssue, book, reviewed: reviewed };
+    })
     );
 
     return enriched;
@@ -444,7 +454,7 @@ export class IssuesService {
       status: { $ne: IssueStatus.RETURNED },
     }).lean();
 
-    const booksServiceUrl = 'http://library-api-gateway:3000/library/books';
+    const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
 
     const enrichedIssues = await Promise.all(
       issues.map(async (issue) => {
@@ -488,26 +498,26 @@ export class IssuesService {
         issuedBook.daysOverdue = overdueDays;
         issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
 
-      // Create a Fine in Payments Service
-      try {
-        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-api-gateway:3000/library/payments';
-        await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
-          memberId: issuedBook.memberId.toString(),
-          issueId: issuedBook._id.toString(),
-          bookId: issuedBook.bookId.toString(),
-          amount: issuedBook.fine,
-          reason: `Overdue by ${overdueDays} days`
-        }, {
-          headers: authHeader ? { Authorization: authHeader } : {}
-        }));
-        this.logger.log(`Created fine of ₹${issuedBook.fine} for member ${issuedBook.memberId}`);
-      } catch (error) {
-        this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
+        // Create a Fine in Payments Service
+        try {
+          const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+          await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
+            memberId: issuedBook.memberId.toString(),
+            issueId: issuedBook._id.toString(),
+            bookId: issuedBook.bookId.toString(),
+            amount: issuedBook.fine,
+            reason: `Overdue by ${overdueDays} days`
+          }, {
+            headers: authHeader ? { Authorization: authHeader } : {}
+          }));
+          this.logger.log(`Created fine of ₹${issuedBook.fine} for member ${issuedBook.memberId}`);
+        } catch (error) {
+          this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
+        }
       }
     }
-  }
 
-  const savedIssue = await issuedBook.save();
+    const savedIssue = await issuedBook.save();
 
     // Parallel execution of critical updates
     const bookId = issuedBook.bookId.toString();
@@ -599,6 +609,17 @@ export class IssuesService {
       dueDate: { $lt: today },
     }).exec();
     return issues.length;
+  }
+
+  async getTodaysIssuesData(): Promise<IssueBook[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    return this.issueBookModel.find({
+      issueDate: { $gte: today, $lt: tomorrow },
+    }).sort({ issueDate: -1 }).exec();
   }
 
   async getIssuesCount(date?: string): Promise<number> {
