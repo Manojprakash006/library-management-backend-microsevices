@@ -303,18 +303,21 @@ export class MemberDashboardService {
     };
   }
 
-  async getMyReviews(userId: string) {
+  async  getMyReviews(userId: string, token: string) {
     try {
       const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
 
       const response = await firstValueFrom(
-        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`)
+        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`, {
+          headers: {
+            Authorization: token,
+          },
+        })
       );
-
       return response.data?.data || [];
     } catch (error) {
       console.log("FAILED TO FETCH MY REVIEWS:", error.message);
-      return [];
+      throw error;
     }
   }
 

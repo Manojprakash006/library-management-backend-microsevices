@@ -256,7 +256,7 @@ export class BooksService {
   }
 
   async findReviewsByUser(userId: string) {
-    return this.bookReviewModel.find({ memberId: userId }).exec();
+    return this.bookReviewModel.find({ memberId: new Types.ObjectId(userId) }).populate('bookId').exec();
   }
 
   async checkReview(bookId: string, memberId: string) {
