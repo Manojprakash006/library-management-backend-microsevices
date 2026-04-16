@@ -27,6 +27,8 @@ export class MemberDashboardService {
     readingInsideLibrary: number;
     totalFines: number;
     overdueCount: number;
+    takingHome: number;
+    inLibrary: number;
   }> {
     try {
       const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
@@ -66,12 +68,20 @@ export class MemberDashboardService {
         return sum + (days > 0 ? days * 10 : 0);
       }, 0);
 
+      const takingHome = allIssues.filter((issue: any) => 
+        issue.issueType === "Taking Home" && issue.status !== "Returned").length;
+
+      const inLibrary = allIssues.filter((issue: any) => 
+      issue.issueType === "Reading Inside Library" && issue.status !== "Returned").length;
+
       return {
         booksHeld: stats.totalActive,
         booksAtHome: stats.booksAtHome,
         readingInsideLibrary: stats.readingInsideLibrary,
         totalFines,
         overdueCount: overDueBooks.length,
+        takingHome,
+        inLibrary,
       };
     } catch (error) {
       this.logger.error(`Failed to fetch member stats from issues service: ${error.message}`);
@@ -80,7 +90,9 @@ export class MemberDashboardService {
         booksAtHome: 0,
         readingInsideLibrary: 0,
         totalFines: 0,
-        overdueCount: 0
+        overdueCount: 0,
+        takingHome: 0,
+        inLibrary: 0,
       };
     }
   }
@@ -96,6 +108,8 @@ export class MemberDashboardService {
     let readingInsideLibrary = 0;
     let totalFines = 0;
     let pendingRequests = 0;
+    let takingHome = 0;
+    let inLibrary = 0;
 
     try {
       const requestServiceUrl = "http://library-api-gateway:3000/library/requests";
@@ -123,6 +137,8 @@ export class MemberDashboardService {
       readingInsideLibrary = stats.readingInsideLibrary;
       totalFines = stats.totalFines;
       overdueBooks = stats.overdueCount;
+      takingHome = stats.takingHome;
+      inLibrary = stats.inLibrary;
     } catch (e) {
       console.log("ISSUE SERVICE FAILED :", e);
     }
@@ -143,6 +159,8 @@ export class MemberDashboardService {
       activeReservations: readingInsideLibrary,
       overdueBooks,
       totalFines,
+      takingHome,
+      inLibrary,
     };
   }
 
@@ -313,18 +331,21 @@ export class MemberDashboardService {
     };
   }
 
-  async getMyReviews(userId: string) {
+  async  getMyReviews(userId: string, token: string) {
     try {
       const bookServiceUrl = 'http://library-api-gateway:3000/library/books';
 
       const response = await firstValueFrom(
-        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`)
+        this.httpService.get(`${bookServiceUrl}/books/my-reviews/${userId}`, {
+          headers: {
+            Authorization: token,
+          },
+        })
       );
-
       return response.data?.data || [];
     } catch (error) {
       console.log("FAILED TO FETCH MY REVIEWS:", error.message);
-      return [];
+      throw error;
     }
   }
 

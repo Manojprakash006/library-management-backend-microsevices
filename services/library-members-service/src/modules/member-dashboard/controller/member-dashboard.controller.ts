@@ -82,7 +82,8 @@ export class MemberDashboardController {
   @Get('my-reviews')
   @ApiOperation({ summary: 'Get my reviews' })
   async getMyReviews(@Request() req: any) {
-    const result = await this.memberDashboardService.getMyReviews(req.user.id);
+    const token = req.headers.authorization;
+    const result = await this.memberDashboardService.getMyReviews(req.user.id, token);
     return { message: 'My reviews fetched', data: result };
   }
 
