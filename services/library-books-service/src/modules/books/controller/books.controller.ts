@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Version, UseGuards, Req, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BooksService } from '../service/books.service';
 import { CreateBookDto } from '../dto/create-book.dto';
@@ -68,6 +68,15 @@ export class BooksController {
   }
 
   @Public()
+  @Get('/check')
+  async checkReview (
+      @Query('bookId') bookId: string,
+      @Query('memberId') memberId: string,
+    ) {
+      return this.booksService.checkReview(bookId, memberId);
+  }
+
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get book by ID' })
   @ApiResponse({ status: 200, description: 'Book retrieved successfully', type: Book })
@@ -94,11 +103,9 @@ export class BooksController {
     @Req() req
   ) {
     const userId = req.user?.id || req.user?.userId;
-    console.log("UserId from token in book service :", req.user);
     if(!userId) {
       throw new Error("User not Authenticated");
     }
-    console.log("book service auth :", req.user?.userId);
     return this.booksService.toggleLike(reviewId, userId);
   }
 
@@ -139,11 +146,61 @@ export class BooksController {
   async createReview(@Body() createReviewDto: CreateBookReviewDto,
     @Req() req:any): Promise<{ message: string; data: BookReview }> {
       const user = req.user;
+      const token = req.headers.authorization;
       const review = await this.booksService.createReview({
         ...createReviewDto,
         memberId: user.id,
-      });
+      }, token);
       return { message: 'Review created successfully', data: review };
   }
-  
+
+  @Get('my-reviews/:userId')
+  async getMyReviews(@Param('userId') userId: string) {
+    const reviews = await this.booksService.findReviewsByUser(userId);
+    return {
+      message: 'My reviews fetched',
+      data: reviews,
+    };
+  }
+
+  @Put('reviews/:reviewId')
+  @ApiOperation({ summary: 'Update a book review' })
+  async updateReview(
+    @Param('reviewId') reviewId: string,
+    @Body() updateData: any,
+    @Req() req: any
+  ) {
+    const userId = req.user?.id;
+    const updated = await this.booksService.updateReview(
+      reviewId,
+      userId,
+      updateData
+    );
+    return {
+      message: 'Review updated successfully',
+      data: updated,
+    };
+  }
+
+  @Delete('reviews/:reviewId')
+  @ApiOperation({ summary: 'Delete a book review' })
+  async deleteReview(
+    @Param('reviewId') reviewId: string,
+    @Req() req: any
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    const role = req.user?.role;
+    try {
+      await this.booksService.deleteReview(reviewId, userId, role);
+      return {
+        message: 'Review deleted successfully',
+      };
+    } catch (error) {
+      if (error.message === 'Review not found') {
+        throw new NotFoundException(error.message);
+      }
+      throw new ForbiddenException(error.message);
+    }
+  }
+
 }

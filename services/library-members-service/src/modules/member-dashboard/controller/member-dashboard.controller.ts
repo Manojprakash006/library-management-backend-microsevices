@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Version, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Version, UseGuards, Request, Req, Put } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MemberDashboardService } from '../service/member-dashboard.service';
 import { ReportDamageDto } from '../dto/report-damage.dto';
@@ -79,10 +79,39 @@ export class MemberDashboardController {
     return { message: 'Review submitted', data: result };
   }
 
+  @Get('my-reviews')
+  @ApiOperation({ summary: 'Get my reviews' })
+  async getMyReviews(@Request() req: any) {
+    const result = await this.memberDashboardService.getMyReviews(req.user.id);
+    return { message: 'My reviews fetched', data: result };
+  }
+
   @Get('book-reviews/:bookId')
   @ApiOperation({ summary: 'Get reviews for a book' })
-  async getBookReviews(@Param('bookId') bookId: string) {
-    const result = await this.memberDashboardService.getBookReviews(bookId);
+  async getBookReviews(
+    @Param('bookId') bookId: string, 
+    @Req() req: any) {
+    const userId = req.user?.id;
+    const result = await this.memberDashboardService.getBookReviews(bookId, userId);
     return { message: 'Book reviews fetched', data: result };
+  }
+
+  @Put('update-review/:reviewId')
+  async updateReview(
+    @Param('reviewId') reviewId: string,
+    @Req() req: any,
+    @Body() data: any
+  ) {
+    const userId = req.user.id;
+    const token = req.headers.authorization;
+    console.log("Token log from member-dashboar at line 100 :", token);
+    const result = await this.memberDashboardService.updateReview(
+      reviewId,
+      userId,
+      data,
+      token,
+    );
+
+    return { message: 'Review updated', data: result };
   }
 }
