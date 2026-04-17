@@ -19,7 +19,7 @@ export class Member {
   @Prop({ trim: true, minlength: 10, maxlength: 20, default: '' })
   phoneNumber: string;
 
-  @Prop({ trim: true, maxlength: 500 })
+  @Prop({ trim: true, maxlength: 500, default: "Not Provided" })
   address: string;
 
   @Prop({ required: true, minlength: 6, maxlength: 100, select: false })

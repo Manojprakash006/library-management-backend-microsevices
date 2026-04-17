@@ -17,7 +17,8 @@ export class MemberAuthService {
   ) {}
 
   async register(registerDto: MemberRegisterDto) {
-    const { email, password, name, phone } = registerDto;
+    const { email, password, name, phone, address } = registerDto;
+    console.log("log from member auth service for registerDto :", registerDto);
 
     // Validation
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -43,9 +44,11 @@ export class MemberAuthService {
       phoneNumber: phone,
       role: 'member',
       status: 'active',
+      address,
     });
 
     await member.save();
+    console.log("register log :", member.save());
 
     const token = this.jwtService.sign({
       userId: member._id,
