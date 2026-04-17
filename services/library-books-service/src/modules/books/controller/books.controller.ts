@@ -30,6 +30,7 @@ export class BooksController {
     return { message: 'Book created successfully', data: book };
   }
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Get all books' })
   @ApiResponse({ status: 200, description: 'Books retrieved successfully', type: [Book] })

@@ -32,10 +32,10 @@ export class Book {
   @Prop({ trim: true, sparse: true })
   isbn: string;
 
-  @Prop({ required: true, trim: true, minlength: 1, maxlength: 500, index: true })
+  @Prop({ required: true, set: (val: string) => val?.toUpperCase(), trim: true, minlength: 1, maxlength: 500, index: true })
   title: string;
 
-  @Prop({ required: true, trim: true, minlength: 1, maxlength: 200, index: true })
+  @Prop({ required: true, set: (val: string) => val?.toUpperCase(), trim: true, minlength: 1, maxlength: 200, index: true })
   author: string;
 
   @Prop({ trim: true, maxlength: 200 })
