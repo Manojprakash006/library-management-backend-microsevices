@@ -46,6 +46,7 @@ export class MemberAuthController {
   }
 
    @Post('forgot-password')
+   @Public()
   @ApiOperation({ summary: 'Request password reset' })
   @ApiResponse({ status: 200, description: 'Password reset instructions sent' })
   @ApiResponse({ status: 404, description: 'Email not found' })
@@ -55,6 +56,7 @@ export class MemberAuthController {
   }
 
    @Post('reset-password')
+   @Public()
   @ApiOperation({ summary: 'Reset password with token' })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
   @ApiResponse({ status: 400, description: 'Invalid token or password' })

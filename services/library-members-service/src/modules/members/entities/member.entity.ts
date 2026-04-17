@@ -79,6 +79,12 @@ export class Member {
     status: 'borrowed' | 'returned' | 'overdue';
     fine: number;
   }>;
+
+  @Prop({ select: false })
+  resetPasswordToken: string;
+
+  @Prop({ select: false })
+  resetPasswordExpires: Date;
 }
 
 export const MemberSchema = SchemaFactory.createForClass(Member);

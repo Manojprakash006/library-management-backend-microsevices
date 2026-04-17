@@ -70,6 +70,7 @@ services:
       - SMTP_PORT=587
       - SMTP_USER=mernstackdev.yoho@gmail.com
       - SMTP_PASS=xnwgmqkzeacaauag
+      - FRONTEND_URL=http://localhost:5173
     depends_on:
       - mongodb
     networks:

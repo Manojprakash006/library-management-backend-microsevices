@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { Member } from '../../members/entities/member.entity';
 import { MemberRegisterDto } from '../dto/member-register.dto';
 import { MemberLoginDto } from '../dto/member-login.dto';
@@ -121,7 +122,13 @@ export class MemberAuthService {
     }
 
     // Generate reset token
-    const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Set token and expiry (1 hour)
+    member.resetPasswordToken = tokenHash;
+    member.resetPasswordExpires = new Date(Date.now() + 3600000);
+    await member.save();
     
     // Send password reset email
     await this.emailService.sendPasswordResetEmail(
@@ -132,24 +139,34 @@ export class MemberAuthService {
     
     return {
       message: 'Password reset instructions sent to email',
-      email: member.email,
     };
   }
 
   async resetPassword(token: string, newPassword: string) {
-    // In production, verify token against stored token
-    // For now, simplified implementation
-    
+    // Hash the token provided by the user
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find member by token and check if it's not expired
+    const member = await this.memberModel.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!member) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
     // Validate password
     if (!newPassword || newPassword.length < 6) {
       throw new ConflictException('Password must be at least 6 characters');
     }
 
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Update member password
+    member.password = newPassword; // Mongoose middleware will hash it on save
+    member.resetPasswordToken = undefined;
+    member.resetPasswordExpires = undefined;
+    await member.save();
 
-    // Update member password (in production, find by token)
-    // For now, this is a simplified flow
     return {
       message: 'Password reset successfully',
     };
