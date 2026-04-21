@@ -77,7 +77,8 @@ export class EmailService {
 
   async sendPasswordResetEmail(to: string, memberName: string, resetToken: string): Promise<boolean> {
     const subject = '🔐 Password Reset Request';
-    const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #5cb85c;">Password Reset Request</h2>

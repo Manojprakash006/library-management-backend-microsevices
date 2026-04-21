@@ -28,7 +28,8 @@ let MemberAuthService = class MemberAuthService {
         this.emailService = emailService;
     }
     async register(registerDto) {
-        const { email, password, name, phone } = registerDto;
+        const { email, password, name, phone, address } = registerDto;
+        console.log("log from member-auth dist folder :", registerDto);
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             throw new common_1.ConflictException('Valid email is required');
         }
@@ -49,6 +50,7 @@ let MemberAuthService = class MemberAuthService {
             phoneNumber: phone,
             role: 'member',
             status: 'active',
+            address,
         });
         await member.save();
         const token = this.jwtService.sign({
