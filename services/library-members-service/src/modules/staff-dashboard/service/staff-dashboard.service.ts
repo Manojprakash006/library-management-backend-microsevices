@@ -38,7 +38,7 @@ export class StaffDashboardService {
           headers: authHeader ? { Authorization: authHeader } : undefined,
         })
       );
-
+       
       this.logger.log(`Books service response: ${JSON.stringify(statsResponse.data)}`);
 
       const stats: BooksStatsResponse = statsResponse.data?.data || {
@@ -51,7 +51,6 @@ export class StaffDashboardService {
 
       // Get books added today
       const todayBookAdded = await this.getBooksAddedTodayCount(authHeader);
-
       return {
         totalBooks: stats.totalBooks || 0,
         availableBooks: stats.availableBooks || 0,

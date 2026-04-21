@@ -9,7 +9,7 @@ import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiTags('Library Visits')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)    
 @Controller('library-visits')
 export class LibraryVisitsController {
   constructor(private readonly libraryVisitsService: LibraryVisitsService) {}
@@ -19,7 +19,7 @@ export class LibraryVisitsController {
   @ApiOperation({ summary: 'Auto record library visit from issues service (internal)' })
   async autoRecordVisit(@Body() data: {
     memberId: string;
-    bookId: string;
+    bookId: string;   
     purpose: string;
     timeIn: string;
     timeOut?: string;
