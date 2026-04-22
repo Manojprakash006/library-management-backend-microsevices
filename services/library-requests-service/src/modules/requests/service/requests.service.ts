@@ -119,7 +119,7 @@ export class RequestsService {
         this.httpService.get(`${issuesServiceUrl}/issues/member/${memberId}`)
       );
 
-      const allIssues = response.data?.data || [];  
+      const allIssues = response.data?.data || [];
 
       // Get active (not returned) issues - Active or Overdue status
       const activeIssues = allIssues.filter((issue: any) =>
@@ -150,7 +150,7 @@ export class RequestsService {
 
   async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
     const skip = (page - 1) * limit;
-    
+
     const [requests, total] = await Promise.all([
       this.bookRequestModel.find().sort({ requestDate: -1 }).skip(skip).limit(limit).exec(),
       this.bookRequestModel.countDocuments().exec(),
@@ -181,46 +181,46 @@ export class RequestsService {
 
   async getByMember(memberId: string): Promise<BookRequest[]> {
 
-  const data = await this.bookRequestModel.find({ 
-    memberId: new Types.ObjectId(memberId) 
-  }).lean();
+    const data = await this.bookRequestModel.find({
+      memberId: new Types.ObjectId(memberId)
+    }).lean();
 
 
-  const enriched = await Promise.all(
-    data.map(async (req) => {
+    const enriched = await Promise.all(
+      data.map(async (req) => {
 
-      const bookId = req.bookId.toString();
+        const bookId = req.bookId.toString();
 
-      if (!bookId) {
-        return { ...req, bookId: null };
-      }
+        if (!bookId) {
+          return { ...req, bookId: null };
+        }
 
-      try {
-        const bookServiceURL = "http://library-api-gateway:3000/library/books";
-        const bookResponse = await firstValueFrom(
-          this.httpService.get(`${bookServiceURL}/books/${bookId}`)
-        );
+        try {
+          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+          const bookResponse = await firstValueFrom(
+            this.httpService.get(`${bookServiceURL}/books/${bookId}`)
+          );
 
-        const book = bookResponse.data?.data;
-        return {
-          ...req,
-          bookId: book, 
-        };
+          const book = bookResponse.data?.data;
+          return {
+            ...req,
+            bookId: book,
+          };
 
-      } catch (error) {
-        console.log("❌ BOOK FETCH FAILED:", error.message);
+        } catch (error) {
+          console.log("❌ BOOK FETCH FAILED:", error.message);
 
-        return {
-          ...req,
-          bookId: null,
-        };
-      }
-    })
-  );
+          return {
+            ...req,
+            bookId: null,
+          };
+        }
+      })
+    );
 
 
-  return enriched;
-}
+    return enriched;
+  }
 
   async findOne(id: string): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();

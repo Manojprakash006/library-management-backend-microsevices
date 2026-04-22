@@ -50,7 +50,7 @@ export const BookRequestSchema = SchemaFactory.createForClass(BookRequest);
 
 BookRequestSchema.pre('save', async function (next: () => void) {
   if (this.requestId) return next();
-  
+
   const count = await (this.constructor as any).countDocuments();
   this.requestId = `REQ${count + 1}`;
   next();
