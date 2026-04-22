@@ -39,7 +39,7 @@ export class BookRequest {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'IssueBook' }] })
   activeBookIds: Types.ObjectId[];
 
-  @Prop({ type: [String] })
+  @Prop({ type: [String] }) 
   booklistBorrowed: string[];
 
   @Prop()
