@@ -31,7 +31,7 @@ export class BookRequest {
   status: RequestStatus;
 
   @Prop({ default: 0, min: 0 })
-  currentlyBorrowed: number;
+  currentlyBorrowed: number;   
 
   @Prop({ default: 0, min: 0 })
   totalHistory: number;
