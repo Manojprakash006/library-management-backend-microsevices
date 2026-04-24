@@ -144,6 +144,40 @@ export class DashboardService {
     };
   }
 
+  async getBooksAddedTodayList() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const books = await this.bookModel.find({
+      createdAt: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+    }).sort({ createdAt: -1 }).lean();
+
+    return books;
+  }
+
+  async getBooksAddedToday(): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const count = await this.bookModel.countDocuments({
+      createdAt: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+    });
+
+    return count;
+  }
+
   async getRecentBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
     try {
       const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';

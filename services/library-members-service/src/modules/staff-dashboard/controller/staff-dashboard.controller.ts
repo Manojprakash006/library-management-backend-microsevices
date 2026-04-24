@@ -54,6 +54,15 @@ export class StaffDashboardController {
     return { message: 'Stat cards retrieved successfully', data: result };
   }
 
+  @Get('books-added-today-list')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get books added today list' })
+  async getBooksAddedTodayList(@Request() req) {
+    const authHeader = req.headers['authorization'];
+    const result = await this.staffDashboardService.getBooksAddedTodayList(authHeader);
+    return { message: 'Books added today list', data: result };
+  }
+  
   @Get('books-added-today')
   @Roles('staff')
   @ApiOperation({ summary: 'Get books added today' })
@@ -62,8 +71,6 @@ export class StaffDashboardController {
     const result = await this.staffDashboardService.getBooksAddedToday(authHeader);
     return { message: 'Books added today retrieved', data: result };
   }
-
-
 
   @Get('rack-distribution')
   @Roles('staff')

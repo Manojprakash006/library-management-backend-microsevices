@@ -27,12 +27,28 @@ export class StaffDashboardService {
     private readonly activityLogService: ActivityLogService,
   ) { }
 
+  private async getBooksAddedTodayCount(authHeader?: string): Promise<number> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+
+      const response: AxiosResponse<{ data: number }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/books-added-today`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      return response.data?.data || 0;
+    } catch (error) {
+      this.logger.error(`Failed to fetch today's book count: ${error.message}`);
+      return 0;
+    }
+  }
+
   async getStaffStats(authHeader?: string) {
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       this.logger.log(`Fetching stats from books service: ${booksServiceUrl}/dashboard/stat-cards`);
 
-      // Get books stats from books service
       const statsResponse: AxiosResponse<{ data: BooksStatsResponse }> = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/dashboard/stat-cards`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -49,7 +65,6 @@ export class StaffDashboardService {
 
       this.logger.log(`Parsed stats: ${JSON.stringify(stats)}`);
 
-      // Get books added today
       const todayBookAdded = await this.getBooksAddedTodayCount(authHeader);
 
       return {
@@ -61,7 +76,7 @@ export class StaffDashboardService {
     } catch (error) {
       this.logger.error(`Failed to fetch stats from books service: ${error.message}`);
       this.logger.error(`Error details: ${JSON.stringify(error.response?.data || error)}`);
-      // Return default values if books service is unavailable
+      
       return {
         totalBooks: 0,
         availableBooks: 0,
@@ -70,30 +85,21 @@ export class StaffDashboardService {
       };
     }
   }
-
-  private async getBooksAddedTodayCount(authHeader?: string): Promise<number> {
+  
+  async getBooksAddedTodayList(authHeader?: string) {
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
 
-      // Get all books and filter by createdAt date
-      const response: AxiosResponse<{ data: any[]; count: number }> = await firstValueFrom(
-        this.httpService.get(`${booksServiceUrl}/books`, {
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/books-added-today/list`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
         })
       );
 
-      const books = response.data?.data || [];
-      const todayBookAdded = books.filter((book: any) => {
-        const createdAt = new Date(book.createdAt);
-        return createdAt >= today;
-      }).length;
-
-      return todayBookAdded;
+      return response.data?.data || [];
     } catch (error) {
-      this.logger.error(`Failed to fetch books added today: ${error.message}`);
-      return 0;
+      this.logger.error(`Failed to fetch today's books list: ${error.message}`);
+      return [];
     }
   }
 

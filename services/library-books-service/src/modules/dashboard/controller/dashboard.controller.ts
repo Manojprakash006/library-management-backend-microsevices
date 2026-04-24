@@ -45,6 +45,22 @@ export class DashboardController {
     return { message: 'Stat cards retrieved', data: result };
   }
 
+  @Get('books-added-today/list')
+  @Roles('admin', 'staff')
+  @ApiOperation({ summary: 'Get books added today (full details)' })
+  async getBooksAddedTodayList() {
+    const result = await this.dashboardService.getBooksAddedTodayList();
+    return { message: 'Books added today list', data: result };
+  }
+
+  @Get('books-added-today')
+  @Roles('admin', 'staff')
+  @ApiOperation({ summary: 'Get count of books added today' })
+  async getBooksAddedToday() {
+    const result = await this.dashboardService.getBooksAddedToday();
+    return { message: 'Books added today count', data: result };
+  }
+
    @Get('recent-books')
   @ApiOperation({ summary: 'Get recent books' })
   async getRecentBooks(@Req() req: Request) {
