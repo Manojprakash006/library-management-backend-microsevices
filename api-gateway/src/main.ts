@@ -45,6 +45,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: 'http://library-members-service:3012',
       changeOrigin: true,
+      ws: true,
       pathRewrite: {
         '^/library/members': '',
       },
