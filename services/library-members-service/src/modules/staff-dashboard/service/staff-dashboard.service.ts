@@ -292,19 +292,31 @@ export class StaffDashboardService {
 
     const lastActivityQuery = await this.activityLogService.getLogs(1, 1000, {
       adminId: staffId,
-      action: { $in: ['BOOKSADDED', 'STAFF_LOGIN', 'STAFF_LOGOUT'] }
+      $or: [
+        { action: { $in: ['BOOKSADDED', 'STAFF_LOGIN', 'STAFF_LOGOUT'] } },
+        { action: 'CREATE', entityType: 'BOOK' }
+      ]
     });
 
     const recentActivities = lastActivityQuery.data.map((log: any) => {
       let actionName = log.action;
-      if (log.action === 'BOOKSADDED') actionName = 'ADD BOOK';
-      else if (log.action === 'STAFF_LOGIN') actionName = 'LOGIN';
-      else if (log.action === 'STAFF_LOGOUT') actionName = 'LOGOUT';
+      let description = log.details?.message || '';
+
+      if (log.action === 'BOOKSADDED' || (log.action === 'CREATE' && log.entityType === 'BOOK')) {
+        actionName = 'ADD BOOK';
+        description = description || `Added new book: ${log.details?.title || log.entityId}`;
+      } else if (log.action === 'STAFF_LOGIN') {
+        actionName = 'LOGIN';
+        description = description || 'Staff logged in';
+      } else if (log.action === 'STAFF_LOGOUT') {
+        actionName = 'LOGOUT';
+        description = description || 'Staff logged out';
+      }
 
       return {
         action: actionName,
         date: log.createdAt,
-        description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
+        description: description,
         referenceId: log.details?.referenceId || log.entityId
       };
     });

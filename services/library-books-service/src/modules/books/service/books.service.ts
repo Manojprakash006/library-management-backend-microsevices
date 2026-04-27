@@ -64,7 +64,7 @@ export class BooksService {
     const savedBook = await createdBook.save();
 
     if (adminId) {
-      await this.logActivity(adminId, 'CREATE', savedBook.bookId, { title: savedBook.title });
+      await this.logActivity(adminId, 'BOOKSADDED', savedBook.bookId, { title: savedBook.title });
       
       if (role === 'staff') {
         // Notify all admins that a requested action (book creation) happened
