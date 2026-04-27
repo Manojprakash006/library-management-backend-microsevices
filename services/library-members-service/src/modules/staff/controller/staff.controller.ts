@@ -47,26 +47,6 @@ export class StaffController {
     return { message: 'Staff created successfully', data: result };
   }
 
-  @Post('upload-profile-image')
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: 'uploads',
-        filename: (req, file, callback) => {
-          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          callback(null, uniqueName + extname(file.originalname));
-        },
-      }),
-    }),
-  )
-  async uploadProfileImage(@UploadedFile() file, @Req() req: any) {
-    console.log("HEADERS :", req.headers);
-    console.log("USER :", req.user);
-  const staffId = req.user?.id;
-  return this.staffService.uploadProfileImage(file, staffId);
-}
-
   @Get('stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

@@ -104,19 +104,6 @@ export class StaffService {
     return savedStaff;
   }
 
-  async uploadProfileImage(file: any, staffId: string) {
-    const filePath = `/uploads/${file.filename}`;
-
-    await this.staffModel.findByIdAndUpdate(staffId, {
-      profileImage: filePath,
-    });
-
-    return {
-      message: 'Profile image uploaded',
-      imageUrl: filePath,
-    };
-  }
-
   async findAll(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
     
