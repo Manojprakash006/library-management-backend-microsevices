@@ -54,6 +54,9 @@ export class Staff {
 
   @Prop({ default: true, index: true })
   isActive: boolean;
+
+  @Prop({ default: "" })
+  profileImage: string;
 }
 
 export const StaffSchema = SchemaFactory.createForClass(Staff);

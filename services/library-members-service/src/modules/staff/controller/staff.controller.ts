@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Version, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Version, UseGuards, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from '../service/staff.service';
 import { CreateStaffDto } from '../dto/create-staff.dto';
@@ -7,6 +7,9 @@ import { StaffLoginDto } from '../dto/staff-login.dto';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { extname } from 'path';
+import { diskStorage } from 'multer';
 
 @ApiTags('Staff')
 @Controller('staff')
@@ -43,6 +46,26 @@ export class StaffController {
     const result = await this.staffService.create(createDto, adminId);
     return { message: 'Staff created successfully', data: result };
   }
+
+  @Post('upload-profile-image')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: 'uploads',
+        filename: (req, file, callback) => {
+          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          callback(null, uniqueName + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  async uploadProfileImage(@UploadedFile() file, @Req() req: any) {
+    console.log("HEADERS :", req.headers);
+    console.log("USER :", req.user);
+  const staffId = req.user?.id;
+  return this.staffService.uploadProfileImage(file, staffId);
+}
 
   @Get('stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -114,3 +137,8 @@ export class StaffController {
     return { message: 'Staff deleted successfully' };
   }
 }
+
+// function diskStorage(arg0: { destination: string; filename: (req: any, file: any, callback: any) => void; }): any {
+//   throw new Error('Function not implemented.');
+// }
+

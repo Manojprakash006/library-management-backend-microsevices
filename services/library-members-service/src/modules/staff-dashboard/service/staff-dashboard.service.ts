@@ -223,8 +223,6 @@ export class StaffDashboardService {
     }
   }
 
-
-
   async getMyProfile(staffId: string) {
     const profile: any = await this.staffModel.findById(staffId).select('-password -__v').lean();
     if (!profile) return null;
@@ -253,7 +251,8 @@ export class StaffDashboardService {
       joinDate: profile.createdAt,
       totalActivities: totalActivities.count || 0,
       todaysActivities: todaysActivities.count || 0,
-      lastActive: lastActivity.data?.length > 0 ? (lastActivity.data[0] as any).createdAt : profile.updatedAt
+      lastActive: lastActivity.data?.length > 0 ? (lastActivity.data[0] as any).createdAt : profile.updatedAt,
+      profileImage: profile.profileImage || "",
     };
   }
 
@@ -292,31 +291,19 @@ export class StaffDashboardService {
 
     const lastActivityQuery = await this.activityLogService.getLogs(1, 1000, {
       adminId: staffId,
-      $or: [
-        { action: { $in: ['BOOKSADDED', 'STAFF_LOGIN', 'STAFF_LOGOUT'] } },
-        { action: 'CREATE', entityType: 'BOOK' }
-      ]
+      action: { $in: ['BOOKSADDED', 'STAFF_LOGIN', 'STAFF_LOGOUT'] }
     });
 
     const recentActivities = lastActivityQuery.data.map((log: any) => {
       let actionName = log.action;
-      let description = log.details?.message || '';
-
-      if (log.action === 'BOOKSADDED' || (log.action === 'CREATE' && log.entityType === 'BOOK')) {
-        actionName = 'ADD BOOK';
-        description = description || `Added new book: ${log.details?.title || log.entityId}`;
-      } else if (log.action === 'STAFF_LOGIN') {
-        actionName = 'LOGIN';
-        description = description || 'Staff logged in';
-      } else if (log.action === 'STAFF_LOGOUT') {
-        actionName = 'LOGOUT';
-        description = description || 'Staff logged out';
-      }
+      if (log.action === 'BOOKSADDED') actionName = 'ADD BOOK';
+      else if (log.action === 'STAFF_LOGIN') actionName = 'LOGIN';
+      else if (log.action === 'STAFF_LOGOUT') actionName = 'LOGOUT';
 
       return {
         action: actionName,
         date: log.createdAt,
-        description: description,
+        description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
         referenceId: log.details?.referenceId || log.entityId
       };
     });

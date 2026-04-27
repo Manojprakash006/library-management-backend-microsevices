@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException, ConflictException, UploadedFile, Req } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -102,6 +102,19 @@ export class StaffService {
     }
 
     return savedStaff;
+  }
+
+  async uploadProfileImage(file: any, staffId: string) {
+    const filePath = `/uploads/${file.filename}`;
+
+    await this.staffModel.findByIdAndUpdate(staffId, {
+      profileImage: filePath,
+    });
+
+    return {
+      message: 'Profile image uploaded',
+      imageUrl: filePath,
+    };
   }
 
   async findAll(page: number = 1, limit: number = 10) {
