@@ -125,6 +125,7 @@ services:
       - KAFKA_BROKER=localhost:9092
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
+      - BOOKS_SERVICE_URL=http://library-books-service:3001
     depends_on:
       - mongodb
     networks:
@@ -164,6 +165,7 @@ services:
       - RZP_KEY_ID=rzp_test_SaDCl7Au48PRQf
       - RZP_KEY_SECRET=Ge4uiF1mxjvZZ5LSXgy5PAZt
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
+      - BOOKS_SERVICE_URL=http://library-books-service:3001
     depends_on:
       - mongodb
     networks:

@@ -5,6 +5,7 @@ import { CreateMemberDto } from '../dto/create-member.dto';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiTags('Members')
 @ApiBearerAuth()
@@ -82,6 +83,7 @@ export class MembersController {
           return { message: 'Data retrieved successfully', data: footerStats };
     }
 
+    @Public()
     @Get(':id')
     @Roles('admin', 'staff', 'member')
     @ApiOperation({ summary: 'Get a member by ID' })

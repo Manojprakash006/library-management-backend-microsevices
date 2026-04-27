@@ -35,13 +35,20 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       }
 
       const payload = this.jwtService.verify(token);
-      const userId = payload.userId;
+      const userId = payload.userId || payload.id || payload.sub;
+
+      if (!userId) {
+        this.logger.warn('Token verified but no userId found');
+        client.disconnect();
+        return;
+      }
 
       // Store socket connection
       this.userSockets.set(userId, client.id);
       client.join(`user_${userId}`);
+      client.join(userId);
 
-      this.logger.log(`Client connected: ${userId} (${client.id})`);
+      this.logger.log(`Client connected and joined rooms: user_${userId}, ${userId} (${client.id})`);
       
       // Send confirmation
       client.emit('connected', { message: 'Connected to notifications', userId });
@@ -80,8 +87,8 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   // Method to send notification to specific user
   sendNotificationToUser(userId: string, notification: any) {
-    this.server.to(`user_${userId}`).emit('newNotification', notification);
-    this.logger.log(`Notification sent to user ${userId}`);
+    this.server.to(`user_${userId}`).to(userId).emit('newNotification', notification);
+    this.logger.log(`Notification sent to user ${userId} in rooms user_${userId} and ${userId}`);
   }
 
   // Method to broadcast to all connected clients
@@ -91,7 +98,8 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   // Method to send unread count update
   sendUnreadCount(userId: string, count: number) {
-    this.server.to(`user_${userId}`).emit('unreadCount', { count });
+    this.server.to(`user_${userId}`).to(userId).emit('unreadCount', count);
+    this.server.to(`user_${userId}`).to(userId).emit('unreadCountData', { count });
   }
 
   private getUserIdFromSocket(socketId: string): string | null {

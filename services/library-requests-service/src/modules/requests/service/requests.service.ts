@@ -50,14 +50,15 @@ export class RequestsService {
     }
   }
 
-  private async notifyAdmins(type: string, title: string, message: string) {
+  private async notifyAdmins(type: string, title: string, message: string, issueId?: string) {
     try {
       const membersServiceUrl = "http://library-api-gateway:3000/library/members";
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
           title,
-          message
+          message,
+          issueId
         })
       );
     } catch (error) {
@@ -104,7 +105,8 @@ export class RequestsService {
     await this.notifyAdmins(
       'NEW_BOOK_REQUEST',
       'New Book Request Received',
-      `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}. Please review it in the pending requests dashboard.`
+      `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}.`,
+      createDto.bookId // Pass bookId as issueId for enrichment
     );
 
     return savedRequest;
@@ -277,12 +279,12 @@ export class RequestsService {
     request.processedDate = new Date();
     const savedRequest = await request.save();
 
-    const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || "http://library-members-service:3012";
 
     try {
       await firstValueFrom(
         this.httpService.post(
-          `${membersServiceUrl}/library/members/members/${request.memberId}/borrow`,
+          `${membersServiceUrl}/members/${request.memberId}/borrow`,
           {
             bookId: request.bookId.toString(),
             issueId: request._id.toString(),
@@ -300,12 +302,22 @@ export class RequestsService {
       this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
+    // Fetch book details for notification
+    let bookTitle = 'Book';
+    try {
+      const bookServiceURL = "http://library-api-gateway:3000/library/books";
+      const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
+      bookTitle = bookRes.data?.data?.title || 'Book';
+    } catch (e) {
+      this.logger.error(`Failed to fetch book title for approval notification: ${e.message}`);
+    }
+
     // Send notification to member (fire and forget)
     this.sendNotification(
       request.memberId.toString(),
       'REQUEST_APPROVED',
       'Book Request Approved',
-      `Your request for book (ID: ${request.bookId}) has been approved. You can now collect the book from the library.`
+      `Dear member, your request for "${bookTitle}" (Book ID: ${request.bookId}) has been approved. You can now collect the book from the library.`
     );
 
     return savedRequest;
@@ -329,12 +341,22 @@ export class RequestsService {
       this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
+    // Fetch book details for notification
+    let bookTitle = 'Book';
+    try {
+      const bookServiceURL = "http://library-api-gateway:3000/library/books";
+      const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
+      bookTitle = bookRes.data?.data?.title || 'Book';
+    } catch (e) {
+      this.logger.error(`Failed to fetch book title for rejection notification: ${e.message}`);
+    }
+
     // Send notification to member (fire and forget)
     this.sendNotification(
       request.memberId.toString(),
       'REQUEST_REJECTED',
       'Book Request Rejected',
-      `Unfortunately, your request for book (ID: ${request.bookId}) has been rejected. Please contact the librarian for more details.`
+      `Unfortunately, your request for "${bookTitle}" (Book ID: ${request.bookId}) has been rejected. Please contact the librarian for more details.`
     );
 
     return savedRequest;
