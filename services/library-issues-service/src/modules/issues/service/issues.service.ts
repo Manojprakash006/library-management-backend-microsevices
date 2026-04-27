@@ -277,11 +277,15 @@ export class IssuesService {
       });
     }
 
+    const isReadingInside = createIssueDto.issueType === 'Reading Inside Library';
+    const actionTextCreate = isReadingInside ? 'started reading' : 'borrowed';
+    const titleTextCreate = isReadingInside ? 'Reading Session Started' : 'Book Borrowed Successfully';
+
     this.sendNotification(
       createIssueDto.memberId,
       'BOOK_ISSUED',
-      'Book Issued Successfully',
-      `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`
+      titleTextCreate,
+      `Dear member, you have ${actionTextCreate} "${bookData.title}" (Book ID: ${bookData.bookId || createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy your reading session inside the library!'}`
     );
 
     this.autoRecordLibraryVisit(
@@ -539,11 +543,25 @@ export class IssuesService {
       });
     }
 
+    // Fetch book title for return notification
+    let bookTitle = 'Book';
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+      bookTitle = bookResponse.data?.data?.title || 'Book';
+    } catch (e) {
+      this.logger.error(`Failed to fetch book title for notification: ${e.message}`);
+    }
+
+    const isReadingInside = issuedBook.issueType === 'Reading Inside Library';
+    const actionText = isReadingInside ? 'finished reading' : 'successfully returned';
+    const titleText = isReadingInside ? 'Reading Session Completed' : 'Book Returned Successfully';
+
     this.sendNotification(
       issuedBook.memberId.toString(),
       'BOOK_RETURNED',
-      'Book Returned Successfully',
-      `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`
+      titleText,
+      `Thank you! You have ${actionText} "${bookTitle}" (Book ID: ${bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` A fine of ₹${issuedBook.fine} was calculated for late return.` : ''}`
     );
 
     this.autoRecordLibraryVisit(

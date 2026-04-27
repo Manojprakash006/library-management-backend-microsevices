@@ -10,6 +10,7 @@ import { Notification, NotificationDocument } from '../entities/notification.ent
 import { CreateNotificationDto, UpdateNotificationDto } from '../dto/create-notification.dto';
 import { EmailService } from './email.service';
 import { NotificationsGateway } from '../gateway/notifications.gateway';
+import { NotificationType } from '../entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -26,6 +27,17 @@ export class NotificationsService {
     private readonly notificationsGateway: NotificationsGateway,
     private readonly httpService: HttpService,
   ) { }
+
+  private async getBookDetails(bookId: string): Promise<any> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
+      const response = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+      return response.data?.data || response.data;
+    } catch (error) {
+      this.logger.error(`Failed to fetch book details: ${error.message}`);
+      return null;
+    }
+  }
 
   async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
     let { memberId, issueId, type, title, message, memberEmail, memberName } = createNotificationDto;
@@ -58,6 +70,22 @@ export class NotificationsService {
       }
     }
 
+    // Fetch Book Title if not provided in message but issueId is available
+    if (issueId && !message.includes('"')) {
+       try {
+         const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+         const issueResponse = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues/${issueId}`));
+         const issueData = issueResponse.data;
+         if (issueData?.bookId) {
+           const book = await this.getBookDetails(issueData.bookId);
+           if (book?.title) {
+             message = message.replace(`ID: ${issueData.bookId}`, `"${book.title}" (ID: ${issueData.bookId})`);
+           }
+         }
+       } catch (e) {
+         this.logger.error(`Failed to enrich notification with book title: ${e.message}`);
+       }
+    }
     const createdNotification = new this.notificationModel({
       memberId: new Types.ObjectId(memberId),
       issueId: issueId ? new Types.ObjectId(issueId) : undefined,
@@ -297,18 +325,26 @@ export class NotificationsService {
       const dueIssues = allIssues.filter((issue: any) => {
         if (issue.status !== 'Active' || !issue.dueDate) return false;
         const due = new Date(issue.dueDate);
-        const diffTime = due.getTime() - today.getTime();
+        const todayCopy = new Date(today);
+        todayCopy.setHours(0, 0, 0, 0);
+        const dueCopy = new Date(due);
+        dueCopy.setHours(0, 0, 0, 0);
+        
+        const diffTime = dueCopy.getTime() - todayCopy.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays >= 0 && diffDays <= 1; // Due today or tomorrow
       });
 
       for (const issue of dueIssues) {
+        const book = await this.getBookDetails(issue.bookId);
+        const bookInfo = book?.title ? `"${book.title}" (ID: ${issue.bookId})` : `Book ID: ${issue.bookId}`;
+
         await this.create({
           memberId: issue.memberId,
           issueId: issue._id,
-          type: 'DUE_REMINDER' as any,
-          title: 'Book Due Reminder',
-          message: `Friendly reminder: Your borrowed book (ID: ${issue.bookId}) is due soon on ${new Date(issue.dueDate).toLocaleDateString()}. Please return it to avoid fines.`,
+          type: NotificationType.DUE_REMINDER,
+          title: 'Upcoming Due Date Reminder',
+          message: `Friendly reminder: Your borrowed book ${bookInfo} is due soon on ${new Date(issue.dueDate).toLocaleDateString()}. Please return it to avoid fines.`,
         });
         count++;
       }
@@ -329,12 +365,15 @@ export class NotificationsService {
       const overdueIssues = response.data?.data || [];
 
       for (const issue of overdueIssues) {
+        const book = await this.getBookDetails(issue.bookId);
+        const bookInfo = book?.title ? `"${book.title}" (ID: ${issue.bookId})` : `Book ID: ${issue.bookId}`;
+
         await this.create({
           memberId: issue.memberId,
           issueId: issue._id,
-          type: 'OVERDUE' as any,
+          type: NotificationType.OVERDUE,
           title: 'Immediate Action: Book Overdue!',
-          message: `URGENT: Your borrowed book (ID: ${issue.bookId}) was due on ${new Date(issue.dueDate).toLocaleDateString()} and is now OVERDUE. Fines are accumulating. Please return immediately.`,
+          message: `URGENT: Your borrowed book ${bookInfo} was due on ${new Date(issue.dueDate).toLocaleDateString()} and is now OVERDUE. Fines are accumulating. Please return immediately.`,
         });
         count++;
       }
