@@ -70,20 +70,30 @@ export class NotificationsService {
       }
     }
 
-    // Fetch Book Title if not provided in message but issueId is available
+    // Smart Enrichment: Fetch Book Title if not provided in message but issueId/bookId is available
     if (issueId && !message.includes('"')) {
        try {
-         const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
-         const issueResponse = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues/${issueId}`));
-         const issueData = issueResponse.data;
-         if (issueData?.bookId) {
-           const book = await this.getBookDetails(issueData.bookId);
-           if (book?.title) {
-             message = message.replace(`ID: ${issueData.bookId}`, `"${book.title}" (ID: ${issueData.bookId})`);
+         let bookIdToFetch = issueId;
+         
+         // Try to see if it's an issue first
+         try {
+           const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+           const issueResponse = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues/${issueId}`));
+           if (issueResponse.data?.bookId) {
+             bookIdToFetch = issueResponse.data.bookId;
            }
+         } catch (err) {
+           // Not an issue ID, maybe it's a direct book ID
+         }
+
+         const book = await this.getBookDetails(bookIdToFetch);
+         if (book?.title) {
+           message = message.replace(`ID: ${bookIdToFetch}`, `"${book.title}" (ID: ${bookIdToFetch})`);
+           // Also handle cases where it was passed as Issue ID in the string
+           message = message.replace(`ID: ${issueId}`, `"${book.title}" (ID: ${issueId})`);
          }
        } catch (e) {
-         this.logger.error(`Failed to enrich notification with book title: ${e.message}`);
+         this.logger.error(`Failed to enrich notification: ${e.message}`);
        }
     }
     const createdNotification = new this.notificationModel({
