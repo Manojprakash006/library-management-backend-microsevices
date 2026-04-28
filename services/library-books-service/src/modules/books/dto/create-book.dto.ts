@@ -3,10 +3,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { BookType, BookCondition, BookStatus } from '../entities/book.entity';
 
 export class CreateBookDto {
-  @ApiProperty({ description: 'Unique book identifier' })
+  @ApiProperty({ description: 'Unique book identifier', required: false })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  bookId: string;
+  bookId?: string;
 
   @ApiProperty({ description: 'ISBN number', required: false })
   @IsOptional()

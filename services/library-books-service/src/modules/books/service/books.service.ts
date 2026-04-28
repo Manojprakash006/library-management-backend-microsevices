@@ -85,10 +85,9 @@ export class BooksService {
   }
 
   async create(createBookDto: CreateBookDto, adminId?: string, role?: string): Promise<Book> {
-    const existingBook = await this.bookModel.findOne({ bookId: createBookDto.bookId }).exec();
-    if (existingBook) {
-      throw new ConflictException('Book ID already exists');
-    }
+    // Force auto-generate bookId
+    const count = await this.bookModel.countDocuments().exec();
+    createBookDto.bookId = `BK-${count + 1}`;
 
     // Validate Rack & Shelf Capacity
     if (createBookDto.rackNumber) {
