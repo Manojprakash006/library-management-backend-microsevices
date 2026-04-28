@@ -273,9 +273,12 @@ export class IssuesService {
     if (adminId) {
       this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), {
         bookId: createIssueDto.bookId,
-        memberId: createIssueDto.memberId
+        memberId: createIssueDto.memberId,
+        bookTitle: bookData?.title,
+        memberName: createIssueDto.memberName || 'Member'
       });
     }
+
 
     const isReadingInside = createIssueDto.issueType === 'Reading Inside Library';
     const actionTextCreate = isReadingInside ? 'started reading' : 'borrowed';
@@ -535,15 +538,7 @@ export class IssuesService {
       )
     ]);
 
-    // Fire and forget non-critical operations (don't await)
-    if (adminId) {
-      this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
-        bookId: issuedBook.bookId,
-        memberId: issuedBook.memberId
-      });
-    }
-
-    // Fetch book title for return notification
+    // Fetch book title for notifications and logging
     let bookTitle = 'Book';
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
@@ -552,6 +547,17 @@ export class IssuesService {
     } catch (e) {
       this.logger.error(`Failed to fetch book title for notification: ${e.message}`);
     }
+
+    // Fire and forget non-critical operations (don't await)
+    if (adminId) {
+      this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
+        bookId: issuedBook.bookId,
+        memberId: issuedBook.memberId,
+        bookTitle: bookTitle,
+        memberName: 'Member'
+      });
+    }
+
 
     const isReadingInside = issuedBook.issueType === 'Reading Inside Library';
     const actionText = isReadingInside ? 'finished reading' : 'successfully returned';

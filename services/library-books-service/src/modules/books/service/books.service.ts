@@ -226,7 +226,7 @@ export class BooksService {
     }
 
     if (adminId) {
-      await this.logActivity(adminId, 'UPDATE', book.bookId, { updatedFields: Object.keys(updateBookDto) });
+      await this.logActivity(adminId, 'UPDATE', book.bookId, { title: book.title, updatedFields: Object.keys(updateBookDto) });
     }
 
     return book;
