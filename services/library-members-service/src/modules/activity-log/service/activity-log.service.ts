@@ -3,6 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ActivityLog, ActivityLogDocument } from '../entities/activity-log.entity';
 import { CreateActivityLogDto } from '../dto/create-activity-log.dto';
+import { Staff, StaffDocument } from '../../staff/entities/staff.entity';
+import { Member, MemberDocument } from '../../members/entities/member.entity';
+import { User, UserDocument } from '../../auth/entities/user.entity';
+import { isValidObjectId } from 'mongoose';
+
+
 
 @Injectable()
 export class ActivityLogService {
@@ -11,7 +17,15 @@ export class ActivityLogService {
   constructor(
     @InjectModel(ActivityLog.name)
     private readonly activityLogModel: Model<ActivityLogDocument>,
+    @InjectModel(Staff.name)
+    private readonly staffModel: Model<StaffDocument>,
+    @InjectModel(Member.name)
+    private readonly memberModel: Model<MemberDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
+
+
 
   async logAction(createDto: CreateActivityLogDto): Promise<ActivityLog> {
     try {
@@ -24,7 +38,7 @@ export class ActivityLogService {
     }
   }
 
-  async getLogs(page = 1, limit = 20, filters = {}): Promise<{ data: ActivityLog[]; count: number }> {
+  async getLogs(page = 1, limit = 20, filters = {}): Promise<{ data: any[]; count: number }> {
     const skip = (page - 1) * limit;
     const [data, count] = await Promise.all([
       this.activityLogModel
@@ -36,14 +50,92 @@ export class ActivityLogService {
       this.activityLogModel.countDocuments(filters).exec(),
     ]);
 
-    return { data, count };
+    const resolvedData = await Promise.all(data.map(async (log) => {
+      const logObj = log.toObject();
+      
+      // Resolve Admin Name
+      if (isValidObjectId(log.adminId)) {
+        const staff = await this.staffModel.findById(log.adminId).exec();
+        if (staff) {
+          logObj['adminName'] = staff.fullName;
+        } else {
+          const user = await this.userModel.findById(log.adminId).exec();
+          logObj['adminName'] = user ? user.name : 'Unknown Admin';
+        }
+      } else {
+        logObj['adminName'] = log.adminId;
+      }
+
+      // Resolve Entity Name
+      if (log.entityType === 'MEMBER') {
+        const query = isValidObjectId(log.entityId) 
+          ? { _id: log.entityId } 
+          : { memberId: log.entityId };
+        const member = await this.memberModel.findOne(query).exec();
+        logObj['entityName'] = member ? member.name : (log.details?.name || log.entityId);
+      } else if (log.entityType === 'STAFF') {
+        const query = isValidObjectId(log.entityId) 
+          ? { _id: log.entityId } 
+          : { staffId: log.entityId };
+        const staff = await this.staffModel.findOne(query).exec();
+        logObj['entityName'] = staff ? staff.fullName : (log.details?.fullName || log.details?.name || log.entityId);
+      } else if (log.entityType === 'BOOK') {
+        logObj['entityName'] = log.details?.title || log.details?.name || log.entityId;
+      } else if (log.entityType === 'ISSUE') {
+        logObj['entityName'] = log.details?.bookTitle ? `ISSUE: ${log.details.bookTitle}` : (log.details?.bookId ? `ISSUE: ${log.details.bookId}` : log.entityId);
+      } else {
+        logObj['entityName'] = log.details?.name || log.details?.fullName || log.details?.title || log.entityId;
+      }
+
+
+
+      return logObj;
+    }));
+
+    return { data: resolvedData, count };
   }
 
-  async getRecentLogs(limit = 10): Promise<ActivityLog[]> {
-    return this.activityLogModel
+
+  async getRecentLogs(limit = 10): Promise<any[]> {
+    const logs = await this.activityLogModel
       .find()
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();
+
+    return Promise.all(logs.map(async (log) => {
+      const logObj = log.toObject();
+      
+      // Resolve Admin Name
+      if (isValidObjectId(log.adminId)) {
+        const admin = await this.staffModel.findById(log.adminId).exec();
+        logObj['adminName'] = admin ? admin.fullName : 'Unknown Admin';
+      } else {
+        logObj['adminName'] = log.adminId;
+      }
+
+      // Resolve Entity Name
+      if (log.entityType === 'MEMBER') {
+        const query = isValidObjectId(log.entityId) 
+          ? { _id: log.entityId } 
+          : { memberId: log.entityId };
+        const member = await this.memberModel.findOne(query).exec();
+        logObj['entityName'] = member ? member.name : (log.details?.name || log.entityId);
+      } else if (log.entityType === 'STAFF') {
+        const query = isValidObjectId(log.entityId) 
+          ? { _id: log.entityId } 
+          : { staffId: log.entityId };
+        const staff = await this.staffModel.findOne(query).exec();
+        logObj['entityName'] = staff ? staff.fullName : (log.details?.fullName || log.details?.name || log.entityId);
+      } else if (log.entityType === 'BOOK') {
+        logObj['entityName'] = log.details?.title || log.details?.name || log.entityId;
+      } else {
+        logObj['entityName'] = log.details?.name || log.details?.fullName || log.details?.title || log.entityId;
+      }
+
+
+      return logObj;
+    }));
   }
+
 }

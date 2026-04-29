@@ -8,6 +8,7 @@ import { UpdateBookDto } from '../dto/update-book.dto';
 import { CreateBookReviewDto } from '../dto/create-book-review.dto';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '../../library-config/service/config.service';
 
 @Injectable()
 export class BooksService {
@@ -17,6 +18,7 @@ export class BooksService {
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookReview.name) private bookReviewModel: Model<BookReviewDocument>,
     private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) { }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
@@ -51,10 +53,49 @@ export class BooksService {
     }
   }
 
+  private async validateStorageCapacity(rackNumber: string, shelfNumber: string, additionalQuantity: number, excludeBookId?: string): Promise<void> {
+    if (!rackNumber) return;
+
+    const query: any = { rackNumber };
+    if (excludeBookId) {
+      query._id = { $ne: excludeBookId };
+    }
+
+    const booksInRack = await this.bookModel.find(query).exec();
+    const config = await this.configService.getConfig();
+    
+    // Validate Rack Total
+    const currentRackTotal = booksInRack.reduce((sum, book) => sum + (book.quantity || 0), 0);
+    const MAX_RACK_CAPACITY = config?.maxRackCapacity || 50;
+    if (currentRackTotal + additionalQuantity > MAX_RACK_CAPACITY) {
+      throw new BadRequestException(`Rack ${rackNumber} capacity exceeded (${currentRackTotal + additionalQuantity}/${MAX_RACK_CAPACITY}).`);
+    }
+
+    // Validate Shelf Total
+    if (shelfNumber) {
+      const currentShelfTotal = booksInRack
+        .filter(b => b.shelfNumber === shelfNumber)
+        .reduce((sum, book) => sum + (book.quantity || 0), 0);
+      
+      const MAX_SHELF_CAPACITY = config?.maxShelfCapacity || 10;
+      if (currentShelfTotal + additionalQuantity > MAX_SHELF_CAPACITY) {
+        throw new BadRequestException(`Shelf ${shelfNumber} in Rack ${rackNumber} is full (${currentShelfTotal + additionalQuantity}/${MAX_SHELF_CAPACITY}).`);
+      }
+    }
+  }
+
   async create(createBookDto: CreateBookDto, adminId?: string, role?: string): Promise<Book> {
-    const existingBook = await this.bookModel.findOne({ bookId: createBookDto.bookId }).exec();
-    if (existingBook) {
-      throw new ConflictException('Book ID already exists');
+    // Force auto-generate bookId
+    const count = await this.bookModel.countDocuments().exec();
+    createBookDto.bookId = `BK-${count + 1}`;
+
+    // Validate Rack & Shelf Capacity
+    if (createBookDto.rackNumber) {
+      await this.validateStorageCapacity(
+        createBookDto.rackNumber, 
+        createBookDto.shelfNumber || 'S1', 
+        createBookDto.quantity || 1
+      );
     }
 
     const createdBook = new this.bookModel({
@@ -166,13 +207,26 @@ export class BooksService {
   }
 
   async update(id: string, updateBookDto: UpdateBookDto, adminId?: string): Promise<Book> {
+    const currentBook = await this.bookModel.findById(id).exec();
+    if (!currentBook) {
+      throw new NotFoundException('Book not found');
+    }
+
+    // Validate Storage Capacity if rack, shelf, or quantity changes
+    if (updateBookDto.rackNumber || updateBookDto.shelfNumber || updateBookDto.quantity !== undefined) {
+      const targetRack = updateBookDto.rackNumber || currentBook.rackNumber;
+      const targetShelf = updateBookDto.shelfNumber || currentBook.shelfNumber || 'S1';
+      const targetQuantity = updateBookDto.quantity !== undefined ? updateBookDto.quantity : currentBook.quantity;
+      await this.validateStorageCapacity(targetRack, targetShelf, targetQuantity, id);
+    }
+
     const book = await this.bookModel.findByIdAndUpdate(id, updateBookDto, { new: true }).exec();
     if (!book) {
       throw new NotFoundException('Book not found');
     }
 
     if (adminId) {
-      await this.logActivity(adminId, 'UPDATE', book.bookId, { updatedFields: Object.keys(updateBookDto) });
+      await this.logActivity(adminId, 'UPDATE', book.bookId, { title: book.title, updatedFields: Object.keys(updateBookDto) });
     }
 
     return book;

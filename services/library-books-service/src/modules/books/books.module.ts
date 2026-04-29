@@ -5,6 +5,7 @@ import { BooksService } from './service/books.service';
 import { Book, BookSchema } from './entities/book.entity';
 import { BookReview, BookReviewSchema } from './entities/book-review.entity';
 import { HttpModule } from '@nestjs/axios';
+import { LibraryConfigModule } from '../library-config/library-config.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { HttpModule } from '@nestjs/axios';
       { name: BookReview.name, schema: BookReviewSchema },
     ]),
     HttpModule,
+    LibraryConfigModule,
   ],
   controllers: [BooksController],
   providers: [BooksService],

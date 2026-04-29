@@ -25,4 +25,7 @@ export class CreateIssueDto {
   @IsOptional()
   @IsDateString()
   issueDate: Date;
+  @ApiProperty({ description: 'Member Name', required: false })
+  @IsOptional()
+  memberName?: string;
 }

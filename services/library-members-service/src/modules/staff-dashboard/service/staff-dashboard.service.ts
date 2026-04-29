@@ -304,7 +304,7 @@ export class StaffDashboardService {
         action: actionName,
         date: log.createdAt,
         description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
-        referenceId: log.details?.referenceId || log.entityId
+        referenceId: log.entityName || log.details?.referenceId || log.entityId
       };
     });
 

@@ -4,15 +4,25 @@ import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Book, BookDocument } from '../../books/entities/book.entity';
+import { ConfigService } from '../../library-config/service/config.service';
+
+interface ShelfInfo {
+  shelfNumber: string;
+  totalBooks: number;
+  totalQuantity: number;
+  capacity: number;
+}
 
 interface RackInfo {
   rackNumber: string;
   location: string;
-  totalBooks: number;
+  totalBooks: number; // Unique titles count
+  totalQuantity: number; // Sum of all copies
   available: number;
   issued: number;
   capacity: number;
   capacityPercentage?: string;
+  shelves?: Record<string, ShelfInfo>;
   books?: any[];
   recentBooks?: any[];
   booksByCategory?: Record<string, any[]>;
@@ -25,10 +35,14 @@ export class RacksService {
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   async findAll(): Promise<RackInfo[]> {
     const books = await this.bookModel.find().exec();
+    const config = await this.configService.getConfig();
+    const maxRackCapacity = config?.maxRackCapacity || 50;
+    const maxShelfCapacity = config?.maxShelfCapacity || 10;
 
     const rackMap: Record<string, RackInfo> = {};
 
@@ -40,9 +54,11 @@ export class RacksService {
           rackNumber: rackNumber,
           location: 'Main Hall',
           totalBooks: 0,
+          totalQuantity: 0,
           available: 0,
           issued: 0,
-          capacity: 50,
+          capacity: maxRackCapacity,
+          shelves: {},
           recentBooks: [],
           books: [],
         };
@@ -53,6 +69,20 @@ export class RacksService {
       const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
 
       rackMap[rackNumber].totalBooks += 1;
+      rackMap[rackNumber].totalQuantity += (book.quantity || 0);
+      
+      const shelfNumber = book.shelfNumber || 'S1';
+      if (!rackMap[rackNumber].shelves![shelfNumber]) {
+        rackMap[rackNumber].shelves![shelfNumber] = {
+          shelfNumber,
+          totalBooks: 0,
+          totalQuantity: 0,
+          capacity: maxShelfCapacity,
+        };
+      }
+      rackMap[rackNumber].shelves![shelfNumber].totalBooks += 1;
+      rackMap[rackNumber].shelves![shelfNumber].totalQuantity += (book.quantity || 0);
+
       rackMap[rackNumber].available += availableCount > 0 ? 1 : 0;
       rackMap[rackNumber].issued += issuedCount > 0 ? 1 : 0;
 
@@ -113,6 +143,9 @@ export class RacksService {
 
   async findByRackNumber(rackNumber: string): Promise<RackInfo> {
     const books = await this.bookModel.find({ rackNumber }).exec();
+    const config = await this.configService.getConfig();
+    const maxRackCapacity = config?.maxRackCapacity || 50;
+    const maxShelfCapacity = config?.maxShelfCapacity || 10;
 
     if (books.length === 0) {
       throw new NotFoundException('Rack not found or has no books');
@@ -122,9 +155,11 @@ export class RacksService {
       rackNumber: rackNumber,
       location: 'Main Hall',
       totalBooks: books.length,
+      totalQuantity: 0,
       available: 0,
       issued: 0,
-      capacity: 50,
+      capacity: maxRackCapacity,
+      shelves: {},
       books: [],
       booksByCategory: {},
     };
@@ -132,6 +167,20 @@ export class RacksService {
     for (const book of books) {
       const issuedCount = await this.getIssuedCountForBook(book._id.toString());
       const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
+
+      rackData.totalQuantity += (book.quantity || 0);
+
+      const shelfNumber = book.shelfNumber || 'S1';
+      if (!rackData.shelves![shelfNumber]) {
+        rackData.shelves![shelfNumber] = {
+          shelfNumber,
+          totalBooks: 0,
+          totalQuantity: 0,
+          capacity: maxShelfCapacity,
+        };
+      }
+      rackData.shelves![shelfNumber].totalBooks += 1;
+      rackData.shelves![shelfNumber].totalQuantity += (book.quantity || 0);
 
       rackData.available += availableCount > 0 ? 1 : 0;
       rackData.issued += issuedCount > 0 ? 1 : 0;
@@ -171,7 +220,7 @@ export class RacksService {
       rackData.booksByCategory![book.category].push(bookData);
     }
 
-    rackData.capacityPercentage = ((rackData.totalBooks / rackData.capacity) * 100).toFixed(0);
+    rackData.capacityPercentage = ((rackData.totalQuantity / rackData.capacity) * 100).toFixed(0);
 
     return rackData;
   }

@@ -136,8 +136,9 @@ export class MembersService {
         action: 'UPDATE',
         entityType: 'MEMBER',
         entityId: member.memberId || id,
-        details: { updatedFields: Object.keys(updateData) }
+        details: { name: member.name, email: member.email, updatedFields: Object.keys(updateData) }
       });
+
     }
 
     return member;
@@ -206,8 +207,9 @@ export class MembersService {
         action: 'DELETE',
         entityType: 'MEMBER',
         entityId: result.memberId || id,
-        details: { email: result.email }
+        details: { name: result.name, email: result.email }
       });
+
     }
   }
 
