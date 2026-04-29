@@ -76,6 +76,9 @@ services:
       - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
       - MONGODB_DB=Authentication
       - JWT_SECRET=your-secret-key
+      - VAPID_PUBLIC_KEY=BDUh117kbxhLwwobXGAa5P65dObEDu2sLsK65ZlsVCxCyf17G8lRWs9iIDBScT_nuQRdaxNNCL5pRyh2vq9KA8g
+      - VAPID_PRIVATE_KEY=EKKNutuNEznfDJW1LddZqy4GT843UaReyeaIdpxGr-M
+      - VAPID_EMAIL=mailto:admin@example.com
       - KAFKA_BROKER=localhost:9092
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
       - BOOKS_SERVICE_URL=http://library-books-service:3001

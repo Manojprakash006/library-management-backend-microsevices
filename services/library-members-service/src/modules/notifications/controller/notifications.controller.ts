@@ -126,4 +126,21 @@ export class NotificationsController {
   async sendOverdueNotifications(): Promise<{ message: string; count: number }> {
     return this.notificationsService.sendOverdueNotifications();
   }
+
+  @Post('subscribe-push')
+  @Roles('member', 'admin', 'staff')
+  @ApiOperation({ summary: 'Subscribe to web push notifications' })
+  async subscribeToPush(@Body() subscription: any, @Req() req): Promise<{ message: string }> {
+    const userId = req.user.id;
+    await this.notificationsService.savePushSubscription(userId, subscription);
+    
+    // Send a welcome test notification
+    await this.notificationsService.sendPushToUser(userId, {
+      title: 'Notifications Enabled! ✅',
+      message: 'You will now receive real-time library updates on this device.',
+      type: 'WELCOME'
+    });
+
+    return { message: 'Subscribed to push notifications successfully' };
+  }
 }
