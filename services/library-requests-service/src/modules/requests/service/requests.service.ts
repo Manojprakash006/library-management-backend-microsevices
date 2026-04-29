@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { BookRequest, BookRequestDocument, RequestStatus } from '../entities/book-request.entity';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class RequestsService {
@@ -14,6 +15,7 @@ export class RequestsService {
   constructor(
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
@@ -108,6 +110,10 @@ export class RequestsService {
       `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}.`,
       createDto.bookId // Pass bookId as issueId for enrichment
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('REQUEST_CREATED', savedRequest);
+    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'create', request: savedRequest });
 
     return savedRequest;
   }
@@ -320,6 +326,10 @@ export class RequestsService {
       `Dear member, your request for "${bookTitle}" (Book ID: ${request.bookId}) has been approved. You can now collect the book from the library.`
     );
 
+    // Emit real-time event
+    await this.redisEmitter.emit('REQUEST_APPROVED', savedRequest);
+    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'approve', request: savedRequest });
+
     return savedRequest;
   }
 
@@ -358,6 +368,10 @@ export class RequestsService {
       'Book Request Rejected',
       `Unfortunately, your request for "${bookTitle}" (Book ID: ${request.bookId}) has been rejected. Please contact the librarian for more details.`
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('REQUEST_REJECTED', savedRequest);
+    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'reject', request: savedRequest });
 
     return savedRequest;
   }

@@ -9,6 +9,7 @@ import { CreateBookReviewDto } from '../dto/create-book-review.dto';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '../../library-config/service/config.service';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class BooksService {
@@ -19,6 +20,7 @@ export class BooksService {
     @InjectModel(BookReview.name) private bookReviewModel: Model<BookReviewDocument>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
@@ -116,6 +118,10 @@ export class BooksService {
         );
       }
     }
+
+    // Emit real-time event
+    await this.redisEmitter.emit('BOOK_CREATED', savedBook);
+    await this.redisEmitter.emit('BOOKS_UPDATED', { type: 'create', book: savedBook });
 
     return savedBook;
   }
@@ -229,6 +235,10 @@ export class BooksService {
       await this.logActivity(adminId, 'UPDATE', book.bookId, { title: book.title, updatedFields: Object.keys(updateBookDto) });
     }
 
+    // Emit real-time event
+    await this.redisEmitter.emit('BOOK_UPDATED', book);
+    await this.redisEmitter.emit('BOOKS_UPDATED', { type: 'update', book });
+
     return book;
   }
 
@@ -256,6 +266,10 @@ export class BooksService {
     if (adminId) {
       await this.logActivity(adminId, 'DELETE', book.bookId, { title: book.title });
     }
+
+    // Emit real-time event
+    await this.redisEmitter.emit('BOOK_DELETED', { id, bookId: book.bookId });
+    await this.redisEmitter.emit('BOOKS_UPDATED', { type: 'delete', id });
   }
 
   async search(query: string): Promise<Book[]> {

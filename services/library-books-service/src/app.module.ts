@@ -10,6 +10,7 @@ import { MemberBooksModule } from './modules/member-books/member-books.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { UtilModule } from './modules/util/util.module';
+import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { UtilModule } from './modules/util/util.module';
     DashboardModule,
     UploadModule,
     UtilModule,
+    RedisEmitterModule,
   ],
 })
 export class AppModule { }

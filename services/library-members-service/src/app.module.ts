@@ -15,6 +15,7 @@ import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { LibraryVisitsModule } from './modules/library-visits/library-visits.module';
 import { FavouriteModule } from './modules/favourite/favourite.module';
+import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FavouriteModule } from './modules/favourite/favourite.module';
     AdminModule,
     LibraryVisitsModule,
     FavouriteModule,
+    RedisEmitterModule,
   ],
 })
 export class AppModule { }

@@ -9,6 +9,7 @@ const Razorpay = require('razorpay');
 import { Fine, FineDocument, FineStatus, PaymentMethod } from '../entities/fine.entity';
 
 import { CreateFineDto } from '../dto/create-fine.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class FinesService {
@@ -18,6 +19,7 @@ export class FinesService {
   constructor(
     @InjectModel(Fine.name) private fineModel: Model<FineDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) {
     this.razorpayInstance = new Razorpay({
       key_id: process.env.RZP_KEY_ID || 'rzp_test_SaDCl7Au48PRQf',
@@ -102,6 +104,10 @@ export class FinesService {
     // Fire and forget notification
     this.sendFineCreationNotification(savedFine.memberId.toString(), savedFine.amount, savedFine.reason, savedFine.bookId?.toString());
 
+    // Emit real-time event
+    await this.redisEmitter.emit('FINE_CREATED', savedFine);
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'create', fine: savedFine });
+
     return savedFine;
   }
 
@@ -160,6 +166,10 @@ export class FinesService {
 
     // Fire and forget notification
     this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId || fine._id.toString(), fine.bookId?.toString());
+
+    // Emit real-time event
+    await this.redisEmitter.emit('FINE_PAID', fine);
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'pay', fine });
 
     return fine;
   }
@@ -227,6 +237,10 @@ export class FinesService {
 
     // Fire and forget notification
     this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId, fine.bookId?.toString());
+
+    // Emit real-time event
+    await this.redisEmitter.emit('FINE_PAID', fine);
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'pay', fine });
 
     return fine;
   }

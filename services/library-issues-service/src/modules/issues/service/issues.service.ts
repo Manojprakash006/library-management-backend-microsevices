@@ -5,6 +5,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { IssueBook, IssueBookDocument, IssueStatus, IssueType } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class IssuesService {
@@ -13,6 +14,7 @@ export class IssuesService {
   constructor(
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   private calculateOverdue(issue: any): any {
@@ -296,6 +298,10 @@ export class IssuesService {
       createIssueDto.bookId,
       createIssueDto.issueType
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('ISSUE_CREATED', savedIssue);
+    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'create', issue: savedIssue });
 
     return savedIssue;
   }
@@ -582,6 +588,10 @@ export class IssuesService {
       issuedBook.bookId.toString()
     );
 
+    // Emit real-time event
+    await this.redisEmitter.emit('ISSUE_RETURNED', savedIssue);
+    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'return', issue: savedIssue });
+
     return savedIssue;
   }
 
@@ -712,6 +722,10 @@ export class IssuesService {
     issue.renewCount = (issue.renewCount || 0) + 1;
 
     await issue.save();
+
+    // Emit real-time event
+    await this.redisEmitter.emit('ISSUE_RENEWED', issue);
+    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'renew', issue });
 
     return {
       message: 'Book renewed successfully',
