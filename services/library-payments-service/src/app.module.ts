@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from './config/config.module';
 import { FinesModule } from './modules/fines/fines.module';
+import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { FinesModule } from './modules/fines/fines.module';
       dbName: process.env.MONGODB_DB || 'library_payments',
     }),    
     FinesModule,
+    RedisEmitterModule,
   ],
 })
 export class AppModule {}

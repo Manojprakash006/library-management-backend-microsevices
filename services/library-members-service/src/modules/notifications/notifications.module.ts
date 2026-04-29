@@ -7,6 +7,7 @@ import { NotificationsController } from './controller/notifications.controller';
 import { NotificationsService } from './service/notifications.service';
 import { NotificationsGateway } from './gateway/notifications.gateway';
 import { EmailService } from './service/email.service';
+import { RedisSubscriberService } from './service/redis-subscriber.service';
 import { Notification, NotificationSchema } from './entities/notification.entity';
 import { Member, MemberSchema } from '../members/entities/member.entity';
 import { User, UserSchema } from '../auth/entities/user.entity';
@@ -26,7 +27,7 @@ import { User, UserSchema } from '../auth/entities/user.entity';
     ]),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationsGateway, EmailService],
+  providers: [NotificationsService, NotificationsGateway, EmailService, RedisSubscriberService],
   exports: [NotificationsService, NotificationsGateway, EmailService],
 })
 export class NotificationsModule {}
