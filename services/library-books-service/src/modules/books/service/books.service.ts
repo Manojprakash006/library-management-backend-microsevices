@@ -132,8 +132,8 @@ export class BooksService {
     const [books, total] = await Promise.all([
       this.bookModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       this.bookModel.countDocuments().exec(),
-    ]);
-
+    ]);  
+ 
     const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
     const updatedBooks = await Promise.all(
