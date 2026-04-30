@@ -48,6 +48,64 @@ export class IssuesService {
     return updatedIssue;
   }
 
+  onModuleInit() {
+    // Start automatic background checker for overdue books
+    // Run every 1 hour (3600000 ms)
+    setInterval(() => {
+      this.checkAllOverdueBooks().catch(err => 
+        this.logger.error('Automatic overdue check failed', err)
+      );
+    }, 3600000);
+    
+    this.logger.log('Automatic Overdue Checker started (Every 1 hour)');
+  }
+
+  async checkAllOverdueBooks() {
+    const today = new Date();
+    // Find all active/overdue books that are past their due date
+    const issues = await this.issueBookModel.find({
+      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
+      issueType: IssueType.TAKING_HOME,
+      dueDate: { $lt: today }
+    }).exec();
+
+    if (issues.length === 0) return;
+
+    this.logger.log(`Found ${issues.length} potential overdue issues. Updating...`);
+
+    for (const issue of issues) {
+      const updatedIssue = this.calculateOverdue(issue.toObject());
+      
+      // If status changed to Overdue or if we just want to refresh the stats
+      if (updatedIssue.status === IssueStatus.OVERDUE) {
+        const wasAlreadyOverdue = issue.status === IssueStatus.OVERDUE;
+        
+        await this.issueBookModel.findByIdAndUpdate(issue._id, { 
+          status: IssueStatus.OVERDUE,
+          daysOverdue: updatedIssue.daysOverdue,
+          fine: updatedIssue.fine
+        });
+        
+        // Only notify if it's a NEW overdue or if we want periodic reminders
+        if (!wasAlreadyOverdue) {
+          let bookTitle = 'A book';
+          try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`));
+            bookTitle = bookRes.data?.data?.title || 'A book';
+          } catch (e) {}
+
+          await this.redisEmitter.emit('ISSUES_UPDATED', { 
+            type: 'status_change', 
+            status: IssueStatus.OVERDUE,
+            bookTitle: bookTitle,
+            issue: { ...updatedIssue, _id: issue._id } 
+          });
+        }
+      }
+    }
+  }
+
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
@@ -397,10 +455,36 @@ export class IssuesService {
 
     const today = new Date();
 
-    const data = issuedBooks.map((issue) => {
-      const issueObj = issue.toObject();
-      return this.calculateOverdue(issueObj);
-    });
+    const data = await Promise.all(issuedBooks.map(async (issue) => {
+      const updatedIssue = this.calculateOverdue(issue.toObject());
+      
+      // If status changed to Overdue, save it to DB and emit event
+      if (updatedIssue.status === IssueStatus.OVERDUE && issue.status !== IssueStatus.OVERDUE) {
+        await this.issueBookModel.findByIdAndUpdate(issue._id, { 
+          status: IssueStatus.OVERDUE,
+          daysOverdue: updatedIssue.daysOverdue,
+          fine: updatedIssue.fine
+        });
+        
+        // Fetch basic details for the notification
+        let bookTitle = 'A book';
+        try {
+          const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+          const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`));
+          bookTitle = bookRes.data?.data?.title || 'A book';
+        } catch (e) {}
+
+        // Emit event for real-time notification
+        await this.redisEmitter.emit('ISSUES_UPDATED', { 
+          type: 'status_change', 
+          status: IssueStatus.OVERDUE,
+          bookTitle: bookTitle,
+          issue: { ...updatedIssue, _id: issue._id } 
+        });
+      }
+      
+      return updatedIssue;
+    }));
 
     return {
       data,
