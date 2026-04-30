@@ -11,6 +11,8 @@ import { CreateNotificationDto, UpdateNotificationDto } from '../dto/create-noti
 import { EmailService } from './email.service';
 import { NotificationsGateway } from '../gateway/notifications.gateway';
 import { NotificationType } from '../entities/notification.entity';
+import { WebPushService } from './web-push.service';
+import { PushSubscription } from '../schema/push-subscription.schema';
 
 @Injectable()
 export class NotificationsService {
@@ -23,9 +25,12 @@ export class NotificationsService {
     private memberModel: Model<MemberDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
+    @InjectModel(PushSubscription.name)
+    private pushSubscriptionModel: Model<PushSubscription>,
     private readonly emailService: EmailService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly httpService: HttpService,
+    private readonly webPushService: WebPushService,
   ) { }
 
   private async getBookDetails(bookId: string): Promise<any> {
@@ -119,6 +124,9 @@ export class NotificationsService {
     if (memberEmail && memberName) {
       await this.sendEmailNotification(memberEmail, memberName, title, message, type);
     }
+
+    // Send Web Push notification
+    await this.sendPushToUser(memberId.toString(), { title, message, type });
 
     return savedNotification;
   }
@@ -392,5 +400,30 @@ export class NotificationsService {
       this.logger.error(`Automated overdue reminder failed: ${error.message}`);
     }
     return { message: 'Overdue notifications processed successfully', count };
+  }
+
+  async savePushSubscription(userId: string, subscription: any): Promise<void> {
+    // Upsert subscription
+    await this.pushSubscriptionModel.findOneAndUpdate(
+      { userId, 'subscription.endpoint': subscription.endpoint },
+      { userId, subscription },
+      { upsert: true, new: true }
+    ).exec();
+    this.logger.log(`Saved push subscription for user: ${userId}`);
+  }
+
+  async sendPushToUser(userId: string, payload: { title: string; message: string; type: string }): Promise<void> {
+    try {
+      const subscriptions = await this.pushSubscriptionModel.find({ userId }).exec();
+      
+      for (const sub of subscriptions) {
+        const result = await this.webPushService.sendNotification(sub.subscription, payload);
+        if (result.shouldDelete) {
+          await this.pushSubscriptionModel.findByIdAndDelete(sub._id).exec();
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Failed to send web push notifications: ${err.message}`);
+    }
   }
 }

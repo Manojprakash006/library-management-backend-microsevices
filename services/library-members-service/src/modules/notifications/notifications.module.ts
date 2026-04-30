@@ -11,6 +11,8 @@ import { RedisSubscriberService } from './service/redis-subscriber.service';
 import { Notification, NotificationSchema } from './entities/notification.entity';
 import { Member, MemberSchema } from '../members/entities/member.entity';
 import { User, UserSchema } from '../auth/entities/user.entity';
+import { WebPushService } from './service/web-push.service';
+import { PushSubscription, PushSubscriptionSchema } from './schema/push-subscription.schema';
 
 @Module({
   imports: [
@@ -24,10 +26,11 @@ import { User, UserSchema } from '../auth/entities/user.entity';
       { name: Notification.name, schema: NotificationSchema },
       { name: Member.name, schema: MemberSchema },
       { name: User.name, schema: UserSchema },
+      { name: PushSubscription.name, schema: PushSubscriptionSchema },
     ]),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationsGateway, EmailService, RedisSubscriberService],
+  providers: [NotificationsService, NotificationsGateway, EmailService, RedisSubscriberService, WebPushService],
   exports: [NotificationsService, NotificationsGateway, EmailService],
 })
 export class NotificationsModule {}
