@@ -660,21 +660,17 @@ export class IssuesService {
       `Thank you! You have ${actionText} "${bookTitle}" (Book ID: ${bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` A fine of ₹${issuedBook.fine} was calculated for late return.` : ''}`
     );
 
-    this.autoRecordLibraryVisit(
-      issuedBook.memberId.toString(),
-      issuedBook.bookId.toString(),
-      'return'
-    );
-
-    // Record return visit (update timeOut for reading visits)
     this.recordReturnVisit(
       issuedBook.memberId.toString(),
       issuedBook.bookId.toString()
     );
 
-    // Emit real-time event
-    await this.redisEmitter.emit('ISSUE_RETURNED', savedIssue);
-    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'return', issue: savedIssue });
+    // Emit unified real-time event
+    await this.redisEmitter.emit('ISSUES_UPDATED', { 
+      type: 'return', 
+      issue: savedIssue,
+      bookTitle
+    });
 
     return savedIssue;
   }
