@@ -108,7 +108,7 @@ export class StaffService {
     const skip = (page - 1) * limit;
     
     const [staff, total] = await Promise.all([
-      this.staffModel.find().select('-password').skip(skip).limit(limit).exec(),
+      this.staffModel.find().sort({ createdAt: -1 }).select('-password').skip(skip).limit(limit).exec(),
       this.staffModel.countDocuments().exec(),
     ]);
 

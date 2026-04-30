@@ -72,7 +72,7 @@ export class MembersService {
     const skip = (page - 1) * limit;
     
     const [members, total] = await Promise.all([
-      this.memberModel.find().select('-password').skip(skip).limit(limit).exec(),
+      this.memberModel.find().sort({ createdAt: -1 }).select('-password').skip(skip).limit(limit).exec(),
       this.memberModel.countDocuments().exec(),
     ]);
 
