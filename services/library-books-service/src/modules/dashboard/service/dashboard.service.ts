@@ -65,20 +65,28 @@ export class DashboardService {
   ) { }
 
   async getDashboardStats() {
-    const totalBooks = await this.bookModel.countDocuments();
-    const totalBooksResult = await this.bookModel.aggregate([
-      { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }
+    const [
+      totalBooks,
+      totalBooksResult,
+      issuedBooks,
+      pendingRequests,
+      overdueBooks,
+      totalMembers,
+      newArrivals,
+      todayIssues
+    ] = await Promise.all([
+      this.bookModel.countDocuments(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]),
+      this.getActiveIssuesCount(),
+      this.bookRequestModel.countDocuments({ status: 'Pending' }),
+      this.getOverdueBooksCount(),
+      this.getTotalMembersCount(),
+      this.getNewArrivalsCount(),
+      this.getTodayIssuesCount(),
     ]);
-    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
-    
-    const issuedBooks = await this.getActiveIssuesCount();
-    const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
-    const pendingRequests = await this.bookRequestModel.countDocuments({ status: 'Pending' });
 
-    const overdueBooks = await this.getOverdueBooksCount();
-    const totalMembers = await this.getTotalMembersCount();
-    const newArrivals = await this.getNewArrivalsCount();
-    const todayIssues = await this.getTodayIssuesCount();
+    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
     return {
       totalBooks,
@@ -111,24 +119,29 @@ export class DashboardService {
   }
 
   async getStatCards(authHeader?: string) {
-    const totalBooks = await this.bookModel.countDocuments();
-    const totalBooksResult = await this.bookModel.aggregate([
-      { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }
+    const [
+      totalBooks,
+      totalBooksResult,
+      activeIssues,
+      pendingRequests,
+      overdueBooks,
+      totalMembers,
+      newArrivals,
+      todayIssues
+    ] = await Promise.all([
+      this.bookModel.countDocuments(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]),
+      this.getActiveIssuesCount(),
+      this.getPendingRequestsCount(),
+      this.getOverdueBooksCount(),
+      this.getTotalMembersCount(authHeader),
+      this.getNewArrivalsCount(),
+      this.getTodayIssuesCount(),
     ]);
-    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
 
-    // Calculate available/issued from quantity and issues service
-    const activeIssues = await this.getActiveIssuesCount();
+    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
     const issuedBooks = activeIssues;
     const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
-
-    // Get pending requests from requests service instead of local DB
-    const pendingRequests = await this.getPendingRequestsCount();
-
-    const overdueBooks = await this.getOverdueBooksCount();
-    const totalMembers = await this.getTotalMembersCount(authHeader);
-    const newArrivals = await this.getNewArrivalsCount();
-    const todayIssues = await this.getTodayIssuesCount();
 
     return {
       totalBooks,
