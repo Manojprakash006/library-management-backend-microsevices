@@ -113,6 +113,7 @@ export class RequestsService {
     // Emit real-time event
     await this.redisEmitter.emit('REQUEST_CREATED', savedRequest);
     await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'create', request: savedRequest });
+    await this.invalidatePendingCountCache();
 
     return savedRequest;
   }
@@ -155,39 +156,56 @@ export class RequestsService {
     }
   }
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
+  async findAll(page: number = 1, limit: number = 10, status?: string, search?: string): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
     const skip = (page - 1) * limit;
 
+    const query: any = {};
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim());
+      // Use case-insensitive regex for each status to be 100% sure
+      query.status = { $in: statuses.map(s => new RegExp(`^${s}$`, 'i')) };
+    }
+    
+    if (search) {
+      // In a real app, we might need to search by book title or member name which requires aggregation or pre-enrichment
+      // For now, let's search by requestId or memberId if it matches the pattern
+      query.$or = [
+        { requestId: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } }
+      ];
+    }
+
     const [requests, total] = await Promise.all([
-      this.bookRequestModel.find().sort({ requestDate: -1 }).skip(skip).limit(limit).exec(),
-      this.bookRequestModel.countDocuments().exec(),
+      this.bookRequestModel.find(query).sort({ requestDate: -1 }).skip(skip).limit(limit).lean().exec(),
+      this.bookRequestModel.countDocuments(query).exec(),
     ]);
 
-    // Cache for member borrowing details to avoid redundant API calls within the same request
-    const memberStatsCache = new Map<string, any>();
+    // Fetch all member stats in one go to solve N+1 problem
+    const memberIds = [...new Set(requests.map(r => r.memberId.toString()))];
+    let bulkStats: Record<string, any> = {};
+    
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+      const response = await firstValueFrom(
+        this.httpService.post(`${issuesServiceUrl}/issues/batch-stats`, { memberIds })
+      );
+      bulkStats = response.data?.data || {};
+    } catch (error) {
+      this.logger.error(`Failed to fetch bulk member stats: ${error.message}`);
+    }
 
-    // Enrich each request with real-time member borrowing data
-    const enrichedRequests = await Promise.all(
-      requests.map(async (request) => {
-        const memberId = request.memberId.toString();
-        
-        let memberStats;
-        if (memberStatsCache.has(memberId)) {
-          memberStats = memberStatsCache.get(memberId);
-        } else {
-          memberStats = await this.getMemberBorrowingDetails(memberId);
-          memberStatsCache.set(memberId, memberStats);
-        }
+    const enrichedRequests = requests.map((request) => {
+      const memberId = request.memberId.toString();
+      const stats = bulkStats[memberId] || { currentlyBorrowed: 0, totalHistory: 0, activeBookIds: [], booklistBorrowed: [] };
 
-        return {
-          ...request.toObject(),
-          currentlyBorrowed: memberStats.currentlyBorrowed,
-          totalHistory: memberStats.totalHistory,
-          activeBookIds: memberStats.activeBookIds,
-          booklistBorrowed: memberStats.booklistBorrowed,
-        };
-      })
-    );
+      return {
+        ...request,
+        currentlyBorrowed: stats.currentlyBorrowed,
+        totalHistory: stats.totalHistory,
+        activeBookIds: stats.activeBookIds,
+        booklistBorrowed: stats.booklistBorrowed,
+      };
+    });
 
     return {
       data: enrichedRequests,
@@ -279,6 +297,7 @@ export class RequestsService {
 
     request.status = RequestStatus.CANCELLED;
     request.processedDate = new Date();
+    await this.invalidatePendingCountCache();
     return request.save();
   }
 
@@ -340,6 +359,7 @@ export class RequestsService {
     // Emit real-time event
     await this.redisEmitter.emit('REQUEST_APPROVED', savedRequest);
     await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'approve', request: savedRequest });
+    await this.invalidatePendingCountCache();
 
     return savedRequest;
   }
@@ -383,6 +403,7 @@ export class RequestsService {
     // Emit real-time event
     await this.redisEmitter.emit('REQUEST_REJECTED', savedRequest);
     await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'reject', request: savedRequest });
+    await this.invalidatePendingCountCache();
 
     return savedRequest;
   }
@@ -395,6 +416,34 @@ export class RequestsService {
   }
 
   async getPendingCount(): Promise<number> {
-    return this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING });
+    const cacheKey = 'requests:pending_count';
+    try {
+      // Try to get from Redis first
+      const cachedCount = await (this.redisEmitter as any).redisClient.get(cacheKey);
+      if (cachedCount !== null) {
+        return parseInt(cachedCount, 10);
+      }
+    } catch (e) {
+      this.logger.error(`Redis cache get error: ${e.message}`);
+    }
+
+    const count = await this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING }).exec();
+    
+    try {
+      // Cache for 5 minutes
+      await (this.redisEmitter as any).redisClient.set(cacheKey, count.toString(), 'EX', 300);
+    } catch (e) {
+      this.logger.error(`Redis cache set error: ${e.message}`);
+    }
+
+    return count;
+  }
+
+  private async invalidatePendingCountCache() {
+    try {
+      await (this.redisEmitter as any).redisClient.del('requests:pending_count');
+    } catch (e) {
+      this.logger.error(`Redis cache invalidate error: ${e.message}`);
+    }
   }
 }

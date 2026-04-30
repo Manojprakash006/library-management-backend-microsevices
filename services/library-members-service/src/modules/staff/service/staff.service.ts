@@ -8,6 +8,7 @@ import { CreateStaffDto } from '../dto/create-staff.dto';
 import { UpdateStaffDto } from '../dto/update-staff.dto';
 import { StaffLoginDto } from '../dto/staff-login.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class StaffService {
@@ -15,6 +16,7 @@ export class StaffService {
     @InjectModel(Staff.name) private staffModel: Model<StaffDocument>,
     private jwtService: JwtService,
     private readonly activityLogService: ActivityLogService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   async login(loginDto: StaffLoginDto) {
@@ -101,6 +103,8 @@ export class StaffService {
       });
     }
 
+    await this.redisEmitter.emit('STAFF_UPDATED', { action: 'create', staffId: savedStaff._id });
+
     return savedStaff;
   }
 
@@ -108,7 +112,7 @@ export class StaffService {
     const skip = (page - 1) * limit;
     
     const [staff, total] = await Promise.all([
-      this.staffModel.find().select('-password').skip(skip).limit(limit).exec(),
+      this.staffModel.find().select('-password').sort({ _id: -1 }).skip(skip).limit(limit).exec(),
       this.staffModel.countDocuments().exec(),
     ]);
 
@@ -162,6 +166,8 @@ export class StaffService {
       });
     }
 
+    await this.redisEmitter.emit('STAFF_UPDATED', { action: 'update', staffId: id });
+
     return staff;
   }
 
@@ -180,6 +186,8 @@ export class StaffService {
         details: { email: staff.email }
       });
     }
+
+    await this.redisEmitter.emit('STAFF_UPDATED', { action: 'delete', staffId: id });
 
     return { message: 'Staff deleted successfully' };
   }
