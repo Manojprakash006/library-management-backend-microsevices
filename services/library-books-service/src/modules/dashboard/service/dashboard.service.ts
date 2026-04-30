@@ -325,7 +325,7 @@ export class DashboardService {
 
   async getOverdueBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/overdue`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -335,12 +335,26 @@ export class DashboardService {
       const issues = response.data?.data || [];
       if (issues.length === 0) return [];
 
+      const bookCache = new Map<string, any>();
+      const memberCache = new Map<string, any>();
+
       const populatedIssues = await Promise.all(
         issues.map(async (issue) => {
-          const [book, member] = await Promise.all([
-            this.fetchBookDetails(issue.bookId),
-            this.fetchMemberDetails(issue.memberId, authHeader),
-          ]);
+          let book;
+          if (bookCache.has(issue.bookId)) {
+            book = bookCache.get(issue.bookId);
+          } else {
+            book = await this.fetchBookDetails(issue.bookId);
+            bookCache.set(issue.bookId, book);
+          }
+
+          let member;
+          if (memberCache.has(issue.memberId)) {
+            member = memberCache.get(issue.memberId);
+          } else {
+            member = await this.fetchMemberDetails(issue.memberId, authHeader);
+            memberCache.set(issue.memberId, member);
+          }
 
           return {
             _id: issue._id,
@@ -369,7 +383,7 @@ export class DashboardService {
 
   async getPendingRequests(authHeader?: string): Promise<any[]> {
     try {
-      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://library-requests-service:3014';
       const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
         this.httpService.get(`${requestsServiceUrl}/requests`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -377,13 +391,29 @@ export class DashboardService {
       );
 
       const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
+      if (pendingRequests.length === 0) return [];
+
+      const bookCache = new Map<string, any>();
+      const memberCache = new Map<string, any>();
 
       const populatedRequests = await Promise.all(
         pendingRequests.map(async (req) => {
-          const [book, member] = await Promise.all([
-            this.fetchBookDetails(req.bookId),
-            this.fetchMemberDetails(req.memberId, authHeader),
-          ]);
+          let book;
+          if (bookCache.has(req.bookId)) {
+            book = bookCache.get(req.bookId);
+          } else {
+            book = await this.fetchBookDetails(req.bookId);
+            bookCache.set(req.bookId, book);
+          }
+
+          let member;
+          if (memberCache.has(req.memberId)) {
+            member = memberCache.get(req.memberId);
+          } else {
+            member = await this.fetchMemberDetails(req.memberId, authHeader);
+            memberCache.set(req.memberId, member);
+          }
+
           return {
             ...req,
             book,
