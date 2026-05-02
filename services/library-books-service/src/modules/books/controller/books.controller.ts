@@ -69,6 +69,14 @@ export class BooksController {
   }
 
   @Public()
+  @Get('categories/all')
+  @ApiOperation({ summary: 'Get all unique book categories' })
+  async findAllCategories(): Promise<{ message: string; data: string[] }> {
+    const categories = await this.booksService.findAllCategories();
+    return { message: 'Categories retrieved successfully', data: categories };
+  }
+
+  @Public()
   @Get('/check')
   async checkReview (
       @Query('bookId') bookId: string,

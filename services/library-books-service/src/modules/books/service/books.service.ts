@@ -291,6 +291,11 @@ export class BooksService {
     return this.bookModel.find({ $text: { $search: query } }).exec();
   }
 
+  async findAllCategories(): Promise<string[]> {
+    const categories = await this.bookModel.distinct('category').exec();
+    return categories.sort();
+  }
+
   async findByCategory(category: string): Promise<Book[]> {
     return this.bookModel.find({ category }).exec();
   }
