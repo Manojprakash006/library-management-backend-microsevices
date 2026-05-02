@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { Member, MemberDocument } from '../entities/member.entity';
 import { CreateMemberDto } from '../dto/create-member.dto';
 import { ActivityLogService } from '../../activity-log/service/activity-log.service';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 type MemberWithStats = Member & {
   booksHeld: number;
@@ -25,6 +26,7 @@ export class MembersService {
     @InjectModel(Member.name) private memberModel: Model<MemberDocument>,
     private readonly httpService: HttpService,
     private readonly activityLogService: ActivityLogService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   async create(createMemberDto: CreateMemberDto, adminId?: string): Promise<Member> {
@@ -61,9 +63,10 @@ export class MembersService {
         action: 'CREATE',
         entityType: 'MEMBER',
         entityId: savedMember.memberId || savedMember._id.toString(),
-        details: { email: savedMember.email, name: savedMember.name }
       });
     }
+
+    await this.redisEmitter.emit('MEMBERS_UPDATED', { action: 'create', memberId: savedMember._id });
 
     return savedMember;
   }
@@ -72,7 +75,7 @@ export class MembersService {
     const skip = (page - 1) * limit;
     
     const [members, total] = await Promise.all([
-      this.memberModel.find().sort({ _id: -1 }).select('-password').skip(skip).limit(limit).exec(),
+      this.memberModel.find().select('-password').sort({ _id: -1 }).skip(skip).limit(limit).exec(),
       this.memberModel.countDocuments().exec(),
     ]);
 
@@ -140,6 +143,8 @@ export class MembersService {
       });
 
     }
+
+    await this.redisEmitter.emit('MEMBERS_UPDATED', { action: 'update', memberId: id });
 
     return member;
   }
@@ -211,6 +216,8 @@ export class MembersService {
       });
 
     }
+
+    await this.redisEmitter.emit('MEMBERS_UPDATED', { action: 'delete', memberId: id });
   }
 
   async getActiveMembersCount(): Promise<number> {

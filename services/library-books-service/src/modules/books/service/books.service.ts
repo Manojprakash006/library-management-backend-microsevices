@@ -126,51 +126,66 @@ export class BooksService {
     return savedBook;
   }
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
+  async findAll(page: number = 1, limit: number = 10, search: string = ''): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
     const skip = (page - 1) * limit;
     
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { author: { $regex: search, $options: 'i' } },
+          { isbn: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+
     const [books, total] = await Promise.all([
-      this.bookModel.find().sort({ _id: -1 }).skip(skip).limit(limit).exec(),
-      this.bookModel.countDocuments().exec(),
-    ]);  
- 
+      this.bookModel.find(query).sort({ _id: -1 }).skip(skip).limit(limit).lean().exec(),
+      this.bookModel.countDocuments(query).exec(),
+    ]);
+
     const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
 
-    const updatedBooks = await Promise.all(
-      books.map(async (book) => {
-        try {
-          const issueResponse = await firstValueFrom( this.httpService.get(
-              `${issuesServiceUrl}/issues/count/book/${book._id}`));
+    // Fetch availability in bulk to solve N+1 problem
+    const bookIds = books.map(b => b._id.toString());
+    let availabilityMap: Record<string, number> = {};
+    
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${issuesServiceUrl}/issues/bulk-book-counts`, { bookIds })
+      );
+      availabilityMap = response.data?.counts || {};
+    } catch (error) {
+      this.logger.error(`Failed to fetch bulk availability: ${error.message}`);
+    }
 
-          const issuedCount = issueResponse.data?.count || 0;
+    // Fetch review counts in bulk
+    let reviewCountsMap: Record<string, number> = {};
+    try {
+      const reviewCounts = await this.bookReviewModel.aggregate([
+        { $match: { bookId: { $in: bookIds.map(id => new Types.ObjectId(id)) } } },
+        { $group: { _id: '$bookId', count: { $sum: 1 } } }
+      ]).exec();
+      
+      reviewCountsMap = reviewCounts.reduce((map, item) => {
+        map[item._id.toString()] = item.count;
+        return map;
+      }, {});
+    } catch (error) {
+      this.logger.error(`Failed to fetch bulk review counts: ${error.message}`);
+    }
 
-          const reviews = await this.bookReviewModel.find({
-            bookId: book._id,
-          });
-
-          const totalReviews = reviews.length;
-
-          const rating = book.rating || 0;
-
-          return {
-            ...book.toObject(),
-            available: book.quantity - issuedCount,
-            totalReviews,
-            rating: Number(rating.toFixed(1)),
-          };  
-
-        } catch (error) {
-          console.log("ERROR:", error);
-
-          return {
-            ...book.toObject(),
-            available: book.quantity,
-            totalReviews: 0,
-            rating: 0,
-          };
-        }
-      })
-    );
+    const updatedBooks = books.map((book) => {
+      const issuedCount = availabilityMap[book._id.toString()] || 0;
+      return {
+        ...book,
+        available: (book.quantity || 0) - issuedCount,
+        totalReviews: reviewCountsMap[book._id.toString()] || 0,
+        rating: Number((book.rating || 0).toFixed(1)),
+      };
+    });
 
     return {
       data: updatedBooks,

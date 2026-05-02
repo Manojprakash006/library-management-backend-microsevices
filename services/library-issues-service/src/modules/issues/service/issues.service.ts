@@ -660,21 +660,17 @@ export class IssuesService {
       `Thank you! You have ${actionText} "${bookTitle}" (Book ID: ${bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` A fine of ₹${issuedBook.fine} was calculated for late return.` : ''}`
     );
 
-    this.autoRecordLibraryVisit(
-      issuedBook.memberId.toString(),
-      issuedBook.bookId.toString(),
-      'return'
-    );
-
-    // Record return visit (update timeOut for reading visits)
     this.recordReturnVisit(
       issuedBook.memberId.toString(),
       issuedBook.bookId.toString()
     );
 
-    // Emit real-time event
-    await this.redisEmitter.emit('ISSUE_RETURNED', savedIssue);
-    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'return', issue: savedIssue });
+    // Emit unified real-time event
+    await this.redisEmitter.emit('ISSUES_UPDATED', { 
+      type: 'return', 
+      issue: savedIssue,
+      bookTitle
+    });
 
     return savedIssue;
   }
@@ -827,5 +823,60 @@ export class IssuesService {
     if (adminId) {
       await this.logActivity(adminId, 'DELETE', id, { bookId: result.bookId });
     }
+  }
+  async getBulkMemberStats(memberIds: string[]): Promise<Record<string, any>> {
+    const objectIds = memberIds.map(id => new Types.ObjectId(id));
+    
+    // Find all issues for these members
+    const allIssues = await this.issueBookModel.find({
+      memberId: { $in: objectIds }
+    }).lean().exec();
+
+    const stats: Record<string, any> = {};
+    
+    memberIds.forEach(id => {
+      const memberIssues = allIssues.filter(i => i.memberId.toString() === id);
+      const activeIssues = memberIssues.filter(i => i.status === IssueStatus.ACTIVE || i.status === IssueStatus.OVERDUE);
+      
+      stats[id] = {
+        currentlyBorrowed: activeIssues.length,
+        totalHistory: memberIssues.length,
+        activeBookIds: activeIssues.map(i => i.bookId),
+        booklistBorrowed: activeIssues.map(i => {
+          const dueDate = i.dueDate ? new Date(i.dueDate).toLocaleDateString() : 'N/A';
+          return `${i.bookId} - ${i.issueType} - ${i.status} - Due: ${dueDate}`;
+        })
+      };
+    });
+
+    return stats;
+  }
+
+  async getBulkBookCounts(bookIds: string[]): Promise<Record<string, number>> {
+    const objectIds = bookIds
+      .filter(id => Types.ObjectId.isValid(id))
+      .map(id => new Types.ObjectId(id));
+
+    const results = await this.issueBookModel.aggregate([
+      {
+        $match: {
+          bookId: { $in: objectIds },
+          status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+        }
+      },
+      {
+        $group: {
+          _id: '$bookId',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts: Record<string, number> = {};
+    results.forEach(res => {
+      counts[res._id.toString()] = res.count;
+    });
+
+    return counts;
   }
 }

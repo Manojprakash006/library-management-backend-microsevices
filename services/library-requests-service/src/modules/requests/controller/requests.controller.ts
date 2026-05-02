@@ -30,12 +30,14 @@ export class RequestsController {
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
   async findAll(
     @Query('page') page: string = '1',
-    @Query('limit') limit: string = '10'
+    @Query('limit') limit: string = '10',
+    @Query('status') status?: string,
+    @Query('search') search?: string
   ) {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
 
-    const result = await this.requestsService.findAll(pageNum, limitNum);
+    const result = await this.requestsService.findAll(pageNum, limitNum, status, search);
     return {
       message: 'Book requests retrieved successfully',
       data: result.data,
