@@ -72,6 +72,6 @@ StaffSchema.pre('save', async function (next: () => void) {
   this.staffId = `STF${count + 1}`;
   next();
 });
-
+  
 StaffSchema.index({ email: 1, isActive: 1 });
 StaffSchema.index({ department: 1, status: 1 });
