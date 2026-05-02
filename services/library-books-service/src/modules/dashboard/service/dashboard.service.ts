@@ -170,8 +170,8 @@ export class DashboardService {
     };
 
     try {
-      // Cache for 60 seconds
-      await this.redisEmitter.client.set(cacheKey, JSON.stringify(stats), 'EX', 60);
+      // Cache for 1 second to allow instant updates while preventing accidental DB hammering
+      await this.redisEmitter.client.set(cacheKey, JSON.stringify(stats), 'EX', 1);
     } catch (e) {
       this.logger.error(`Redis cache set error: ${e.message}`);
     }
