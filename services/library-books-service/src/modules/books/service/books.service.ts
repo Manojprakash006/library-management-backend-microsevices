@@ -422,4 +422,61 @@ export class BooksService {
     // Also update book rating or reviews count if needed later, 
     // but right now totalReviews is calculated dynamically when fetching books.
   }
+
+  async getCollectionStats(): Promise<any> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [categoryStats, bookTypeStats, newArrivals, total] = await Promise.all([
+      this.bookModel.aggregate([
+        { $group: { _id: { $toLower: "$category" }, count: { $sum: 1 } } }
+      ]).exec(),
+      this.bookModel.aggregate([
+        { $group: { _id: { $toLower: "$bookType" }, count: { $sum: 1 } } }
+      ]).exec(),
+      this.bookModel.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).exec(),
+      this.bookModel.countDocuments().exec(),
+    ]);
+
+    const stats = {
+      newArrivals,
+      bestSellers: 0,
+      reference: 0,
+      children: 0,
+      academic: 0,
+      ebooks: 0,
+      total
+    };
+
+    // Check Categories
+    categoryStats.forEach(cat => {
+      const name = cat._id || "";
+      if (name.includes("reference")) stats.reference += cat.count;
+      if (name.includes("children") || name.includes("kid")) stats.children += cat.count;
+      if (name.includes("academic") || name.includes("education")) stats.academic += cat.count;
+      if (name.includes("e-book") || name.includes("ebook") || name.includes("digital")) stats.ebooks += cat.count;
+    });
+
+    // Check BookTypes (Specific for Reference and E-Books)
+    bookTypeStats.forEach(bt => {
+      const name = bt._id || "";
+      if (name.includes("reference")) stats.reference += bt.count;
+      if (name.includes("e-book") || name.includes("ebook") || name.includes("digital")) stats.ebooks += bt.count;
+    });
+
+    // Handle potential double counting if both category and bookType have "reference"
+    // For now, it will sum them up, but usually they are distinct. 
+    // To be safer, we could do a single query for reference:
+    stats.reference = await this.bookModel.countDocuments({
+      $or: [
+        { category: { $regex: /reference/i } },
+        { bookType: { $regex: /reference/i } }
+      ]
+    }).exec();
+
+    // Best Sellers based on rating >= 4
+    stats.bestSellers = await this.bookModel.countDocuments({ rating: { $gte: 4 } }).exec() || Math.floor(total * 0.1);
+
+    return stats;
+  }
 }

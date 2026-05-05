@@ -19,6 +19,14 @@ import { Public } from '../../../auth/guards/public.decorator';
 export class BooksController {
   constructor(private readonly booksService: BooksService) { }
 
+  @Public()
+  @Get('public/collection-stats')
+  @ApiOperation({ summary: 'Get book collection stats for landing page' })
+  async getCollectionStats() {
+    const stats = await this.booksService.getCollectionStats();
+    return { message: 'Collection stats retrieved successfully', data: stats };
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new book' })
   @ApiResponse({ status: 201, description: 'Book created successfully', type: Book })
