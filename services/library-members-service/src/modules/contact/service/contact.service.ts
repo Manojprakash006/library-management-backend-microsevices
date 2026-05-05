@@ -6,6 +6,7 @@ import { LibraryConfig, LibraryConfigDocument } from '../entities/library-config
 import { CreateContactMessageDto } from '../dto/contact-message.dto';
 import { NotificationsService } from '../../notifications/service/notifications.service';
 import { EmailService } from '../../notifications/service/email.service';
+import { NotificationsGateway } from '../../notifications/gateway/notifications.gateway';
 
 @Injectable()
 export class ContactService {
@@ -16,6 +17,7 @@ export class ContactService {
     @InjectModel(LibraryConfig.name) private libraryConfigModel: Model<LibraryConfigDocument>,
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async sendReply(id: string, replyMessage: string) {
@@ -100,6 +102,8 @@ export class ContactService {
     } else {
       Object.assign(config, updateData);
     }
-    return config.save();
+    const updatedConfig = await config.save();
+    this.notificationsGateway.emitPublicUpdate('library_info_updated', updatedConfig);
+    return updatedConfig;
   }
 }

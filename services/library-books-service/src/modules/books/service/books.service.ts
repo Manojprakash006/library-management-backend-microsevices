@@ -340,7 +340,12 @@ export class BooksService {
       memberName,
     });
 
-    return review.save();
+    const savedReview = await review.save();
+    
+    // Emit real-time event via Redis
+    await this.redisEmitter.emit('REVIEW_CREATED', savedReview);
+    
+    return savedReview;
   }
 
   async findReviewsByUser(userId: string) {
