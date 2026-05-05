@@ -16,6 +16,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { LibraryVisitsModule } from './modules/library-visits/library-visits.module';
 import { FavouriteModule } from './modules/favourite/favourite.module';
 import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module
     LibraryVisitsModule,
     FavouriteModule,
     RedisEmitterModule,
+    ContactModule,
   ],
 })
 export class AppModule { }

@@ -479,4 +479,43 @@ export class BooksService {
 
     return stats;
   }
+
+  async getTopReviews(): Promise<any[]> {
+    return this.bookReviewModel.aggregate([
+      {
+        $match: {
+          status: 'Published',
+          rating: { $gte: 3 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'books',
+          localField: 'bookId',
+          foreignField: '_id',
+          as: 'book'
+        }
+      },
+      {
+        $unwind: {
+          path: '$book',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          memberName: 1,
+          rating: 1,
+          reviewTitle: 1,
+          review: 1,
+          reviewDate: 1,
+          bookTitle: '$book.title',
+          bookImage: '$book.images'
+        }
+      },
+      { $sort: { reviewDate: -1 } },
+      { $limit: 10 }
+    ]).exec();
+  }
 }

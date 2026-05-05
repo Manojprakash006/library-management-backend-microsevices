@@ -27,6 +27,14 @@ export class BooksController {
     return { message: 'Collection stats retrieved successfully', data: stats };
   }
 
+  @Public()
+  @Get('public/top-reviews')
+  @ApiOperation({ summary: 'Get top book reviews for landing page' })
+  async getTopReviews() {
+    const reviews = await this.booksService.getTopReviews();
+    return { message: 'Top reviews retrieved successfully', data: reviews };
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new book' })
   @ApiResponse({ status: 201, description: 'Book created successfully', type: Book })
