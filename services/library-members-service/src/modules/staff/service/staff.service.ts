@@ -36,7 +36,6 @@ export class StaffService {
       throw new UnauthorizedException('Account is disabled. Please contact admin.');
     }
 
-    // Update status to Active on login
     staff.status = StaffStatus.ACTIVE;
     await staff.save();
 
@@ -68,11 +67,18 @@ export class StaffService {
 
   async logout(staffId: string) {
     const staff = await this.staffModel.findById(staffId);
-    if (staff) {
-      // Update status to Inactive on logout
-      staff.status = StaffStatus.INACTIVE;
-      await staff.save();
+    console.log("logout before save :", staff);
 
+    if(!staff) {
+      throw new NotFoundException("Staff not found");
+    }
+
+    if (staff) {
+      staff.status = StaffStatus.INACTIVE;
+      staff.lastActive = new Date();
+      
+      await staff.save();
+      
       await this.activityLogService.logAction({
         adminId: staff._id.toString(),
         action: 'STAFF_LOGOUT',
@@ -202,5 +208,13 @@ export class StaffService {
       activeStaff,
       inactiveStaff,
     };
+  }
+
+  async updateLastActive(userId: string) {
+    if (userId) {
+      await this.staffModel.findByIdAndUpdate(userId, {
+        lastActive: new Date()}, 
+      {timestamps: false,});
+    }
   }
 }

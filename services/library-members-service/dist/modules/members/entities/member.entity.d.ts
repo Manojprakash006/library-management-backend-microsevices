@@ -30,5 +30,7 @@ export declare class Member {
         status: 'borrowed' | 'returned' | 'overdue';
         fine: number;
     }>;
+    resetPasswordToken: string;
+    resetPasswordExpires: Date;
 }
 export declare const MemberSchema: any;

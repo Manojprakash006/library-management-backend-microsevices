@@ -5,12 +5,14 @@ import { MembersController } from './controller/members.controller';
 import { MembersService } from './service/members.service';
 import { Member, MemberSchema } from './entities/member.entity';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
+import { StaffModule } from '../staff/staff.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Member.name, schema: MemberSchema }]),
     HttpModule,
     ActivityLogModule,
+    StaffModule,
   ],
   controllers: [MembersController],
   providers: [MembersService],

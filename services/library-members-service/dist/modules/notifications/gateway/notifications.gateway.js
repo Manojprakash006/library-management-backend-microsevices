@@ -31,10 +31,16 @@ let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
                 return;
             }
             const payload = this.jwtService.verify(token);
-            const userId = payload.userId;
+            const userId = payload.userId || payload.id || payload.sub;
+            if (!userId) {
+                this.logger.warn('Token verified but no userId found');
+                client.disconnect();
+                return;
+            }
             this.userSockets.set(userId, client.id);
             client.join(`user_${userId}`);
-            this.logger.log(`Client connected: ${userId} (${client.id})`);
+            client.join(userId);
+            this.logger.log(`Client connected and joined rooms: user_${userId}, ${userId} (${client.id})`);
             client.emit('connected', { message: 'Connected to notifications', userId });
         }
         catch (error) {
@@ -64,14 +70,15 @@ let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
         client.emit('subscribed', { channels: payload.channels });
     }
     sendNotificationToUser(userId, notification) {
-        this.server.to(`user_${userId}`).emit('newNotification', notification);
-        this.logger.log(`Notification sent to user ${userId}`);
+        this.server.to(`user_${userId}`).to(userId).emit('newNotification', notification);
+        this.logger.log(`Notification sent to user ${userId} in rooms user_${userId} and ${userId}`);
     }
     broadcastNotification(notification) {
         this.server.emit('broadcastNotification', notification);
     }
     sendUnreadCount(userId, count) {
-        this.server.to(`user_${userId}`).emit('unreadCount', { count });
+        this.server.to(`user_${userId}`).to(userId).emit('unreadCount', count);
+        this.server.to(`user_${userId}`).to(userId).emit('unreadCountData', { count });
     }
     getUserIdFromSocket(socketId) {
         for (const [userId, id] of this.userSockets.entries()) {

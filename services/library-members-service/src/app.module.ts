@@ -16,6 +16,8 @@ import { AdminModule } from './modules/admin/admin.module';
 import { LibraryVisitsModule } from './modules/library-visits/library-visits.module';
 import { FavouriteModule } from './modules/favourite/favourite.module';
 import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -38,6 +40,12 @@ import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module
     LibraryVisitsModule,
     FavouriteModule,
     RedisEmitterModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    }
   ],
 })
 export class AppModule { }

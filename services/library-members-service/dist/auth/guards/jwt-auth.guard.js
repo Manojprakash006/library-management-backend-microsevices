@@ -14,11 +14,13 @@ const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const jwt = require("jsonwebtoken");
 const public_decorator_1 = require("./public.decorator");
+const staff_service_1 = require("../../modules/staff/service/staff.service");
 let JwtAuthGuard = class JwtAuthGuard {
-    constructor(reflector) {
+    constructor(reflector, staffService) {
         this.reflector = reflector;
+        this.staffService = staffService;
     }
-    canActivate(context) {
+    async canActivate(context) {
         const isPublic = this.reflector.getAllAndOverride(public_decorator_1.IS_PUBLIC_KEY, [
             context.getHandler(),
             context.getClass(),
@@ -40,6 +42,10 @@ let JwtAuthGuard = class JwtAuthGuard {
         }
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret');
+            const userId = decoded.id || decoded.userId;
+            if (userId) {
+                await this.staffService.updateLastActive(userId);
+            }
             request['user'] = { id: decoded.id || decoded.userId, role: decoded.role };
             return true;
         }
@@ -54,6 +60,7 @@ let JwtAuthGuard = class JwtAuthGuard {
 exports.JwtAuthGuard = JwtAuthGuard;
 exports.JwtAuthGuard = JwtAuthGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [core_1.Reflector])
+    __metadata("design:paramtypes", [core_1.Reflector,
+        staff_service_1.StaffService])
 ], JwtAuthGuard);
 //# sourceMappingURL=jwt-auth.guard.js.map

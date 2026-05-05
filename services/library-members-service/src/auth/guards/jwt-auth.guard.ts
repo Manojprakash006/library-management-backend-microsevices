@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { IS_PUBLIC_KEY } from './public.decorator';
+import { StaffService } from '../../modules/staff/service/staff.service';
 
 interface JwtPayload {
   id?: string;
@@ -12,9 +13,11 @@ interface JwtPayload {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private staffService: StaffService) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -49,3 +52,4 @@ export class JwtAuthGuard implements CanActivate {
     }
   }
 }
+

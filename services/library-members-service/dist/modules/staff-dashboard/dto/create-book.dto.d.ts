@@ -17,4 +17,5 @@ export declare class CreateBookDto {
     status?: string;
     description?: string;
     quantity?: number;
+    rating?: number;
 }

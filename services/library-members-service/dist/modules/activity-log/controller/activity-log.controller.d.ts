@@ -6,8 +6,8 @@ export declare class ActivityLogController {
     constructor(activityLogService: ActivityLogService);
     createLog(createActivityLogDto: CreateActivityLogDto, res: Response): Promise<Response<any, Record<string, any>>>;
     getLogs(page?: number, limit?: number, adminId?: string, action?: string, entityType?: string, res?: Response): Promise<{
-        data: import("../entities/activity-log.entity").ActivityLog[];
+        data: any[];
         count: number;
     } | Response<any, Record<string, any>>>;
-    getRecentLogs(limit?: number, res?: Response): Promise<import("../entities/activity-log.entity").ActivityLog[] | Response<any, Record<string, any>>>;
+    getRecentLogs(limit?: number, res?: Response): Promise<any[] | Response<any, Record<string, any>>>;
 }

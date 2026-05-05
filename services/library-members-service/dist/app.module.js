@@ -23,6 +23,10 @@ const staff_dashboard_module_1 = require("./modules/staff-dashboard/staff-dashbo
 const activity_log_module_1 = require("./modules/activity-log/activity-log.module");
 const admin_module_1 = require("./modules/admin/admin.module");
 const library_visits_module_1 = require("./modules/library-visits/library-visits.module");
+const favourite_module_1 = require("./modules/favourite/favourite.module");
+const redis_emitter_module_1 = require("./modules/redis-emitter/redis-emitter.module");
+const jwt_auth_guard_1 = require("./auth/guards/jwt-auth.guard");
+const core_1 = require("@nestjs/core");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -46,6 +50,14 @@ exports.AppModule = AppModule = __decorate([
             activity_log_module_1.ActivityLogModule,
             admin_module_1.AdminModule,
             library_visits_module_1.LibraryVisitsModule,
+            favourite_module_1.FavouriteModule,
+            redis_emitter_module_1.RedisEmitterModule,
+        ],
+        providers: [
+            {
+                provide: core_1.APP_GUARD,
+                useClass: jwt_auth_guard_1.JwtAuthGuard,
+            }
         ],
     })
 ], AppModule);

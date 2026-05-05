@@ -35,7 +35,7 @@ let RolesGuard = class RolesGuard {
         }
         const { user } = context.switchToHttp().getRequest();
         if (!user || !requiredRoles.includes(user.role)) {
-            throw new common_1.UnauthorizedException('Not authorized for this role');
+            throw new common_1.ForbiddenException('Access denied');
         }
         return true;
     }

@@ -12,6 +12,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const library_visits_controller_1 = require("./controller/library-visits.controller");
 const library_visits_service_1 = require("./service/library-visits.service");
 const library_visit_entity_1 = require("./entities/library-visit.entity");
+const notifications_module_1 = require("../notifications/notifications.module");
 let LibraryVisitsModule = class LibraryVisitsModule {
 };
 exports.LibraryVisitsModule = LibraryVisitsModule;
@@ -21,6 +22,7 @@ exports.LibraryVisitsModule = LibraryVisitsModule = __decorate([
             mongoose_1.MongooseModule.forFeature([
                 { name: library_visit_entity_1.LibraryVisit.name, schema: library_visit_entity_1.LibraryVisitSchema },
             ]),
+            notifications_module_1.NotificationsModule,
         ],
         controllers: [library_visits_controller_1.LibraryVisitsController],
         providers: [library_visits_service_1.LibraryVisitsService],

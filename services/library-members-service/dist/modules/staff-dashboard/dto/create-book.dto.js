@@ -131,4 +131,12 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], CreateBookDto.prototype, "quantity", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Book rating from 0 to 5', required: false, minimum: 0, maximum: 5, default: 0 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(5),
+    __metadata("design:type", Number)
+], CreateBookDto.prototype, "rating", void 0);
 //# sourceMappingURL=create-book.dto.js.map

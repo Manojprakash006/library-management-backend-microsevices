@@ -44,9 +44,18 @@ let StaffController = class StaffController {
         const stats = await this.staffService.getStats();
         return { message: 'Staff statistics retrieved successfully', data: stats };
     }
-    async getAllStaff() {
-        const result = await this.staffService.findAll();
-        return { message: 'Staff retrieved successfully', data: result, count: result.length };
+    async getAllStaff(page = '1', limit = '10') {
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 10;
+        const result = await this.staffService.findAll(pageNum, limitNum);
+        return {
+            message: 'Staff retrieved successfully',
+            data: result.data,
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages
+        };
     }
     async getStaffById(id) {
         const result = await this.staffService.findById(id);
@@ -115,8 +124,10 @@ __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get all staff' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Staff retrieved successfully' }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], StaffController.prototype, "getAllStaff", null);
 __decorate([
