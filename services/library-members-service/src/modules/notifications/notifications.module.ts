@@ -13,6 +13,7 @@ import { Member, MemberSchema } from '../members/entities/member.entity';
 import { User, UserSchema } from '../auth/entities/user.entity';
 import { WebPushService } from './service/web-push.service';
 import { PushSubscription, PushSubscriptionSchema } from './schema/push-subscription.schema';
+import { LibraryConfig, LibraryConfigSchema } from '../contact/entities/library-config.entity';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PushSubscription, PushSubscriptionSchema } from './schema/push-subscrip
       { name: Member.name, schema: MemberSchema },
       { name: User.name, schema: UserSchema },
       { name: PushSubscription.name, schema: PushSubscriptionSchema },
+      { name: LibraryConfig.name, schema: LibraryConfigSchema },
     ]),
   ],
   controllers: [NotificationsController],

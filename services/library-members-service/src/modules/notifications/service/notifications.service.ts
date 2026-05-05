@@ -13,6 +13,7 @@ import { NotificationsGateway } from '../gateway/notifications.gateway';
 import { NotificationType } from '../entities/notification.entity';
 import { WebPushService } from './web-push.service';
 import { PushSubscription } from '../schema/push-subscription.schema';
+import { LibraryConfig, LibraryConfigDocument } from '../../contact/entities/library-config.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -27,6 +28,8 @@ export class NotificationsService {
     private userModel: Model<UserDocument>,
     @InjectModel(PushSubscription.name)
     private pushSubscriptionModel: Model<PushSubscription>,
+    @InjectModel(LibraryConfig.name)
+    private libraryConfigModel: Model<LibraryConfigDocument>,
     private readonly emailService: EmailService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly httpService: HttpService,
@@ -41,6 +44,20 @@ export class NotificationsService {
     } catch (error) {
       this.logger.error(`Failed to fetch book details: ${error.message}`);
       return null;
+    }
+  }
+
+  private async getLibraryInfo(): Promise<LibraryConfig> {
+    try {
+      let config = await this.libraryConfigModel.findOne().exec();
+      if (!config) {
+        config = new this.libraryConfigModel({});
+        await config.save();
+      }
+      return config;
+    } catch (error) {
+      this.logger.error(`Failed to fetch library info: ${error.message}`);
+      return {} as any;
     }
   }
 
@@ -222,6 +239,11 @@ export class NotificationsService {
       if (type.includes('REJECT') || type.includes('OVERDUE')) { color = '#ef4444'; icon = '⚠️'; }
       if (type.includes('DUE') || type.includes('FINE')) { color = '#f59e0b'; icon = '⏳'; }
 
+
+      // Fetch Library Name for Footer
+      const libConfig = await this.getLibraryInfo();
+      const libName = libConfig?.libraryName || 'Modern Library Management System';
+
       // Build Beautiful HTML Template Wrapper
       const htmlTemplate = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9fa; padding: 20px; border-radius: 10px;">
@@ -236,11 +258,11 @@ export class NotificationsService {
             ${message}
           </div>
           <p style="font-size: 14px; color: #777; margin-top: 30px;">
-            If you have any questions, feel free to reply to this email or contact the librarian.
+            If you have any questions, feel free to reply to this email or contact the librarian at ${libConfig?.email || 'the library'}.
           </p>
           <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0 15px 0;">
           <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
-            &copy; ${new Date().getFullYear()} Modern Library Management System. All rights reserved.
+            &copy; ${new Date().getFullYear()} ${libName}. All rights reserved.
           </p>
         </div>
       </div>
