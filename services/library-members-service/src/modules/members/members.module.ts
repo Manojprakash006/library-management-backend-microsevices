@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { MembersController } from './controller/members.controller';
+import { PublicStatsController } from './controller/public-stats.controller';
 import { MembersService } from './service/members.service';
 import { Member, MemberSchema } from './entities/member.entity';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
@@ -12,7 +13,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     HttpModule,
     ActivityLogModule,
   ],
-  controllers: [MembersController],
+  controllers: [MembersController, PublicStatsController],
   providers: [MembersService],
   exports: [MembersService],
 })
