@@ -18,7 +18,7 @@ export class ContactService {
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
     private readonly notificationsGateway: NotificationsGateway,
-  ) {}
+  ) { }
 
   async sendReply(id: string, replyMessage: string) {
     const message = await this.contactMessageModel.findById(id).exec();
@@ -46,15 +46,15 @@ export class ContactService {
     `;
 
     await this.emailService.sendEmail(message.email, subject, html);
-    
+
     // Update status and save reply details in DB
     return this.contactMessageModel.findByIdAndUpdate(
-      id, 
-      { 
+      id,
+      {
         status: 'replied',
         replyMessage,
         repliedAt: new Date()
-      }, 
+      },
       { new: true }
     ).exec();
   }
@@ -66,6 +66,12 @@ export class ContactService {
 
       // Notify Staff about new contact message
       await this.notificationsService.notifyStaff({
+        title: 'New Contact Message',
+        message: `From: ${createDto.name} (${createDto.email}). Subject: ${createDto.subject}`,
+        type: 'CONTACT_MESSAGE'
+      });
+
+      await this.notificationsService.notifyAdmins({
         title: 'New Contact Message',
         message: `From: ${createDto.name} (${createDto.email}). Subject: ${createDto.subject}`,
         type: 'CONTACT_MESSAGE'
