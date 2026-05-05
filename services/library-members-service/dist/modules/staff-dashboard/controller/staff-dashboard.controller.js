@@ -45,6 +45,11 @@ let StaffDashboardController = class StaffDashboardController {
         const result = await this.staffDashboardService.getStatCards();
         return { message: 'Stat cards retrieved successfully', data: result };
     }
+    async getBooksAddedTodayList(req) {
+        const authHeader = req.headers['authorization'];
+        const result = await this.staffDashboardService.getBooksAddedTodayList(authHeader);
+        return { message: 'Books added today list', data: result };
+    }
     async getBooksAddedToday(req) {
         const authHeader = req.headers['authorization'];
         const result = await this.staffDashboardService.getBooksAddedToday(authHeader);
@@ -57,32 +62,43 @@ let StaffDashboardController = class StaffDashboardController {
     }
     async createBook(bookData, req) {
         const authHeader = req.headers['authorization'];
-        const staffId = req.user?.userId || req.user?.id;
+        const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
         const result = await this.staffDashboardService.createBook(bookData, staffId, authHeader);
         return { message: 'Book created successfully', data: result };
     }
     async getMyActivitySummary(req) {
-        const result = await this.staffDashboardService.getMyActivitySummary(req.user.userId || req.user.id);
+        const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+        const result = await this.staffDashboardService.getMyActivitySummary(staffId);
         return { message: 'Activity summary retrieved successfully', data: result };
     }
+    async getMyContribution(req) {
+        const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+        const result = await this.staffDashboardService.getMyContribution(staffId);
+        return { message: 'My contribution retrieved successfully', data: result };
+    }
     async getMyProfile(req) {
-        const result = await this.staffDashboardService.getMyProfile(req.user.userId || req.user.id);
+        const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+        const result = await this.staffDashboardService.getMyProfile(staffId);
         return { message: 'Profile retrieved', data: result };
     }
-    async getBooksByCategory() {
-        const result = await this.staffDashboardService.getBooksByCategory();
+    async getBooksByCategory(req) {
+        const authHeader = req.headers['authorization'];
+        const result = await this.staffDashboardService.getBooksByCategory(authHeader);
         return { message: 'Books by category retrieved', data: result };
     }
-    async getRackUtilization() {
-        const result = await this.staffDashboardService.getRackUtilization();
+    async getRackUtilization(req) {
+        const authHeader = req.headers['authorization'];
+        const result = await this.staffDashboardService.getRackUtilization(authHeader);
         return { message: 'Rack utilization retrieved', data: result };
     }
-    async getBooksStatusDistribution() {
-        const result = await this.staffDashboardService.getBooksStatusDistribution();
+    async getBooksStatusDistribution(req) {
+        const authHeader = req.headers['authorization'];
+        const result = await this.staffDashboardService.getBooksStatusDistribution(authHeader);
         return { message: 'Books status distribution retrieved', data: result };
     }
-    async getTodaysVisitors() {
-        const result = await this.staffDashboardService.getTodaysVisitors();
+    async getTodaysVisitors(req) {
+        const authHeader = req.headers['authorization'];
+        const result = await this.staffDashboardService.getTodaysVisitors(authHeader);
         return { message: 'Today\'s visitors retrieved', count: result.length, data: result };
     }
     async getTodaysIssues(req) {
@@ -134,6 +150,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getStaffStatCards", null);
 __decorate([
+    (0, common_1.Get)('books-added-today-list'),
+    (0, roles_decorator_1.Roles)('staff'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get books added today list' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], StaffDashboardController.prototype, "getBooksAddedTodayList", null);
+__decorate([
     (0, common_1.Get)('books-added-today'),
     (0, roles_decorator_1.Roles)('staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get books added today' }),
@@ -174,6 +199,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getMyActivitySummary", null);
 __decorate([
+    (0, common_1.Get)('my-contribution'),
+    (0, roles_decorator_1.Roles)('staff'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get my contribution' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], StaffDashboardController.prototype, "getMyContribution", null);
+__decorate([
     (0, common_1.Get)('my-profile'),
     (0, roles_decorator_1.Roles)('staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get my profile' }),
@@ -186,32 +220,36 @@ __decorate([
     (0, common_1.Get)('books-by-category'),
     (0, roles_decorator_1.Roles)('staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get books by category' }),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getBooksByCategory", null);
 __decorate([
     (0, common_1.Get)('rack-utilization'),
     (0, roles_decorator_1.Roles)('staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get rack utilization' }),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getRackUtilization", null);
 __decorate([
     (0, common_1.Get)('books-status-distribution'),
     (0, roles_decorator_1.Roles)('staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get books status distribution' }),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getBooksStatusDistribution", null);
 __decorate([
     (0, common_1.Get)('todays-visitors'),
     (0, roles_decorator_1.Roles)('staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Get todays library visitors' }),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getTodaysVisitors", null);
 __decorate([

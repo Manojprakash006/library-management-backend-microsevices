@@ -19,6 +19,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const member_entity_1 = require("../../members/entities/member.entity");
 const email_service_1 = require("../../notifications/service/email.service");
 let MemberAuthService = class MemberAuthService {
@@ -29,7 +30,7 @@ let MemberAuthService = class MemberAuthService {
     }
     async register(registerDto) {
         const { email, password, name, phone, address } = registerDto;
-        console.log("log from member-auth dist folder :", registerDto);
+        console.log("log from member auth service for registerDto :", registerDto);
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             throw new common_1.ConflictException('Valid email is required');
         }
@@ -53,6 +54,7 @@ let MemberAuthService = class MemberAuthService {
             address,
         });
         await member.save();
+        console.log("register log :", member.save());
         const token = this.jwtService.sign({
             userId: member._id,
             email: member.email,
@@ -113,18 +115,32 @@ let MemberAuthService = class MemberAuthService {
         if (!member) {
             throw new common_1.UnauthorizedException('Email not found');
         }
-        const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+        member.resetPasswordToken = tokenHash;
+        member.resetPasswordExpires = new Date(Date.now() + 3600000);
+        await member.save();
         await this.emailService.sendPasswordResetEmail(member.email, member.name, resetToken);
         return {
             message: 'Password reset instructions sent to email',
-            email: member.email,
         };
     }
     async resetPassword(token, newPassword) {
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const member = await this.memberModel.findOne({
+            resetPasswordToken: tokenHash,
+            resetPasswordExpires: { $gt: new Date() },
+        });
+        if (!member) {
+            throw new common_1.UnauthorizedException('Invalid or expired reset token');
+        }
         if (!newPassword || newPassword.length < 6) {
             throw new common_1.ConflictException('Password must be at least 6 characters');
         }
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        member.password = newPassword;
+        member.resetPasswordToken = undefined;
+        member.resetPasswordExpires = undefined;
+        await member.save();
         return {
             message: 'Password reset successfully',
         };

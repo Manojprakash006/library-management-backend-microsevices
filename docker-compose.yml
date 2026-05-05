@@ -19,7 +19,7 @@ services:
       - library-payments-service
     networks:
       - app-network
-    restart: unless-stopped
+    restart: unless-stopped 
 
   # Redis for Real-time Updates
   redis:

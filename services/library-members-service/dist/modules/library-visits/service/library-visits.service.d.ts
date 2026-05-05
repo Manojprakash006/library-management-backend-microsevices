@@ -1,10 +1,14 @@
 import { Model, Types } from 'mongoose';
 import { LibraryVisit, LibraryVisitDocument } from '../entities/library-visit.entity';
 import { CheckInDto, CheckOutDto } from '../dto/library-visit.dto';
+import { NotificationsService } from '../../notifications/service/notifications.service';
 export declare class LibraryVisitsService {
     private libraryVisitModel;
+    private readonly notificationsService;
     private readonly logger;
-    constructor(libraryVisitModel: Model<LibraryVisitDocument>);
+    constructor(libraryVisitModel: Model<LibraryVisitDocument>, notificationsService: NotificationsService);
+    private getMemberDetails;
+    private getBookTitle;
     checkIn(checkInDto: CheckInDto): Promise<{
         message: string;
         data: import("mongoose").Document<unknown, {}, LibraryVisitDocument, {}, {}> & LibraryVisit & import("mongoose").Document<Types.ObjectId, any, any, Record<string, any>, {}> & Required<{

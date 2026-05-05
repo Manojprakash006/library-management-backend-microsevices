@@ -19,10 +19,12 @@ const jwt_1 = require("@nestjs/jwt");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const user_entity_1 = require("../entities/user.entity");
+const staff_entity_1 = require("../../staff/entities/staff.entity");
 const activity_log_service_1 = require("../../activity-log/service/activity-log.service");
 let AuthService = class AuthService {
-    constructor(userModel, jwtService, activityLogService) {
+    constructor(userModel, staffModel, jwtService, activityLogService) {
         this.userModel = userModel;
+        this.staffModel = staffModel;
         this.jwtService = jwtService;
         this.activityLogService = activityLogService;
     }
@@ -46,6 +48,13 @@ let AuthService = class AuthService {
                 details: { email: user.email }
             });
         }
+        if (user.role === 'staff') {
+            const staff = await this.staffModel.findOne({ email: user.email });
+            if (staff) {
+                staff.status = staff_entity_1.StaffStatus.ACTIVE;
+                await staff.save();
+            }
+        }
         return {
             token,
             user: { id: user._id, name: user.name, email: user.email, role: user.role },
@@ -67,7 +76,21 @@ let AuthService = class AuthService {
     async refreshToken() {
         return { message: 'Refresh token not implemented' };
     }
-    async logout() {
+    async logout(userId, role) {
+        if (role === 'staff') {
+            const staff = await this.staffModel.findById(userId);
+            if (staff) {
+                staff.status = staff_entity_1.StaffStatus.INACTIVE;
+                await staff.save();
+                await this.activityLogService.logAction({
+                    adminId: userId,
+                    action: 'STAFF_LOGOUT',
+                    entityType: 'AUTH',
+                    entityId: userId,
+                    details: { email: staff.email, fullName: staff.fullName }
+                });
+            }
+        }
         return { message: 'Logged out' };
     }
 };
@@ -75,6 +98,8 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(user_entity_1.User.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model, typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
+    __param(1, (0, mongoose_1.InjectModel)(staff_entity_1.Staff.name)),
+    __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model, typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

@@ -10,6 +10,11 @@ export declare enum NotificationType {
     NEW_BOOK_ADDED = "NEW_BOOK_ADDED",
     BOOK_ISSUED = "BOOK_ISSUED",
     BOOK_RETURNED = "BOOK_RETURNED",
+    VISITOR_IN = "VISITOR_IN",
+    VISITOR_OUT = "VISITOR_OUT",
+    PAYMENT_SUCCESS = "PAYMENT_SUCCESS",
+    PAYMENT_RECEIVED = "PAYMENT_RECEIVED",
+    FINE_ADDED = "FINE_ADDED",
     GENERAL = "GENERAL"
 }
 export declare class Notification {

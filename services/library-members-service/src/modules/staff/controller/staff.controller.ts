@@ -7,15 +7,14 @@ import { StaffLoginDto } from '../dto/staff-login.dto';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { extname } from 'path';
-import { diskStorage } from 'multer';
+import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiTags('Staff')
 @Controller('staff')
 export class StaffController {
   constructor(private readonly staffService: StaffService) { }
 
+  @Public()
   @Post('login')
   @ApiOperation({ summary: 'Staff login' })
   @ApiResponse({ status: 200, description: 'Login successful' })

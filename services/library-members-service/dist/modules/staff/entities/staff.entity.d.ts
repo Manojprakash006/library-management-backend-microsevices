@@ -20,6 +20,8 @@ export declare class Staff {
     qualification: string;
     address: string;
     emergencyContact: string;
+    department: string;
     isActive: boolean;
+    lastActive: Date;
 }
 export declare const StaffSchema: any;

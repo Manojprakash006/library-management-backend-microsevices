@@ -21,11 +21,13 @@ const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcrypt");
 const staff_entity_1 = require("../entities/staff.entity");
 const activity_log_service_1 = require("../../activity-log/service/activity-log.service");
+const redis_emitter_service_1 = require("../../redis-emitter/redis-emitter.service");
 let StaffService = class StaffService {
-    constructor(staffModel, jwtService, activityLogService) {
+    constructor(staffModel, jwtService, activityLogService, redisEmitter) {
         this.staffModel = staffModel;
         this.jwtService = jwtService;
         this.activityLogService = activityLogService;
+        this.redisEmitter = redisEmitter;
     }
     async login(loginDto) {
         const { email, password } = loginDto;
@@ -37,6 +39,12 @@ let StaffService = class StaffService {
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        if (!staff.isActive) {
+            throw new common_1.UnauthorizedException('Account is disabled. Please contact admin.');
+        }
+        await this.staffModel.findByIdAndUpdate(staff._id, { lastActive: new Date() }, { timestamps: false });
+        staff.status = staff_entity_1.StaffStatus.ACTIVE;
+        await staff.save();
         const token = this.jwtService.sign({
             userId: staff._id,
             email: staff.email,
@@ -62,6 +70,8 @@ let StaffService = class StaffService {
     async logout(staffId) {
         const staff = await this.staffModel.findById(staffId);
         if (staff) {
+            staff.status = staff_entity_1.StaffStatus.INACTIVE;
+            await staff.save();
             await this.activityLogService.logAction({
                 adminId: staff._id.toString(),
                 action: 'STAFF_LOGOUT',
@@ -88,10 +98,22 @@ let StaffService = class StaffService {
                 details: { email: savedStaff.email, fullName: savedStaff.fullName }
             });
         }
+        await this.redisEmitter.emit('STAFF_UPDATED', { action: 'create', staffId: savedStaff._id });
         return savedStaff;
     }
-    async findAll() {
-        return this.staffModel.find().select('-password');
+    async findAll(page = 1, limit = 10) {
+        const skip = (page - 1) * limit;
+        const [staff, total] = await Promise.all([
+            this.staffModel.find().select('-password').sort({ _id: -1 }).skip(skip).limit(limit).exec(),
+            this.staffModel.countDocuments().exec(),
+        ]);
+        return {
+            data: staff,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
     async findById(id) {
         const staff = await this.staffModel.findById(id).select('-password');
@@ -101,6 +123,16 @@ let StaffService = class StaffService {
         return staff;
     }
     async update(id, updateDto, adminId) {
+        if (updateDto.email) {
+            const existingStaff = await this.staffModel.findOne({ email: updateDto.email, _id: { $ne: id } });
+            if (existingStaff) {
+                throw new common_1.ConflictException('Email already registered');
+            }
+        }
+        if (updateDto.password) {
+            const salt = await bcrypt.genSalt(10);
+            updateDto.password = await bcrypt.hash(updateDto.password, salt);
+        }
         const staff = await this.staffModel.findByIdAndUpdate(id, { $set: updateDto }, { new: true, runValidators: true }).select('-password');
         if (!staff) {
             throw new common_1.NotFoundException('Staff not found');
@@ -114,6 +146,7 @@ let StaffService = class StaffService {
                 details: { updatedFields: Object.keys(updateDto) }
             });
         }
+        await this.redisEmitter.emit('STAFF_UPDATED', { action: 'update', staffId: id });
         return staff;
     }
     async delete(id, adminId) {
@@ -130,6 +163,7 @@ let StaffService = class StaffService {
                 details: { email: staff.email }
             });
         }
+        await this.redisEmitter.emit('STAFF_UPDATED', { action: 'delete', staffId: id });
         return { message: 'Staff deleted successfully' };
     }
     async getStats() {
@@ -142,11 +176,19 @@ let StaffService = class StaffService {
             inactiveStaff,
         };
     }
+    async updateLastActive(userId) {
+        if (userId) {
+            await this.staffModel.findByIdAndUpdate(userId, {
+                lastActive: new Date(),
+            });
+        }
+    }
 };
 exports.StaffService = StaffService;
 exports.StaffService = StaffService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(staff_entity_1.Staff.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model, typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
+    __metadata("design:paramtypes", [mongoose_2.Model, typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService,
+        redis_emitter_service_1.RedisEmitterService])
 ], StaffService);
 //# sourceMappingURL=staff.service.js.map

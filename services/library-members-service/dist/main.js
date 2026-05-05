@@ -7,13 +7,17 @@ const swagger_1 = require("@nestjs/swagger");
 const path_1 = require("path");
 const app_module_1 = require("./app.module");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
+const redis_io_adapter_1 = require("./redis-io.adapter");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const redisIoAdapter = new redis_io_adapter_1.RedisIoAdapter(app);
+    await redisIoAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisIoAdapter);
     app.connectMicroservice({
         transport: microservices_1.Transport.GRPC,
         options: {
             package: 'library.members',
-            protoPath: (0, path_1.join)(__dirname, './proto/members.proto'),
+            protoPath: (0, path_1.join)(process.cwd(), 'proto/members.proto'),
             url: process.env.GRPC_URL || '0.0.0.0:5002',
         },
     });
