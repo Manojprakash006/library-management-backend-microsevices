@@ -45,7 +45,7 @@ export declare class StaffController {
             inactiveStaff: number;
         };
     }>;
-    getAllStaff(): Promise<{
+    getAllStaff(page?: string, limit?: string): Promise<{
         message: string;
         data: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("../entities/staff.entity").Staff, {}, {}> & import("../entities/staff.entity").Staff & {
             _id: import("mongoose").Types.ObjectId;
@@ -58,7 +58,10 @@ export declare class StaffController {
         } & Required<{
             _id: import("mongoose").Types.ObjectId;
         }>)[];
-        count: number;
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }>;
     getStaffById(id: string): Promise<{
         message: string;

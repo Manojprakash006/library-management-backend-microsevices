@@ -41,7 +41,6 @@ export declare class MemberAuthController {
         message: string;
         data: {
             message: string;
-            email: string;
         };
     }>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{

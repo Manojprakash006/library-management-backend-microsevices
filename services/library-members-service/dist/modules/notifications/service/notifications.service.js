@@ -12,47 +12,94 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 var NotificationsService_1;
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
+const member_entity_1 = require("../../members/entities/member.entity");
+const user_entity_1 = require("../../auth/entities/user.entity");
 const axios_1 = require("@nestjs/axios");
 const rxjs_1 = require("rxjs");
 const schedule_1 = require("@nestjs/schedule");
 const notification_entity_1 = require("../entities/notification.entity");
 const email_service_1 = require("./email.service");
 const notifications_gateway_1 = require("../gateway/notifications.gateway");
+const notification_entity_2 = require("../entities/notification.entity");
+const web_push_service_1 = require("./web-push.service");
+const push_subscription_schema_1 = require("../schema/push-subscription.schema");
 let NotificationsService = NotificationsService_1 = class NotificationsService {
-    constructor(notificationModel, emailService, notificationsGateway, httpService) {
+    constructor(notificationModel, memberModel, userModel, pushSubscriptionModel, emailService, notificationsGateway, httpService, webPushService) {
         this.notificationModel = notificationModel;
+        this.memberModel = memberModel;
+        this.userModel = userModel;
+        this.pushSubscriptionModel = pushSubscriptionModel;
         this.emailService = emailService;
         this.notificationsGateway = notificationsGateway;
         this.httpService = httpService;
+        this.webPushService = webPushService;
         this.logger = new common_1.Logger(NotificationsService_1.name);
+    }
+    async getBookDetails(bookId) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
+            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+            return response.data?.data || response.data;
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch book details: ${error.message}`);
+            return null;
+        }
     }
     async create(createNotificationDto) {
         let { memberId, issueId, type, title, message, memberEmail, memberName } = createNotificationDto;
         if (!memberEmail || !memberName) {
             try {
-                const MemberSchema = this.notificationModel.db.model('Member');
-                const member = await MemberSchema.findById(memberId).exec();
+                const member = await this.memberModel.findById(memberId).exec();
                 if (member) {
                     memberEmail = memberEmail || member.email;
                     memberName = memberName || member.name;
                 }
                 else {
-                    const UserSchema = this.notificationModel.db.model('User');
-                    const user = await UserSchema.findById(memberId).exec();
-                    if (user) {
-                        memberEmail = memberEmail || user.email;
-                        memberName = memberName || user.name;
+                    const StaffSchema = this.notificationModel.db.model('Staff');
+                    const staff = await StaffSchema.findById(memberId).exec();
+                    if (staff) {
+                        memberEmail = memberEmail || staff.email;
+                        memberName = memberName || staff.fullName || staff.name;
+                    }
+                    else {
+                        const user = await this.userModel.findById(memberId).exec();
+                        if (user) {
+                            memberEmail = memberEmail || user.email;
+                            memberName = memberName || user.name;
+                        }
                     }
                 }
             }
             catch (err) {
                 this.logger.error(`Could not fetch user/member details for notification: ${err.message}`);
+            }
+        }
+        if (issueId && !message.includes('"')) {
+            try {
+                let bookIdToFetch = issueId;
+                try {
+                    const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+                    const issueResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/${issueId}`));
+                    if (issueResponse.data?.bookId) {
+                        bookIdToFetch = issueResponse.data.bookId;
+                    }
+                }
+                catch (err) {
+                }
+                const book = await this.getBookDetails(bookIdToFetch);
+                if (book?.title) {
+                    message = message.replace(`ID: ${bookIdToFetch}`, `"${book.title}" (ID: ${bookIdToFetch})`);
+                    message = message.replace(`ID: ${issueId}`, `"${book.title}" (ID: ${issueId})`);
+                }
+            }
+            catch (e) {
+                this.logger.error(`Failed to enrich notification: ${e.message}`);
             }
         }
         const createdNotification = new this.notificationModel({
@@ -71,6 +118,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         if (memberEmail && memberName) {
             await this.sendEmailNotification(memberEmail, memberName, title, message, type);
         }
+        await this.sendPushToUser(memberId.toString(), { title, message, type });
         return savedNotification;
     }
     async getUnreadCount(memberId) {
@@ -81,8 +129,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     }
     async notifyAdmins(payload) {
         try {
-            const UserSchema = this.notificationModel.db.model('User');
-            const admins = await UserSchema.find({ role: 'admin' }).exec();
+            const admins = await this.userModel.find({ role: 'admin' }).exec();
             for (const admin of admins) {
                 await this.create({
                     memberId: admin._id.toString(),
@@ -100,11 +147,59 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             this.logger.error(`Failed to notify admins: ${err.message}`);
         }
     }
+    async notifyStaff(payload) {
+        try {
+            const StaffSchema = this.notificationModel.db.model('Staff');
+            const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian'] } }).exec();
+            const allStaffToNotify = [
+                ...staffMembers.map(s => ({ _id: s._id, email: s.email, name: s.fullName || s.name }))
+            ];
+            for (const staff of allStaffToNotify) {
+                await this.create({
+                    memberId: staff._id.toString(),
+                    title: payload.title,
+                    message: payload.message,
+                    type: payload.type,
+                    issueId: payload.issueId,
+                    memberEmail: staff.email,
+                    memberName: staff.name
+                });
+            }
+            this.logger.log(`Notified ${allStaffToNotify.length} staff members about: ${payload.title}`);
+        }
+        catch (err) {
+            this.logger.error(`Failed to notify staff: ${err.message}`);
+        }
+    }
+    async notifyMembers(payload) {
+        try {
+            const MemberSchema = this.notificationModel.db.model('Member');
+            const members = await MemberSchema.find().exec();
+            const allMembersToNotify = [
+                ...members.map(m => ({ _id: m._id, email: m.email, name: m.name }))
+            ];
+            for (const member of allMembersToNotify) {
+                await this.create({
+                    memberId: member._id.toString(),
+                    title: payload.title,
+                    message: payload.message,
+                    type: payload.type,
+                    issueId: payload.issueId,
+                    memberEmail: member.email,
+                    memberName: member.name
+                });
+            }
+            this.logger.log(`Notified ${allMembersToNotify.length} members about: ${payload.title}`);
+        }
+        catch (err) {
+            this.logger.error(`Failed to notify members: ${err.message}`);
+        }
+    }
     async sendEmailNotification(email, name, title, message, type) {
         try {
             let color = '#4f46e5';
             let icon = '🔔';
-            if (type.includes('APPROVE') || type.includes('ADDED') || type.includes('ISSUE')) {
+            if (type.includes('APPROVE') || type.includes('ADDED') || type.includes('ISSUE') || type.includes('PAYMENT')) {
                 color = '#10b981';
                 icon = '✅';
             }
@@ -112,7 +207,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 color = '#ef4444';
                 icon = '⚠️';
             }
-            if (type.includes('DUE')) {
+            if (type.includes('DUE') || type.includes('FINE')) {
                 color = '#f59e0b';
                 icon = '⏳';
             }
@@ -210,17 +305,23 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 if (issue.status !== 'Active' || !issue.dueDate)
                     return false;
                 const due = new Date(issue.dueDate);
-                const diffTime = due.getTime() - today.getTime();
+                const todayCopy = new Date(today);
+                todayCopy.setHours(0, 0, 0, 0);
+                const dueCopy = new Date(due);
+                dueCopy.setHours(0, 0, 0, 0);
+                const diffTime = dueCopy.getTime() - todayCopy.getTime();
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 return diffDays >= 0 && diffDays <= 1;
             });
             for (const issue of dueIssues) {
+                const book = await this.getBookDetails(issue.bookId);
+                const bookInfo = book?.title ? `"${book.title}" (ID: ${issue.bookId})` : `Book ID: ${issue.bookId}`;
                 await this.create({
                     memberId: issue.memberId,
                     issueId: issue._id,
-                    type: 'DUE_REMINDER',
-                    title: 'Book Due Reminder',
-                    message: `Friendly reminder: Your borrowed book (ID: ${issue.bookId}) is due soon on ${new Date(issue.dueDate).toLocaleDateString()}. Please return it to avoid fines.`,
+                    type: notification_entity_2.NotificationType.DUE_REMINDER,
+                    title: 'Upcoming Due Date Reminder',
+                    message: `Friendly reminder: Your borrowed book ${bookInfo} is due soon on ${new Date(issue.dueDate).toLocaleDateString()}. Please return it to avoid fines.`,
                 });
                 count++;
             }
@@ -239,12 +340,14 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/overdue`));
             const overdueIssues = response.data?.data || [];
             for (const issue of overdueIssues) {
+                const book = await this.getBookDetails(issue.bookId);
+                const bookInfo = book?.title ? `"${book.title}" (ID: ${issue.bookId})` : `Book ID: ${issue.bookId}`;
                 await this.create({
                     memberId: issue.memberId,
                     issueId: issue._id,
-                    type: 'OVERDUE',
+                    type: notification_entity_2.NotificationType.OVERDUE,
                     title: 'Immediate Action: Book Overdue!',
-                    message: `URGENT: Your borrowed book (ID: ${issue.bookId}) was due on ${new Date(issue.dueDate).toLocaleDateString()} and is now OVERDUE. Fines are accumulating. Please return immediately.`,
+                    message: `URGENT: Your borrowed book ${bookInfo} was due on ${new Date(issue.dueDate).toLocaleDateString()} and is now OVERDUE. Fines are accumulating. Please return immediately.`,
                 });
                 count++;
             }
@@ -254,6 +357,24 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             this.logger.error(`Automated overdue reminder failed: ${error.message}`);
         }
         return { message: 'Overdue notifications processed successfully', count };
+    }
+    async savePushSubscription(userId, subscription) {
+        await this.pushSubscriptionModel.findOneAndUpdate({ userId, 'subscription.endpoint': subscription.endpoint }, { userId, subscription }, { upsert: true, new: true }).exec();
+        this.logger.log(`Saved push subscription for user: ${userId}`);
+    }
+    async sendPushToUser(userId, payload) {
+        try {
+            const subscriptions = await this.pushSubscriptionModel.find({ userId }).exec();
+            for (const sub of subscriptions) {
+                const result = await this.webPushService.sendNotification(sub.subscription, payload);
+                if (result.shouldDelete) {
+                    await this.pushSubscriptionModel.findByIdAndDelete(sub._id).exec();
+                }
+            }
+        }
+        catch (err) {
+            this.logger.error(`Failed to send web push notifications: ${err.message}`);
+        }
     }
 };
 exports.NotificationsService = NotificationsService;
@@ -272,8 +393,16 @@ __decorate([
 exports.NotificationsService = NotificationsService = NotificationsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(notification_entity_1.Notification.name)),
+    __param(1, (0, mongoose_1.InjectModel)(member_entity_1.Member.name)),
+    __param(2, (0, mongoose_1.InjectModel)(user_entity_1.User.name)),
+    __param(3, (0, mongoose_1.InjectModel)(push_subscription_schema_1.PushSubscription.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
         email_service_1.EmailService,
-        notifications_gateway_1.NotificationsGateway, typeof (_a = typeof axios_1.HttpService !== "undefined" && axios_1.HttpService) === "function" ? _a : Object])
+        notifications_gateway_1.NotificationsGateway,
+        axios_1.HttpService,
+        web_push_service_1.WebPushService])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

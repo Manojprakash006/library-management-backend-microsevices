@@ -10,6 +10,10 @@ import { Notification, NotificationDocument } from '../entities/notification.ent
 import { CreateNotificationDto, UpdateNotificationDto } from '../dto/create-notification.dto';
 import { EmailService } from './email.service';
 import { NotificationsGateway } from '../gateway/notifications.gateway';
+import { NotificationType } from '../entities/notification.entity';
+import { WebPushService } from './web-push.service';
+import { PushSubscription } from '../schema/push-subscription.schema';
+import { LibraryConfig, LibraryConfigDocument } from '../../contact/entities/library-config.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -22,10 +26,40 @@ export class NotificationsService {
     private memberModel: Model<MemberDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
+    @InjectModel(PushSubscription.name)
+    private pushSubscriptionModel: Model<PushSubscription>,
+    @InjectModel(LibraryConfig.name)
+    private libraryConfigModel: Model<LibraryConfigDocument>,
     private readonly emailService: EmailService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly httpService: HttpService,
+    private readonly webPushService: WebPushService,
   ) { }
+
+  private async getBookDetails(bookId: string): Promise<any> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
+      const response = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+      return response.data?.data || response.data;
+    } catch (error) {
+      this.logger.error(`Failed to fetch book details: ${error.message}`);
+      return null;
+    }
+  }
+
+  private async getLibraryInfo(): Promise<LibraryConfig> {
+    try {
+      let config = await this.libraryConfigModel.findOne().exec();
+      if (!config) {
+        config = new this.libraryConfigModel({});
+        await config.save();
+      }
+      return config;
+    } catch (error) {
+      this.logger.error(`Failed to fetch library info: ${error.message}`);
+      return {} as any;
+    }
+  }
 
   async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
     let { memberId, issueId, type, title, message, memberEmail, memberName } = createNotificationDto;
@@ -58,6 +92,32 @@ export class NotificationsService {
       }
     }
 
+    // Smart Enrichment: Fetch Book Title if not provided in message but issueId/bookId is available
+    if (issueId && !message.includes('"')) {
+       try {
+         let bookIdToFetch = issueId;
+         
+         // Try to see if it's an issue first
+         try {
+           const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+           const issueResponse = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues/${issueId}`));
+           if (issueResponse.data?.bookId) {
+             bookIdToFetch = issueResponse.data.bookId;
+           }
+         } catch (err) {
+           // Not an issue ID, maybe it's a direct book ID
+         }
+
+         const book = await this.getBookDetails(bookIdToFetch);
+         if (book?.title) {
+           message = message.replace(`ID: ${bookIdToFetch}`, `"${book.title}" (ID: ${bookIdToFetch})`);
+           // Also handle cases where it was passed as Issue ID in the string
+           message = message.replace(`ID: ${issueId}`, `"${book.title}" (ID: ${issueId})`);
+         }
+       } catch (e) {
+         this.logger.error(`Failed to enrich notification: ${e.message}`);
+       }
+    }
     const createdNotification = new this.notificationModel({
       memberId: new Types.ObjectId(memberId),
       issueId: issueId ? new Types.ObjectId(issueId) : undefined,
@@ -81,6 +141,9 @@ export class NotificationsService {
     if (memberEmail && memberName) {
       await this.sendEmailNotification(memberEmail, memberName, title, message, type);
     }
+
+    // Send Web Push notification
+    await this.sendPushToUser(memberId.toString(), { title, message, type });
 
     return savedNotification;
   }
@@ -117,7 +180,7 @@ export class NotificationsService {
     try {
       // Fetch staff from Staff collection
       const StaffSchema = this.notificationModel.db.model('Staff');
-      const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian'] } }).exec();
+      const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian', 'admin'] } }).exec();
       
       const allStaffToNotify = [
         ...staffMembers.map(s => ({ _id: s._id, email: s.email, name: s.fullName || s.name }))
@@ -176,6 +239,11 @@ export class NotificationsService {
       if (type.includes('REJECT') || type.includes('OVERDUE')) { color = '#ef4444'; icon = '⚠️'; }
       if (type.includes('DUE') || type.includes('FINE')) { color = '#f59e0b'; icon = '⏳'; }
 
+
+      // Fetch Library Name for Footer
+      const libConfig = await this.getLibraryInfo();
+      const libName = libConfig?.libraryName || 'Modern Library Management System';
+
       // Build Beautiful HTML Template Wrapper
       const htmlTemplate = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9fa; padding: 20px; border-radius: 10px;">
@@ -190,11 +258,11 @@ export class NotificationsService {
             ${message}
           </div>
           <p style="font-size: 14px; color: #777; margin-top: 30px;">
-            If you have any questions, feel free to reply to this email or contact the librarian.
+            If you have any questions, feel free to reply to this email or contact the librarian at ${libConfig?.email || 'the library'}.
           </p>
           <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0 15px 0;">
           <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
-            &copy; ${new Date().getFullYear()} Modern Library Management System. All rights reserved.
+            &copy; ${new Date().getFullYear()} ${libName}. All rights reserved.
           </p>
         </div>
       </div>
@@ -297,18 +365,26 @@ export class NotificationsService {
       const dueIssues = allIssues.filter((issue: any) => {
         if (issue.status !== 'Active' || !issue.dueDate) return false;
         const due = new Date(issue.dueDate);
-        const diffTime = due.getTime() - today.getTime();
+        const todayCopy = new Date(today);
+        todayCopy.setHours(0, 0, 0, 0);
+        const dueCopy = new Date(due);
+        dueCopy.setHours(0, 0, 0, 0);
+        
+        const diffTime = dueCopy.getTime() - todayCopy.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays >= 0 && diffDays <= 1; // Due today or tomorrow
       });
 
       for (const issue of dueIssues) {
+        const book = await this.getBookDetails(issue.bookId);
+        const bookInfo = book?.title ? `"${book.title}" (ID: ${issue.bookId})` : `Book ID: ${issue.bookId}`;
+
         await this.create({
           memberId: issue.memberId,
           issueId: issue._id,
-          type: 'DUE_REMINDER' as any,
-          title: 'Book Due Reminder',
-          message: `Friendly reminder: Your borrowed book (ID: ${issue.bookId}) is due soon on ${new Date(issue.dueDate).toLocaleDateString()}. Please return it to avoid fines.`,
+          type: NotificationType.DUE_REMINDER,
+          title: 'Upcoming Due Date Reminder',
+          message: `Friendly reminder: Your borrowed book ${bookInfo} is due soon on ${new Date(issue.dueDate).toLocaleDateString()}. Please return it to avoid fines.`,
         });
         count++;
       }
@@ -329,12 +405,15 @@ export class NotificationsService {
       const overdueIssues = response.data?.data || [];
 
       for (const issue of overdueIssues) {
+        const book = await this.getBookDetails(issue.bookId);
+        const bookInfo = book?.title ? `"${book.title}" (ID: ${issue.bookId})` : `Book ID: ${issue.bookId}`;
+
         await this.create({
           memberId: issue.memberId,
           issueId: issue._id,
-          type: 'OVERDUE' as any,
+          type: NotificationType.OVERDUE,
           title: 'Immediate Action: Book Overdue!',
-          message: `URGENT: Your borrowed book (ID: ${issue.bookId}) was due on ${new Date(issue.dueDate).toLocaleDateString()} and is now OVERDUE. Fines are accumulating. Please return immediately.`,
+          message: `URGENT: Your borrowed book ${bookInfo} was due on ${new Date(issue.dueDate).toLocaleDateString()} and is now OVERDUE. Fines are accumulating. Please return immediately.`,
         });
         count++;
       }
@@ -343,5 +422,30 @@ export class NotificationsService {
       this.logger.error(`Automated overdue reminder failed: ${error.message}`);
     }
     return { message: 'Overdue notifications processed successfully', count };
+  }
+
+  async savePushSubscription(userId: string, subscription: any): Promise<void> {
+    // Upsert subscription
+    await this.pushSubscriptionModel.findOneAndUpdate(
+      { userId, 'subscription.endpoint': subscription.endpoint },
+      { userId, subscription },
+      { upsert: true, new: true }
+    ).exec();
+    this.logger.log(`Saved push subscription for user: ${userId}`);
+  }
+
+  async sendPushToUser(userId: string, payload: { title: string; message: string; type: string }): Promise<void> {
+    try {
+      const subscriptions = await this.pushSubscriptionModel.find({ userId }).exec();
+      
+      for (const sub of subscriptions) {
+        const result = await this.webPushService.sendNotification(sub.subscription, payload);
+        if (result.shouldDelete) {
+          await this.pushSubscriptionModel.findByIdAndDelete(sub._id).exec();
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Failed to send web push notifications: ${err.message}`);
+    }
   }
 }

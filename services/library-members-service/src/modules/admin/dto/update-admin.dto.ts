@@ -22,4 +22,10 @@ export class UpdateAdminDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @ApiProperty({ description: 'Admin password', required: false })
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }

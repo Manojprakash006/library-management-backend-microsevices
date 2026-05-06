@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { Model, Types } from 'mongoose';
 import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -8,6 +9,7 @@ const Razorpay = require('razorpay');
 import { Fine, FineDocument, FineStatus, PaymentMethod } from '../entities/fine.entity';
 
 import { CreateFineDto } from '../dto/create-fine.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class FinesService {
@@ -17,6 +19,7 @@ export class FinesService {
   constructor(
     @InjectModel(Fine.name) private fineModel: Model<FineDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) {
     this.razorpayInstance = new Razorpay({
       key_id: process.env.RZP_KEY_ID || 'rzp_test_SaDCl7Au48PRQf',
@@ -24,44 +27,68 @@ export class FinesService {
     });
   }
 
-  private async sendPaymentNotification(memberId: string | Types.ObjectId, amount: number, referenceId: string) {
+  private async sendPaymentNotification(memberId: string | Types.ObjectId, amount: number, referenceId: string, bookId?: string) {
     const memberIdStr = memberId.toString();
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+
+      // Fetch Book and Member details
+      let bookTitle = 'Book';
+      let memberName = 'Member';
+      try {
+        const [bookRes, memberRes] = await Promise.all([
+          bookId ? firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`)) : Promise.resolve(null),
+          firstValueFrom(this.httpService.get(`${membersServiceUrl}/members/${memberIdStr}`))
+        ]);
+        if (bookRes) bookTitle = bookRes.data?.data?.title || 'Book';
+        memberName = memberRes.data?.name || memberRes.data?.data?.name || 'Member';
+      } catch (e) {
+        this.logger.error(`Failed to fetch details for notification: ${e.message}`);
+      }
 
       // Notify Member
       await this.httpService.post(`${membersServiceUrl}/notifications`, {
         memberId: memberIdStr,
         type: 'PAYMENT_SUCCESS',
         title: 'Payment Successful',
-        message: `Your payment of ₹${amount} has been successfully received. Reference ID: ${referenceId}`,
+        message: `Hi ${memberName}, your payment of ₹${amount} for "${bookTitle}" has been successfully received. Reference ID: ${referenceId}`,
       }).toPromise();
-      this.logger.log(`Payment notification sent for member ${memberIdStr}`);
 
       // Notify Admin
       await this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
         type: 'PAYMENT_RECEIVED',
         title: 'New Payment Received',
-        message: `Member (ID: ${memberIdStr}) has paid a fine of ₹${amount}. Reference ID: ${referenceId}`,
+        message: `Member ${memberName} (ID: ${memberIdStr}) has paid a fine of ₹${amount} for "${bookTitle}". Reference ID: ${referenceId}`,
       }).toPromise();
-      this.logger.log(`Payment notification sent to admins for member ${memberIdStr}`);
 
     } catch (error) {
       this.logger.error(`Failed to send payment notification: ${error.message}`);
     }
   }
 
-  private async sendFineCreationNotification(memberId: string | Types.ObjectId, amount: number, reason: string) {
+  private async sendFineCreationNotification(memberId: string | Types.ObjectId, amount: number, reason: string, bookId?: string) {
     const memberIdStr = memberId.toString();
     try {
       const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+
+      let bookTitle = 'Book';
+      if (bookId) {
+        try {
+          const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+          bookTitle = bookRes.data?.data?.title || 'Book';
+        } catch (e) {
+          this.logger.error(`Failed to fetch book title: ${e.message}`);
+        }
+      }
+
       await this.httpService.post(`${membersServiceUrl}/notifications`, {
         memberId: memberIdStr,
         type: 'FINE_ADDED',
         title: 'New Fine Added',
-        message: `A new fine of ₹${amount} has been added to your account. Reason: ${reason}. Please pay it as soon as possible.`,
+        message: `Dear member, a fine of ₹${amount} has been added for "${bookTitle}". Reason: ${reason}. Please clear it at your earliest convenience.`,
       }).toPromise();
-      this.logger.log(`Fine creation notification sent for member ${memberIdStr}`);
     } catch (error) {
       this.logger.error(`Failed to send fine creation notification: ${error.message}`);
     }
@@ -75,7 +102,11 @@ export class FinesService {
     const savedFine = await newFine.save();
 
     // Fire and forget notification
-    this.sendFineCreationNotification(savedFine.memberId.toString(), savedFine.amount, savedFine.reason);
+    this.sendFineCreationNotification(savedFine.memberId.toString(), savedFine.amount, savedFine.reason, savedFine.bookId?.toString());
+
+    // Emit real-time event
+    await this.redisEmitter.emit('FINE_CREATED', savedFine);
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'create', fine: savedFine });
 
     return savedFine;
   }
@@ -134,7 +165,11 @@ export class FinesService {
     await fine.save();
 
     // Fire and forget notification
-    this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId || fine._id.toString());
+    this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId || fine._id.toString(), fine.bookId?.toString());
+
+    // Emit real-time event
+    await this.redisEmitter.emit('FINE_PAID', fine);
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'pay', fine });
 
     return fine;
   }
@@ -201,7 +236,11 @@ export class FinesService {
     await fine.save();
 
     // Fire and forget notification
-    this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId);
+    this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId, fine.bookId?.toString());
+
+    // Emit real-time event
+    await this.redisEmitter.emit('FINE_PAID', fine);
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'pay', fine });
 
     return fine;
   }

@@ -29,25 +29,36 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       const token = client.handshake.auth.token || client.handshake.query.token as string;
       
       if (!token) {
-        this.logger.warn('Client connected without token');
-        client.disconnect();
+        this.logger.log(`Public client connected: ${client.id}`);
+        client.join('public');
+        client.emit('connected', { message: 'Connected to public notifications' });
         return;
       }
 
       const payload = this.jwtService.verify(token);
-      const userId = payload.userId;
+      const userId = payload.userId || payload.id || payload.sub;
+
+      if (!userId) {
+        this.logger.log(`Public client connected (invalid token): ${client.id}`);
+        client.join('public');
+        client.emit('connected', { message: 'Connected to public notifications' });
+        return;
+      }
 
       // Store socket connection
       this.userSockets.set(userId, client.id);
       client.join(`user_${userId}`);
+      client.join(userId);
+      client.join('public');
 
-      this.logger.log(`Client connected: ${userId} (${client.id})`);
+      this.logger.log(`Client connected and joined rooms: user_${userId}, ${userId}, public (${client.id})`);
       
       // Send confirmation
       client.emit('connected', { message: 'Connected to notifications', userId });
     } catch (error) {
-      this.logger.error(`Connection error: ${error.message}`);
-      client.disconnect();
+      this.logger.error(`Connection error: ${error.message}. Connecting as public.`);
+      client.join('public');
+      client.emit('connected', { message: 'Connected to public notifications' });
     }
   }
 
@@ -80,18 +91,26 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   // Method to send notification to specific user
   sendNotificationToUser(userId: string, notification: any) {
-    this.server.to(`user_${userId}`).emit('newNotification', notification);
-    this.logger.log(`Notification sent to user ${userId}`);
+    this.server.to(`user_${userId}`).to(userId).emit('newNotification', notification);
+    this.logger.log(`Notification sent to user ${userId} in rooms user_${userId} and ${userId}`);
   }
 
-  // Method to broadcast to all connected clients
+  // Method to broadcast to all connected clients (including public)
   broadcastNotification(notification: any) {
     this.server.emit('broadcastNotification', notification);
+    this.server.to('public').emit('broadcastNotification', notification);
+  }
+
+  // Method to emit public updates (e.g. library info, new books)
+  emitPublicUpdate(event: string, data: any) {
+    this.server.to('public').emit(event, data);
+    this.logger.log(`Public update emitted: ${event}`);
   }
 
   // Method to send unread count update
   sendUnreadCount(userId: string, count: number) {
-    this.server.to(`user_${userId}`).emit('unreadCount', { count });
+    this.server.to(`user_${userId}`).to(userId).emit('unreadCount', count);
+    this.server.to(`user_${userId}`).to(userId).emit('unreadCountData', { count });
   }
 
   private getUserIdFromSocket(socketId: string): string | null {

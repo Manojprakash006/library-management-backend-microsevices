@@ -5,6 +5,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { IssueBook, IssueBookDocument, IssueStatus, IssueType } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class IssuesService {
@@ -13,6 +14,7 @@ export class IssuesService {
   constructor(
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   private calculateOverdue(issue: any): any {
@@ -44,6 +46,64 @@ export class IssuesService {
     }
 
     return updatedIssue;
+  }
+
+  onModuleInit() {
+    // Start automatic background checker for overdue books
+    // Run every 1 hour (3600000 ms)
+    setInterval(() => {
+      this.checkAllOverdueBooks().catch(err => 
+        this.logger.error('Automatic overdue check failed', err)
+      );
+    }, 3600000);
+    
+    this.logger.log('Automatic Overdue Checker started (Every 1 hour)');
+  }
+
+  async checkAllOverdueBooks() {
+    const today = new Date();
+    // Find all active/overdue books that are past their due date
+    const issues = await this.issueBookModel.find({
+      status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] },
+      issueType: IssueType.TAKING_HOME,
+      dueDate: { $lt: today }
+    }).exec();
+
+    if (issues.length === 0) return;
+
+    this.logger.log(`Found ${issues.length} potential overdue issues. Updating...`);
+
+    for (const issue of issues) {
+      const updatedIssue = this.calculateOverdue(issue.toObject());
+      
+      // If status changed to Overdue or if we just want to refresh the stats
+      if (updatedIssue.status === IssueStatus.OVERDUE) {
+        const wasAlreadyOverdue = issue.status === IssueStatus.OVERDUE;
+        
+        await this.issueBookModel.findByIdAndUpdate(issue._id, { 
+          status: IssueStatus.OVERDUE,
+          daysOverdue: updatedIssue.daysOverdue,
+          fine: updatedIssue.fine
+        });
+        
+        // Only notify if it's a NEW overdue or if we want periodic reminders
+        if (!wasAlreadyOverdue) {
+          let bookTitle = 'A book';
+          try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`));
+            bookTitle = bookRes.data?.data?.title || 'A book';
+          } catch (e) {}
+
+          await this.redisEmitter.emit('ISSUES_UPDATED', { 
+            type: 'status_change', 
+            status: IssueStatus.OVERDUE,
+            bookTitle: bookTitle,
+            issue: { ...updatedIssue, _id: issue._id } 
+          });
+        }
+      }
+    }
   }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
@@ -273,15 +333,22 @@ export class IssuesService {
     if (adminId) {
       this.logActivity(adminId, 'ISSUE_BOOK', savedIssue._id.toString(), {
         bookId: createIssueDto.bookId,
-        memberId: createIssueDto.memberId
+        memberId: createIssueDto.memberId,
+        bookTitle: bookData?.title,
+        memberName: createIssueDto.memberName || 'Member'
       });
     }
+
+
+    const isReadingInside = createIssueDto.issueType === 'Reading Inside Library';
+    const actionTextCreate = isReadingInside ? 'started reading' : 'borrowed';
+    const titleTextCreate = isReadingInside ? 'Reading Session Started' : 'Book Borrowed Successfully';
 
     this.sendNotification(
       createIssueDto.memberId,
       'BOOK_ISSUED',
-      'Book Issued Successfully',
-      `You have successfully borrowed the book (ID: ${createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy reading inside the library!'}`
+      titleTextCreate,
+      `Dear member, you have ${actionTextCreate} "${bookData.title}" (Book ID: ${bookData.bookId || createIssueDto.bookId}). ${dueDate ? `Please make sure to return it by ${dueDate.toLocaleDateString()} to avoid any fines.` : 'Enjoy your reading session inside the library!'}`
     );
 
     this.autoRecordLibraryVisit(
@@ -289,6 +356,10 @@ export class IssuesService {
       createIssueDto.bookId,
       createIssueDto.issueType
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('ISSUE_CREATED', savedIssue);
+    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'create', issue: savedIssue });
 
     return savedIssue;
   }
@@ -384,10 +455,36 @@ export class IssuesService {
 
     const today = new Date();
 
-    const data = issuedBooks.map((issue) => {
-      const issueObj = issue.toObject();
-      return this.calculateOverdue(issueObj);
-    });
+    const data = await Promise.all(issuedBooks.map(async (issue) => {
+      const updatedIssue = this.calculateOverdue(issue.toObject());
+      
+      // If status changed to Overdue, save it to DB and emit event
+      if (updatedIssue.status === IssueStatus.OVERDUE && issue.status !== IssueStatus.OVERDUE) {
+        await this.issueBookModel.findByIdAndUpdate(issue._id, { 
+          status: IssueStatus.OVERDUE,
+          daysOverdue: updatedIssue.daysOverdue,
+          fine: updatedIssue.fine
+        });
+        
+        // Fetch basic details for the notification
+        let bookTitle = 'A book';
+        try {
+          const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+          const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`));
+          bookTitle = bookRes.data?.data?.title || 'A book';
+        } catch (e) {}
+
+        // Emit event for real-time notification
+        await this.redisEmitter.emit('ISSUES_UPDATED', { 
+          type: 'status_change', 
+          status: IssueStatus.OVERDUE,
+          bookTitle: bookTitle,
+          issue: { ...updatedIssue, _id: issue._id } 
+        });
+      }
+      
+      return updatedIssue;
+    }));
 
     return {
       data,
@@ -531,32 +628,49 @@ export class IssuesService {
       )
     ]);
 
+    // Fetch book title for notifications and logging
+    let bookTitle = 'Book';
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+      bookTitle = bookResponse.data?.data?.title || 'Book';
+    } catch (e) {
+      this.logger.error(`Failed to fetch book title for notification: ${e.message}`);
+    }
+
     // Fire and forget non-critical operations (don't await)
     if (adminId) {
       this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
         bookId: issuedBook.bookId,
-        memberId: issuedBook.memberId
+        memberId: issuedBook.memberId,
+        bookTitle: bookTitle,
+        memberName: 'Member'
       });
     }
+
+
+    const isReadingInside = issuedBook.issueType === 'Reading Inside Library';
+    const actionText = isReadingInside ? 'finished reading' : 'successfully returned';
+    const titleText = isReadingInside ? 'Reading Session Completed' : 'Book Returned Successfully';
 
     this.sendNotification(
       issuedBook.memberId.toString(),
       'BOOK_RETURNED',
-      'Book Returned Successfully',
-      `Thank you! You have successfully returned the book (ID: ${issuedBook.bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` Note: A fine of rs ${issuedBook.fine} was calculated for late return.` : ''}`
+      titleText,
+      `Thank you! You have ${actionText} "${bookTitle}" (Book ID: ${bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` A fine of ₹${issuedBook.fine} was calculated for late return.` : ''}`
     );
 
-    this.autoRecordLibraryVisit(
-      issuedBook.memberId.toString(),
-      issuedBook.bookId.toString(),
-      'return'
-    );
-
-    // Record return visit (update timeOut for reading visits)
     this.recordReturnVisit(
       issuedBook.memberId.toString(),
       issuedBook.bookId.toString()
     );
+
+    // Emit unified real-time event
+    await this.redisEmitter.emit('ISSUES_UPDATED', { 
+      type: 'return', 
+      issue: savedIssue,
+      bookTitle
+    });
 
     return savedIssue;
   }
@@ -689,6 +803,10 @@ export class IssuesService {
 
     await issue.save();
 
+    // Emit real-time event
+    await this.redisEmitter.emit('ISSUE_RENEWED', issue);
+    await this.redisEmitter.emit('ISSUES_UPDATED', { type: 'renew', issue });
+
     return {
       message: 'Book renewed successfully',
       newDueDate,
@@ -705,5 +823,60 @@ export class IssuesService {
     if (adminId) {
       await this.logActivity(adminId, 'DELETE', id, { bookId: result.bookId });
     }
+  }
+  async getBulkMemberStats(memberIds: string[]): Promise<Record<string, any>> {
+    const objectIds = memberIds.map(id => new Types.ObjectId(id));
+    
+    // Find all issues for these members
+    const allIssues = await this.issueBookModel.find({
+      memberId: { $in: objectIds }
+    }).lean().exec();
+
+    const stats: Record<string, any> = {};
+    
+    memberIds.forEach(id => {
+      const memberIssues = allIssues.filter(i => i.memberId.toString() === id);
+      const activeIssues = memberIssues.filter(i => i.status === IssueStatus.ACTIVE || i.status === IssueStatus.OVERDUE);
+      
+      stats[id] = {
+        currentlyBorrowed: activeIssues.length,
+        totalHistory: memberIssues.length,
+        activeBookIds: activeIssues.map(i => i.bookId),
+        booklistBorrowed: activeIssues.map(i => {
+          const dueDate = i.dueDate ? new Date(i.dueDate).toLocaleDateString() : 'N/A';
+          return `${i.bookId} - ${i.issueType} - ${i.status} - Due: ${dueDate}`;
+        })
+      };
+    });
+
+    return stats;
+  }
+
+  async getBulkBookCounts(bookIds: string[]): Promise<Record<string, number>> {
+    const objectIds = bookIds
+      .filter(id => Types.ObjectId.isValid(id))
+      .map(id => new Types.ObjectId(id));
+
+    const results = await this.issueBookModel.aggregate([
+      {
+        $match: {
+          bookId: { $in: objectIds },
+          status: { $in: [IssueStatus.ACTIVE, IssueStatus.OVERDUE] }
+        }
+      },
+      {
+        $group: {
+          _id: '$bookId',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts: Record<string, number> = {};
+    results.forEach(res => {
+      counts[res._id.toString()] = res.count;
+    });
+
+    return counts;
   }
 }

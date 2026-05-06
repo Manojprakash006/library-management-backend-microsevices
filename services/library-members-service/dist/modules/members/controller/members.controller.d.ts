@@ -16,40 +16,48 @@ export declare class MembersController {
     getCount(): Promise<{
         data: number;
     }>;
-    getActiveCount(): Promise<{
-        count: number;
-    }>;
-    getInactiveCount(): Promise<{
-        count: number;
-    }>;
-    findAll(): Promise<{
+    findAll(req: any, page?: string, limit?: string): Promise<{
         message: string;
         data: (import("../entities/member.entity").Member & {
             booksHeld: number;
             booksAtHome: number;
             readingInsideLibrary: number;
             totalFines: number;
+            paidFines: number;
+            fineHistory: any[];
             hasActiveIssues: boolean;
         })[];
-        count: number;
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }>;
-    findOne(id: string): Promise<{
+    getFooterStats(req: any): Promise<{
         message: string;
-        data: import("../entities/member.entity").Member & {
-            booksHeld: number;
-            booksAtHome: number;
-            readingInsideLibrary: number;
+        data: {
+            name: string;
+            email: string;
+            memberId: string;
+            phone: string;
+            address: string;
+            memberSince: Date;
+            totalRequests: number;
+            booksRead: number;
+            memId: string;
+            paidFines: number;
+            fineHistory: any[];
             totalFines: number;
-            hasActiveIssues: boolean;
         };
     }>;
-    findByMemberId(memberId: string): Promise<{
+    findOne(id: string, req: any): Promise<{
         message: string;
         data: import("../entities/member.entity").Member & {
             booksHeld: number;
             booksAtHome: number;
             readingInsideLibrary: number;
             totalFines: number;
+            paidFines: number;
+            fineHistory: any[];
             hasActiveIssues: boolean;
         };
     }>;
@@ -58,6 +66,12 @@ export declare class MembersController {
         data: import("../entities/member.entity").Member;
     }>;
     remove(id: string, req: any): Promise<{
+        message: string;
+    }>;
+    addBorrowingHistory(id: string, historyData: any): Promise<{
+        message: string;
+    }>;
+    updateBorrowingHistory(id: string, updateData: any): Promise<{
         message: string;
     }>;
 }

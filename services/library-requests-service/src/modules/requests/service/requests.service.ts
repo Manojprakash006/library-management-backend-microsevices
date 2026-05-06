@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { BookRequest, BookRequestDocument, RequestStatus } from '../entities/book-request.entity';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 
 @Injectable()
 export class RequestsService {
@@ -14,12 +15,12 @@ export class RequestsService {
   constructor(
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      // const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
-      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -36,7 +37,7 @@ export class RequestsService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -50,14 +51,15 @@ export class RequestsService {
     }
   }
 
-  private async notifyAdmins(type: string, title: string, message: string) {
+  private async notifyAdmins(type: string, title: string, message: string, issueId?: string) {
     try {
-      const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
           title,
-          message
+          message,
+          issueId
         })
       );
     } catch (error) {
@@ -104,15 +106,21 @@ export class RequestsService {
     await this.notifyAdmins(
       'NEW_BOOK_REQUEST',
       'New Book Request Received',
-      `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}. Please review it in the pending requests dashboard.`
+      `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}.`,
+      createDto.bookId // Pass bookId as issueId for enrichment
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('REQUEST_CREATED', savedRequest);
+    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'create', request: savedRequest });
+    await this.invalidatePendingCountCache();
 
     return savedRequest;
   }
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
 
       // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
@@ -148,27 +156,56 @@ export class RequestsService {
     }
   }
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
+  async findAll(page: number = 1, limit: number = 10, status?: string, search?: string): Promise<{ data: any[], total: number, page: number, limit: number, totalPages: number }> {
     const skip = (page - 1) * limit;
 
+    const query: any = {};
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim());
+      // Use case-insensitive regex for each status to be 100% sure
+      query.status = { $in: statuses.map(s => new RegExp(`^${s}$`, 'i')) };
+    }
+    
+    if (search) {
+      // In a real app, we might need to search by book title or member name which requires aggregation or pre-enrichment
+      // For now, let's search by requestId or memberId if it matches the pattern
+      query.$or = [
+        { requestId: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } }
+      ];
+    }
+
     const [requests, total] = await Promise.all([
-      this.bookRequestModel.find().sort({ requestDate: -1 }).skip(skip).limit(limit).exec(),
-      this.bookRequestModel.countDocuments().exec(),
+      this.bookRequestModel.find(query).sort({ requestDate: -1 }).skip(skip).limit(limit).lean().exec(),
+      this.bookRequestModel.countDocuments(query).exec(),
     ]);
 
-    // Enrich each request with real-time member borrowing data
-    const enrichedRequests = await Promise.all(
-      requests.map(async (request) => {
-        const memberStats = await this.getMemberBorrowingDetails(request.memberId.toString());
-        return {
-          ...request.toObject(),
-          currentlyBorrowed: memberStats.currentlyBorrowed,
-          totalHistory: memberStats.totalHistory,
-          activeBookIds: memberStats.activeBookIds,
-          booklistBorrowed: memberStats.booklistBorrowed,
-        };
-      })
-    );
+    // Fetch all member stats in one go to solve N+1 problem
+    const memberIds = [...new Set(requests.map(r => r.memberId.toString()))];
+    let bulkStats: Record<string, any> = {};
+    
+    try {
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+      const response = await firstValueFrom(
+        this.httpService.post(`${issuesServiceUrl}/issues/batch-stats`, { memberIds })
+      );
+      bulkStats = response.data?.data || {};
+    } catch (error) {
+      this.logger.error(`Failed to fetch bulk member stats: ${error.message}`);
+    }
+
+    const enrichedRequests = requests.map((request) => {
+      const memberId = request.memberId.toString();
+      const stats = bulkStats[memberId] || { currentlyBorrowed: 0, totalHistory: 0, activeBookIds: [], booklistBorrowed: [] };
+
+      return {
+        ...request,
+        currentlyBorrowed: stats.currentlyBorrowed,
+        totalHistory: stats.totalHistory,
+        activeBookIds: stats.activeBookIds,
+        booklistBorrowed: stats.booklistBorrowed,
+      };
+    });
 
     return {
       data: enrichedRequests,
@@ -196,7 +233,7 @@ export class RequestsService {
         }
 
         try {
-          const bookServiceURL = "http://library-api-gateway:3000/library/books";
+          const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
           const bookResponse = await firstValueFrom(
             this.httpService.get(`${bookServiceURL}/books/${bookId}`)
           );
@@ -260,6 +297,7 @@ export class RequestsService {
 
     request.status = RequestStatus.CANCELLED;
     request.processedDate = new Date();
+    await this.invalidatePendingCountCache();
     return request.save();
   }
 
@@ -277,12 +315,12 @@ export class RequestsService {
     request.processedDate = new Date();
     const savedRequest = await request.save();
 
-    const membersServiceUrl = "http://library-api-gateway:3000/library/members";
+    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || "http://library-members-service:3012";
 
     try {
       await firstValueFrom(
         this.httpService.post(
-          `${membersServiceUrl}/library/members/members/${request.memberId}/borrow`,
+          `${membersServiceUrl}/members/${request.memberId}/borrow`,
           {
             bookId: request.bookId.toString(),
             issueId: request._id.toString(),
@@ -300,13 +338,28 @@ export class RequestsService {
       this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
+    // Fetch book details for notification
+    let bookTitle = 'Book';
+    try {
+      const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+      const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
+      bookTitle = bookRes.data?.data?.title || 'Book';
+    } catch (e) {
+      this.logger.error(`Failed to fetch book title for approval notification: ${e.message}`);
+    }
+
     // Send notification to member (fire and forget)
     this.sendNotification(
       request.memberId.toString(),
       'REQUEST_APPROVED',
       'Book Request Approved',
-      `Your request for book (ID: ${request.bookId}) has been approved. You can now collect the book from the library.`
+      `Dear member, your request for "${bookTitle}" (Book ID: ${request.bookId}) has been approved. You can now collect the book from the library.`
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('REQUEST_APPROVED', savedRequest);
+    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'approve', request: savedRequest });
+    await this.invalidatePendingCountCache();
 
     return savedRequest;
   }
@@ -329,13 +382,28 @@ export class RequestsService {
       this.logActivity(adminId, 'REJECT', id, { bookId: request.bookId, memberId: request.memberId });
     }
 
+    // Fetch book details for notification
+    let bookTitle = 'Book';
+    try {
+      const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+      const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
+      bookTitle = bookRes.data?.data?.title || 'Book';
+    } catch (e) {
+      this.logger.error(`Failed to fetch book title for rejection notification: ${e.message}`);
+    }
+
     // Send notification to member (fire and forget)
     this.sendNotification(
       request.memberId.toString(),
       'REQUEST_REJECTED',
       'Book Request Rejected',
-      `Unfortunately, your request for book (ID: ${request.bookId}) has been rejected. Please contact the librarian for more details.`
+      `Unfortunately, your request for "${bookTitle}" (Book ID: ${request.bookId}) has been rejected. Please contact the librarian for more details.`
     );
+
+    // Emit real-time event
+    await this.redisEmitter.emit('REQUEST_REJECTED', savedRequest);
+    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'reject', request: savedRequest });
+    await this.invalidatePendingCountCache();
 
     return savedRequest;
   }
@@ -348,6 +416,34 @@ export class RequestsService {
   }
 
   async getPendingCount(): Promise<number> {
-    return this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING });
+    const cacheKey = 'requests:pending_count';
+    try {
+      // Try to get from Redis first
+      const cachedCount = await (this.redisEmitter as any).redisClient.get(cacheKey);
+      if (cachedCount !== null) {
+        return parseInt(cachedCount, 10);
+      }
+    } catch (e) {
+      this.logger.error(`Redis cache get error: ${e.message}`);
+    }
+
+    const count = await this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING }).exec();
+    
+    try {
+      // Cache for 5 minutes
+      await (this.redisEmitter as any).redisClient.set(cacheKey, count.toString(), 'EX', 300);
+    } catch (e) {
+      this.logger.error(`Redis cache set error: ${e.message}`);
+    }
+
+    return count;
+  }
+
+  private async invalidatePendingCountCache() {
+    try {
+      await (this.redisEmitter as any).redisClient.del('requests:pending_count');
+    } catch (e) {
+      this.logger.error(`Redis cache invalidate error: ${e.message}`);
+    }
   }
 }

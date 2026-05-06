@@ -13,6 +13,14 @@ import { Public } from '../../../auth/guards/public.decorator';
 @Controller('library-visits')
 export class LibraryVisitsController {
   constructor(private readonly libraryVisitsService: LibraryVisitsService) {}
+  
+  @Public()
+  @Get('public/stats')
+  @ApiOperation({ summary: 'Get total library visit count for today' })
+  async getVisitStats() {
+    const count = await this.libraryVisitsService.getVisitStats();
+    return { message: 'Library visit stats retrieved', count };
+  }
 
   @Post('auto-record')
   @Public()

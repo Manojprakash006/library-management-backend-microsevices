@@ -15,6 +15,10 @@ import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { LibraryVisitsModule } from './modules/library-visits/library-visits.module';
 import { FavouriteModule } from './modules/favourite/favourite.module';
+import { RedisEmitterModule } from './modules/redis-emitter/redis-emitter.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   imports: [
@@ -36,6 +40,14 @@ import { FavouriteModule } from './modules/favourite/favourite.module';
     AdminModule,
     LibraryVisitsModule,
     FavouriteModule,
+    RedisEmitterModule,
+    ContactModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    }
   ],
 })
 export class AppModule { }

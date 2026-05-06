@@ -27,12 +27,28 @@ export class StaffDashboardService {
     private readonly activityLogService: ActivityLogService,
   ) { }
 
+  private async getBooksAddedTodayCount(authHeader?: string): Promise<number> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+
+      const response: AxiosResponse<{ data: number }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/books-added-today`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      return response.data?.data || 0;
+    } catch (error) {
+      this.logger.error(`Failed to fetch today's book count: ${error.message}`);
+      return 0;
+    }
+  }
+
   async getStaffStats(authHeader?: string) {
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       this.logger.log(`Fetching stats from books service: ${booksServiceUrl}/dashboard/stat-cards`);
 
-      // Get books stats from books service
       const statsResponse: AxiosResponse<{ data: BooksStatsResponse }> = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/dashboard/stat-cards`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -49,7 +65,6 @@ export class StaffDashboardService {
 
       this.logger.log(`Parsed stats: ${JSON.stringify(stats)}`);
 
-      // Get books added today
       const todayBookAdded = await this.getBooksAddedTodayCount(authHeader);
       return {
         totalBooks: stats.totalBooks || 0,
@@ -58,9 +73,9 @@ export class StaffDashboardService {
         todayBookAdded: todayBookAdded,
       };
     } catch (error) {
-      this.logger.error(`Failed to fetch stats from books service: ${error instanceof Error ? error.message : String(error)}`);
-      this.logger.error(`Error details: ${JSON.stringify((error as any).response?.data || error)}`);
-      // Return default values if books service is unavailable
+      this.logger.error(`Failed to fetch stats from books service: ${error.message}`);
+      this.logger.error(`Error details: ${JSON.stringify(error.response?.data || error)}`);
+      
       return {
         totalBooks: 0,
         availableBooks: 0,
@@ -69,28 +84,21 @@ export class StaffDashboardService {
       };
     }
   }
-
-  private async getBooksAddedTodayCount(authHeader?: string): Promise<number> {
+  
+  async getBooksAddedTodayList(authHeader?: string) {
     try {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const response: AxiosResponse<{ data: any[]; count: number }> = await firstValueFrom(
-        this.httpService.get(`${booksServiceUrl}/books`, {
+
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/dashboard/books-added-today/list`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
         })
       );
 
-      const books = response.data?.data || [];
-      const todayBookAdded = books.filter((book: any) => {
-        const createdAt = new Date(book.createdAt);
-        return createdAt >= today;
-      }).length;
-
-      return todayBookAdded;
+      return response.data?.data || [];
     } catch (error) {
-      this.logger.error(`Failed to fetch books added today: ${error instanceof Error ? error.message : String(error)}`);
-      return 0;
+      this.logger.error(`Failed to fetch today's books list: ${error.message}`);
+      return [];
     }
   }
 
@@ -214,8 +222,6 @@ export class StaffDashboardService {
     }
   }
 
-
-
   async getMyProfile(staffId: string) {
     const profile: any = await this.staffModel.findById(staffId).select('-password -__v').lean();
     if (!profile) return null;
@@ -244,7 +250,8 @@ export class StaffDashboardService {
       joinDate: profile.createdAt,
       totalActivities: totalActivities.count || 0,
       todaysActivities: todaysActivities.count || 0,
-      lastActive: lastActivity.data?.length > 0 ? (lastActivity.data[0] as any).createdAt : profile.updatedAt
+      lastActive: lastActivity.data?.length > 0 ? (lastActivity.data[0] as any).createdAt : profile.updatedAt,
+      profileImage: profile.profileImage || "",
     };
   }
 
@@ -296,7 +303,7 @@ export class StaffDashboardService {
         action: actionName,
         date: log.createdAt,
         description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
-        referenceId: log.details?.referenceId || log.entityId
+        referenceId: log.entityName || log.details?.referenceId || log.entityId
       };
     });
 

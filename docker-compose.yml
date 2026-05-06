@@ -9,17 +9,28 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      - CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:7070
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:7070,http://192.168.1.15:5173,http://192.168.1.15:5174,http://192.168.1.15:5175,http://192.168.1.15:5176,http://192.168.1.15:7070
       - NODE_ENV=production
     depends_on:
       - library-books-service
-      - library-members-service
+      - library-members-service 
       - library-issues-service
       - library-requests-service
       - library-payments-service
     networks:
       - app-network
+    restart: unless-stopped 
+
+  # Redis for Real-time Updates
+  redis:
+    image: redis:alpine
+    container_name: library-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
     restart: unless-stopped
+
 
   # Library Books Service
   library-books-service:
@@ -41,6 +52,8 @@ services:
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
       - REQUESTS_SERVICE_URL=http://library-requests-service:3014
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - mongodb
     networks:
@@ -63,14 +76,19 @@ services:
       - MONGODB_URI=mongodb+srv://librarymanagement:UB5K9mJzSEG6tsCq@cluster0.niuwpgk.mongodb.net/
       - MONGODB_DB=Authentication
       - JWT_SECRET=your-secret-key
+      - VAPID_PUBLIC_KEY=BDUh117kbxhLwwobXGAa5P65dObEDu2sLsK65ZlsVCxCyf17G8lRWs9iIDBScT_nuQRdaxNNCL5pRyh2vq9KA8g
+      - VAPID_PRIVATE_KEY=EKKNutuNEznfDJW1LddZqy4GT843UaReyeaIdpxGr-M
+      - VAPID_EMAIL=mailto:admin@example.com
       - KAFKA_BROKER=localhost:9092
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
       - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
       - SMTP_USER=mernstackdev.yoho@gmail.com
       - SMTP_PASS=xnwgmqkzeacaauag
-      - FRONTEND_URL=http://localhost:5173
+      - FRONTEND_URL=http://192.168.1.18:5173
     depends_on:
       - mongodb
     networks:
@@ -96,6 +114,8 @@ services:
       - KAFKA_BROKER=localhost:9092
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
       - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - PAYMENTS_SERVICE_URL=http://library-payments-service:3005
       
     depends_on:
@@ -123,6 +143,9 @@ services:
       - KAFKA_BROKER=localhost:9092
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
+      - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - mongodb
     networks:
@@ -162,6 +185,9 @@ services:
       - RZP_KEY_ID=rzp_test_SaDCl7Au48PRQf
       - RZP_KEY_SECRET=Ge4uiF1mxjvZZ5LSXgy5PAZt
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
+      - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - mongodb
     networks:

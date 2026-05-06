@@ -17,10 +17,18 @@ export class AdminService {
   }
 
   async updateProfile(adminId: string, updateAdminDto: UpdateAdminDto): Promise<{ message: string; data: any }> {
-    const admin = await this.userModel.findByIdAndUpdate(adminId, updateAdminDto, { new: true }).exec();
+    const admin = await this.userModel.findById(adminId).exec();
     if (!admin) {
       throw new NotFoundException('Admin profile not found');
     }
+
+    if (updateAdminDto.name) admin.name = updateAdminDto.name;
+    if (updateAdminDto.email) admin.email = updateAdminDto.email;
+    if (updateAdminDto.address) admin.address = updateAdminDto.address;
+    if (updateAdminDto.phone) admin.phone = updateAdminDto.phone;
+    if (updateAdminDto.password) admin.password = updateAdminDto.password;
+
+    await admin.save();
     return { message: 'Admin profile updated successfully', data: admin };
   }
 }

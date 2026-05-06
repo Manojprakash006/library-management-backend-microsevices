@@ -102,6 +102,31 @@ export class IssuesController {
   }
 
   @Public()
+  @Post('batch-stats')
+  @ApiOperation({ summary: 'Get stats for multiple members in one go' })
+  async getBatchMemberStats(@Body('memberIds') memberIds: string[]) {
+    if (!memberIds || !Array.isArray(memberIds)) {
+      return { message: 'Invalid memberIds', data: {} };
+    }
+    const stats = await this.issuesService.getBulkMemberStats(memberIds);
+    return {
+      message: 'Batch stats retrieved successfully',
+      data: stats
+    };
+  }
+
+  @Public()
+  @Post('bulk-book-counts')
+  @ApiOperation({ summary: 'Get active issue counts for multiple books' })
+  async getBulkBookCounts(@Body('bookIds') bookIds: string[]) {
+    if (!bookIds || !Array.isArray(bookIds)) {
+      return { counts: {} };
+    }
+    const counts = await this.issuesService.getBulkBookCounts(bookIds);
+    return { counts };
+  }
+
+  @Public()
   @Get('recent')
   @ApiOperation({ summary: 'Get recent issued books' })
   @ApiResponse({ status: 200, description: 'Recent issued books retrieved successfully', type: [IssueBook] })

@@ -18,7 +18,12 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175','http://localhost:5176', 'http://localhost:7070'],
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [
+      'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 
+      'http://localhost:7070',
+      'http://192.168.1.18:5173', 'http://192.168.1.18:5174', 'http://192.168.1.18:5175', 'http://192.168.1.18:5176',
+      'http://192.168.1.18:7070'
+    ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, Pragma, Cache-Control',
@@ -45,6 +50,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: 'http://library-members-service:3012',
       changeOrigin: true,
+      ws: true,
       pathRewrite: {
         '^/library/members': '',
       },
@@ -95,6 +101,23 @@ async function bootstrap() {
       changeOrigin: true,
       pathRewrite: {
         '^/library/payments': '',
+      },
+      onProxyReq: (proxyReq, req) => {
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+      },
+    }),
+  );
+
+  app.use(
+    '/notifications',
+    createProxyMiddleware({
+      target: 'http://library-members-service:3012',
+      changeOrigin: true,
+      ws: true,
+      pathRewrite: {
+        '^/notifications': '',
       },
       onProxyReq: (proxyReq, req) => {
         if (req.headers.authorization) {

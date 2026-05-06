@@ -19,6 +19,22 @@ import { Public } from '../../../auth/guards/public.decorator';
 export class BooksController {
   constructor(private readonly booksService: BooksService) { }
 
+  @Public()
+  @Get('public/collection-stats')
+  @ApiOperation({ summary: 'Get book collection stats for landing page' })
+  async getCollectionStats() {
+    const stats = await this.booksService.getCollectionStats();
+    return { message: 'Collection stats retrieved successfully', data: stats };
+  }
+
+  @Public()
+  @Get('public/top-reviews')
+  @ApiOperation({ summary: 'Get top book reviews for landing page' })
+  async getTopReviews() {
+    const reviews = await this.booksService.getTopReviews();
+    return { message: 'Top reviews retrieved successfully', data: reviews };
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new book' })
   @ApiResponse({ status: 201, description: 'Book created successfully', type: Book })
@@ -66,6 +82,14 @@ export class BooksController {
   async findByCategory(@Param('category') category: string): Promise<{ message: string; data: Book[]; count: number }> {
     const books = await this.booksService.findByCategory(category);
     return { message: 'Books by category retrieved successfully', data: books, count: books.length };
+  }
+
+  @Public()
+  @Get('categories/all')
+  @ApiOperation({ summary: 'Get all unique book categories' })
+  async findAllCategories(): Promise<{ message: string; data: string[] }> {
+    const categories = await this.booksService.findAllCategories();
+    return { message: 'Categories retrieved successfully', data: categories };
   }
 
   @Public()

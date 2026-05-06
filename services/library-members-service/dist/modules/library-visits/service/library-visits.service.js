@@ -18,10 +18,38 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const library_visit_entity_1 = require("../entities/library-visit.entity");
+const notifications_service_1 = require("../../notifications/service/notifications.service");
 let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
-    constructor(libraryVisitModel) {
+    constructor(libraryVisitModel, notificationsService) {
         this.libraryVisitModel = libraryVisitModel;
+        this.notificationsService = notificationsService;
         this.logger = new common_1.Logger(LibraryVisitsService_1.name);
+    }
+    async getMemberDetails(memberIdStr) {
+        try {
+            const MemberSchema = this.libraryVisitModel.db.model('Member');
+            const member = await MemberSchema.findById(memberIdStr).exec();
+            if (member) {
+                return { name: member.name, memberIdStr: member.memberId || memberIdStr };
+            }
+        }
+        catch (err) {
+            this.logger.error(`Failed to fetch member details: ${err.message}`);
+        }
+        return { name: 'Unknown Member', memberIdStr: memberIdStr };
+    }
+    async getBookTitle(bookIdStr) {
+        try {
+            const ProductSchema = this.libraryVisitModel.db.model('Product');
+            const book = await ProductSchema.findById(bookIdStr).exec();
+            if (book) {
+                return book.title || book.name || bookIdStr;
+            }
+        }
+        catch (err) {
+            this.logger.error(`Failed to fetch book details: ${err.message}`);
+        }
+        return bookIdStr;
     }
     async checkIn(checkInDto) {
         try {
@@ -35,6 +63,12 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
             });
             const savedVisit = await visit.save();
             this.logger.log(`Member ${checkInDto.memberId} checked in at ${savedVisit.timeIn}`);
+            const memberDetails = await this.getMemberDetails(checkInDto.memberId.toString());
+            await this.notificationsService.notifyStaff({
+                title: `${memberDetails.name} Visit In`,
+                message: `Member ID: ${memberDetails.memberIdStr} checked in at ${savedVisit.timeIn.toLocaleTimeString()}. Purpose: ${savedVisit.purpose}`,
+                type: 'VISITOR_IN'
+            });
             return {
                 message: 'Check-in successful',
                 data: savedVisit,
@@ -61,6 +95,12 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
             }
             const updatedVisit = await visit.save();
             this.logger.log(`Member ${visit.memberId} checked out at ${updatedVisit.timeOut}`);
+            const memberDetails = await this.getMemberDetails(visit.memberId.toString());
+            await this.notificationsService.notifyStaff({
+                title: `${memberDetails.name} Visit Out`,
+                message: `Member ID: ${memberDetails.memberIdStr} checked out at ${updatedVisit.timeOut.toLocaleTimeString()}.`,
+                type: 'VISITOR_OUT'
+            });
             return {
                 message: 'Check-out successful',
                 data: updatedVisit,
@@ -142,6 +182,13 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
             });
             const savedVisit = await visit.save();
             this.logger.log(`Auto-created new visit for book issue: Member ${memberId}, Book ${bookId}`);
+            const memberDetails = await this.getMemberDetails(memberId.toString());
+            const bookTitle = await this.getBookTitle(bookId.toString());
+            await this.notificationsService.notifyStaff({
+                title: `${memberDetails.name} Visit In`,
+                message: `System auto-created a visit for Member ID: ${memberDetails.memberIdStr} due to book issue (Book Name: ${bookTitle}).`,
+                type: 'VISITOR_IN'
+            });
             return savedVisit;
         }
         catch (error) {
@@ -163,6 +210,12 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
                     activeVisit.timeOut = new Date();
                     activeVisit.isActive = false;
                     this.logger.log(`All books returned. Visit completed for member ${memberId}`);
+                    const memberDetails = await this.getMemberDetails(memberId.toString());
+                    await this.notificationsService.notifyStaff({
+                        title: `${memberDetails.name} Visit Out`,
+                        message: `System auto-completed visit for Member ID: ${memberDetails.memberIdStr} as all books were returned.`,
+                        type: 'VISITOR_OUT'
+                    });
                 }
                 else {
                     this.logger.log(`Book ${bookId} removed. Member ${memberId} still has ${activeVisit.bookIds.length} book(s)`);
@@ -181,6 +234,13 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
             });
             await returnVisit.save();
             this.logger.log(`Created return visit: Member ${memberId}, Book ${bookId}`);
+            const memberDetails = await this.getMemberDetails(memberId.toString());
+            const bookTitle = await this.getBookTitle(bookId.toString());
+            await this.notificationsService.notifyStaff({
+                title: `${memberDetails.name} Visit Out`,
+                message: `System auto-created a return log for Member ID: ${memberDetails.memberIdStr} (Book Name: ${bookTitle}).`,
+                type: 'VISITOR_OUT'
+            });
             return returnVisit;
         }
         catch (error) {
@@ -193,6 +253,7 @@ exports.LibraryVisitsService = LibraryVisitsService;
 exports.LibraryVisitsService = LibraryVisitsService = LibraryVisitsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(library_visit_entity_1.LibraryVisit.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model])
+    __metadata("design:paramtypes", [mongoose_2.Model,
+        notifications_service_1.NotificationsService])
 ], LibraryVisitsService);
 //# sourceMappingURL=library-visits.service.js.map

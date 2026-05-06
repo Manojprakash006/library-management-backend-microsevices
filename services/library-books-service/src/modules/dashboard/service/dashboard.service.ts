@@ -6,6 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { Book, BookDocument } from '../../books/entities/book.entity';
 import { BookRequest, BookRequestDocument } from '../../book-requests/entities/book-request.entity';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
+import { Logger } from '@nestjs/common';
 
 interface CountResponse {
   count: number;
@@ -58,27 +60,38 @@ export interface PopulatedRecentBook {
 
 @Injectable()
 export class DashboardService {
+  private readonly logger = new Logger(DashboardService.name);
+
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
+    private readonly redisEmitter: RedisEmitterService,
   ) { }
 
   async getDashboardStats() {
-    const totalBooks = await this.bookModel.countDocuments();
-    const totalBooksResult = await this.bookModel.aggregate([
-      { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }
+    const [
+      totalBooks,
+      totalBooksResult,
+      issuedBooks,
+      pendingRequests,
+      overdueBooks,
+      totalMembers,
+      newArrivals,
+      todayIssues
+    ] = await Promise.all([
+      this.bookModel.countDocuments(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]),
+      this.getActiveIssuesCount(),
+      this.bookRequestModel.countDocuments({ status: 'Pending' }),
+      this.getOverdueBooksCount(),
+      this.getTotalMembersCount(),
+      this.getNewArrivalsCount(),
+      this.getTodayIssuesCount(),
     ]);
-    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
-    
-    const issuedBooks = await this.getActiveIssuesCount();
-    const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
-    const pendingRequests = await this.bookRequestModel.countDocuments({ status: 'Pending' });
 
-    const overdueBooks = await this.getOverdueBooksCount();
-    const totalMembers = await this.getTotalMembersCount();
-    const newArrivals = await this.getNewArrivalsCount();
-    const todayIssues = await this.getTodayIssuesCount();
+    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
     return {
       totalBooks,
@@ -111,26 +124,39 @@ export class DashboardService {
   }
 
   async getStatCards(authHeader?: string) {
-    const totalBooks = await this.bookModel.countDocuments();
-    const totalBooksResult = await this.bookModel.aggregate([
-      { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }
-    ]);
-    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const cacheKey = 'dashboard:stat_cards';
+    try {
+      const cached = await this.redisEmitter.client.get(cacheKey);
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      this.logger.error(`Redis cache error: ${e.message}`);
+    }
 
-    // Calculate available/issued from quantity and issues service
-    const activeIssues = await this.getActiveIssuesCount();
+    const [
+      totalBooks,
+      totalBooksResult,
+      activeIssues,
+      pendingRequests,
+      overdueBooks,
+      totalMembers,
+      newArrivals,
+      todayIssues
+    ] = await Promise.all([
+      this.bookModel.countDocuments().exec(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]).exec(),
+      this.getActiveIssuesCount(),
+      this.getPendingRequestsCount(),
+      this.getOverdueBooksCount(),
+      this.getTotalMembersCount(authHeader),
+      this.getNewArrivalsCount(),
+      this.getTodayIssuesCount(),
+    ]);
+
+    const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
     const issuedBooks = activeIssues;
     const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
-    // Get pending requests from requests service instead of local DB
-    const pendingRequests = await this.getPendingRequestsCount();
-
-    const overdueBooks = await this.getOverdueBooksCount();
-    const totalMembers = await this.getTotalMembersCount(authHeader);
-    const newArrivals = await this.getNewArrivalsCount();
-    const todayIssues = await this.getTodayIssuesCount();
-
-    return {
+    const stats = {
       totalBooks,
       totalQuantity,
       availableBooks: availableQuantity,
@@ -142,57 +168,162 @@ export class DashboardService {
       pendingRequests,
       todayIssues,
     };
+
+    try {
+      // Cache for 1 second to allow instant updates while preventing accidental DB hammering
+      await this.redisEmitter.client.set(cacheKey, JSON.stringify(stats), 'EX', 1);
+    } catch (e) {
+      this.logger.error(`Redis cache set error: ${e.message}`);
+    }
+
+    return stats;
+  }
+
+  async getBooksAddedTodayList() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const books = await this.bookModel.find({
+      createdAt: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+    }).sort({ createdAt: -1 }).lean();
+
+    return books;
+  }
+
+  async getBooksAddedToday(): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const count = await this.bookModel.countDocuments({
+      createdAt: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+    });
+
+    return count;
   }
 
   async getRecentBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-api-gateway:3000/library/issues';
       const response: AxiosResponse<{ issues: RecentIssue[] }> = await firstValueFrom(
-        this.httpService.get(`${issuesServiceUrl}/issues/recent?limit=5`)
+        this.httpService.get(`${issuesServiceUrl}/issues/recent?limit=10`)
       );
 
       const issues = response.data?.issues || [];
       if (issues.length === 0) return [];
 
-      const populatedIssues = await Promise.all(
-        issues.map(async (issue) => {
-          const [book, member] = await Promise.all([
-            this.fetchBookDetails(issue.bookId),
-            this.fetchMemberDetails(issue.memberId, authHeader),
-          ]);
-
-          return {
-            _id: issue._id,
-            book,
-            member,
-            issueType: issue.issueType,
-            numberOfDays: issue.numberOfDays,
-            issueDate: issue.issueDate,
-            dueDate: issue.dueDate,
-            returnDate: issue.returnDate,
-            status: issue.status,
-            daysOverdue: issue.daysOverdue,
-            fine: issue.fine,
-            finePerDay: issue.finePerDay,
-            createdAt: issue.createdAt,
-            updatedAt: issue.updatedAt,
-          };
-        })
-      );
-
-      return populatedIssues;
+      return this.populateIssuesBulk(issues, authHeader);
     } catch (error) {
+      this.logger.error(`Failed to get recent books: ${error.message}`);
       return [];
     }
   }
 
-  private async fetchBookDetails(bookId: string): Promise<any> {
+  async getOverdueBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
     try {
-      const book = await this.bookModel.findById(bookId)
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-api-gateway:3000/library/issues';
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${issuesServiceUrl}/issues/overdue`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const issues = response.data?.data || [];
+      if (issues.length === 0) return [];
+
+      return this.populateIssuesBulk(issues, authHeader);
+    } catch (error) {
+      this.logger.error(`Failed to get overdue books: ${error.message}`);
+      return [];
+    }
+  }
+
+  async getPendingRequests(authHeader?: string): Promise<any[]> {
+    try {
+      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://library-api-gateway:3000/library/requests';
+      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
+        this.httpService.get(`${requestsServiceUrl}/requests`, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        })
+      );
+
+      const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
+      if (pendingRequests.length === 0) return [];
+
+      // Sort by latest first
+      pendingRequests.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+
+      // Limit to first 20 for dashboard performance
+      const limitedRequests = pendingRequests.slice(0, 20);
+
+      const bookIds = [...new Set(limitedRequests.map(r => r.bookId))];
+      const memberIds = [...new Set(limitedRequests.map(r => r.memberId))];
+
+      const [booksMap, membersMap] = await Promise.all([
+        this.getBooksMap(bookIds),
+        this.getMembersMap(memberIds, authHeader),
+      ]);
+
+      return limitedRequests.map(req => ({
+        ...req,
+        book: booksMap.get(req.bookId) || this.getDefaultBook(req.bookId),
+        member: membersMap.get(req.memberId) || this.getDefaultMember(req.memberId),
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to get pending requests: ${error.message}`);
+      return [];
+    }
+  }
+
+  private async populateIssuesBulk(issues: any[], authHeader?: string): Promise<PopulatedRecentBook[]> {
+    const bookIds = [...new Set(issues.map(i => i.bookId))];
+    const memberIds = [...new Set(issues.map(i => i.memberId))];
+
+    const [booksMap, membersMap] = await Promise.all([
+      this.getBooksMap(bookIds),
+      this.getMembersMap(memberIds, authHeader),
+    ]);
+
+    return issues.map(issue => ({
+      _id: issue._id,
+      book: booksMap.get(issue.bookId) || this.getDefaultBook(issue.bookId),
+      member: membersMap.get(issue.memberId) || this.getDefaultMember(issue.memberId),
+      issueType: issue.issueType,
+      numberOfDays: issue.numberOfDays,
+      issueDate: issue.issueDate,
+      dueDate: issue.dueDate,
+      returnDate: issue.returnDate,
+      status: issue.status,
+      daysOverdue: issue.daysOverdue,
+      fine: issue.fine,
+      finePerDay: issue.finePerDay,
+      createdAt: issue.createdAt,
+      updatedAt: issue.updatedAt,
+    }));
+  }
+
+  private async getBooksMap(bookIds: string[]): Promise<Map<string, any>> {
+    const booksMap = new Map<string, any>();
+    if (bookIds.length === 0) return booksMap;
+
+    try {
+      const books = await this.bookModel.find({ _id: { $in: bookIds } })
         .select('title author isbn category rackNumber shelfNumber quantity')
         .lean();
-      if (book) {
-        return {
+
+      books.forEach(book => {
+        booksMap.set(book._id.toString(), {
           _id: book._id.toString(),
           bookId: book._id.toString(),
           title: book.title,
@@ -203,29 +334,34 @@ export class DashboardService {
           shelfNumber: book.shelfNumber,
           location: `Rack ${book.rackNumber}${book.shelfNumber ? ', Shelf ' + book.shelfNumber : ''}`,
           status: book.quantity > 0 ? 'Available' : 'Not Available',
-        };
-      }
+        });
+      });
     } catch (error) {
-      // Fall through to default
+      this.logger.error(`Bulk book fetch error: ${error.message}`);
     }
+    return booksMap;
+  }
 
-    return {
-      _id: bookId,
-      bookId: 'N/A',
-      title: 'Unknown Book',
-      author: 'Unknown',
-      isbn: 'N/A',
-      category: 'N/A',
-      rackNumber: 'N/A',
-      shelfNumber: 'N/A',
-      location: 'N/A',
-      status: 'Unknown',
-    };
+  private async getMembersMap(memberIds: string[], authHeader?: string): Promise<Map<string, any>> {
+    const membersMap = new Map<string, any>();
+    if (memberIds.length === 0) return membersMap;
+
+    // Fetch members in parallel
+    await Promise.all(memberIds.map(async (id) => {
+      try {
+        const member = await this.fetchMemberDetails(id, authHeader);
+        membersMap.set(id, member);
+      } catch (err) {
+        membersMap.set(id, this.getDefaultMember(id));
+      }
+    }));
+
+    return membersMap;
   }
 
   private async fetchMemberDetails(memberId: string, authHeader?: string): Promise<any> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       const response: AxiosResponse<{ data: any }> = await firstValueFrom(
         this.httpService.get(`${membersServiceUrl}/members/${memberId}`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -255,102 +391,33 @@ export class DashboardService {
         };
       }
     } catch (error) {
-      // Fall through to default
+      this.logger.error(`Failed to fetch member ${memberId}: ${error.message}`);
     }
 
+    return this.getDefaultMember(memberId);
+  }
+
+  private getDefaultBook(bookId: string) {
+    return {
+      _id: bookId,
+      bookId: 'N/A',
+      title: 'Unknown Book',
+      author: 'Unknown',
+      isbn: 'N/A',
+      category: 'N/A',
+      location: 'N/A',
+      status: 'Unknown',
+    };
+  }
+
+  private getDefaultMember(memberId: string) {
     return {
       _id: memberId,
       memberId: 'N/A',
       name: 'Unknown Member',
       email: 'N/A',
-      phone: 'N/A',
-      address: 'N/A',
-      memberSince: null,
-      currentlyBorrowed: 0,
-      totalHistory: 0,
-      borrowingStatus: {
-        currentlyBorrowed: 0,
-        activeBooks: 0,
-        totalHistory: 0,
-      },
+      borrowingStatus: { currentlyBorrowed: 0, activeBooks: 0, totalHistory: 0 },
     };
-  }
-
-  async getOverdueBooks(authHeader?: string): Promise<PopulatedRecentBook[]> {
-    try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
-      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
-        this.httpService.get(`${issuesServiceUrl}/issues/overdue`, {
-          headers: authHeader ? { Authorization: authHeader } : undefined,
-        })
-      );
-
-      const issues = response.data?.data || [];
-      if (issues.length === 0) return [];
-
-      const populatedIssues = await Promise.all(
-        issues.map(async (issue) => {
-          const [book, member] = await Promise.all([
-            this.fetchBookDetails(issue.bookId),
-            this.fetchMemberDetails(issue.memberId, authHeader),
-          ]);
-
-          return {
-            _id: issue._id,
-            book,
-            member,
-            issueType: issue.issueType,
-            numberOfDays: issue.numberOfDays,
-            issueDate: issue.issueDate,
-            dueDate: issue.dueDate,
-            returnDate: issue.returnDate,
-            status: issue.status,
-            daysOverdue: issue.daysOverdue,
-            fine: issue.fine,
-            finePerDay: issue.finePerDay,
-            createdAt: issue.createdAt,
-            updatedAt: issue.updatedAt,
-          };
-        })
-      );
-
-      return populatedIssues;
-    } catch (error) {
-      return [];
-    }
-  }
-
-  async getPendingRequests(authHeader?: string): Promise<any[]> {
-    try {
-      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
-      const response: AxiosResponse<{ data: any[] }> = await firstValueFrom(
-        this.httpService.get(`${requestsServiceUrl}/requests`, {
-          headers: authHeader ? { Authorization: authHeader } : undefined,
-        })
-      );
-
-      const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
-
-      const populatedRequests = await Promise.all(
-        pendingRequests.map(async (req) => {
-          const [book, member] = await Promise.all([
-            this.fetchBookDetails(req.bookId),
-            this.fetchMemberDetails(req.memberId, authHeader),
-          ]);
-          return {
-            ...req,
-            book,
-            member,
-          };
-        })
-      );
-
-      return populatedRequests.sort((a, b) =>
-        new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()
-      );
-    } catch (error) {
-      return [];
-    }
   }
 
   private async getActiveIssuesCount(): Promise<number> {

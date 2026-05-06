@@ -34,7 +34,6 @@ export declare class MemberAuthService {
     }>;
     forgotPassword(email: string): Promise<{
         message: string;
-        email: string;
     }>;
     resetPassword(token: string, newPassword: string): Promise<{
         message: string;

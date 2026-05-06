@@ -284,4 +284,18 @@ export class LibraryVisitsService {
       return null;
     }
   }
+
+  async getVisitStats() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const count = await this.libraryVisitModel.countDocuments({
+        timeIn: { $gte: today },
+      }).exec();
+      return count;
+    } catch (error) {
+      this.logger.error(`Failed to get visit stats: ${error.message}`);
+      return 0;
+    }
+  }
 }

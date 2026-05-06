@@ -12,7 +12,6 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 var StaffDashboardService_1;
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffDashboardService = void 0;
 const common_1 = require("@nestjs/common");
@@ -32,6 +31,19 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
         this.httpService = httpService;
         this.activityLogService = activityLogService;
         this.logger = new common_1.Logger(StaffDashboardService_1.name);
+    }
+    async getBooksAddedTodayCount(authHeader) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/dashboard/books-added-today`, {
+                headers: authHeader ? { Authorization: authHeader } : undefined,
+            }));
+            return response.data?.data || 0;
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch today's book count: ${error.message}`);
+            return 0;
+        }
     }
     async getStaffStats(authHeader) {
         try {
@@ -66,24 +78,17 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
             };
         }
     }
-    async getBooksAddedTodayCount(authHeader) {
+    async getBooksAddedTodayList(authHeader) {
         try {
             const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/books`, {
+            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/dashboard/books-added-today/list`, {
                 headers: authHeader ? { Authorization: authHeader } : undefined,
             }));
-            const books = response.data?.data || [];
-            const todayBookAdded = books.filter((book) => {
-                const createdAt = new Date(book.createdAt);
-                return createdAt >= today;
-            }).length;
-            return todayBookAdded;
+            return response.data?.data || [];
         }
         catch (error) {
-            this.logger.error(`Failed to fetch books added today: ${error.message}`);
-            return 0;
+            this.logger.error(`Failed to fetch today's books list: ${error.message}`);
+            return [];
         }
     }
     async getRecentIssues() {
@@ -180,14 +185,49 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
         }
     }
     async getMyProfile(staffId) {
-        return this.staffModel.findById(staffId).select('-password -__v');
+        const profile = await this.staffModel.findById(staffId).select('-password -__v').lean();
+        if (!profile)
+            return null;
+        const contributionFilter = {
+            adminId: staffId,
+            action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+        };
+        const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todaysActivities = await this.activityLogService.getLogs(1, 1, {
+            ...contributionFilter,
+            createdAt: { $gte: today }
+        });
+        const lastActivity = await this.activityLogService.getLogs(1, 1, { adminId: staffId });
+        return {
+            ...profile,
+            department: profile.department || 'General',
+            qualification: profile.qualification || 'N/A',
+            address: profile.address || 'N/A',
+            emergencyContact: profile.emergencyContact || 'N/A',
+            joinDate: profile.createdAt,
+            totalActivities: totalActivities.count || 0,
+            todaysActivities: todaysActivities.count || 0,
+            lastActive: lastActivity.data?.length > 0 ? lastActivity.data[0].createdAt : profile.updatedAt,
+            profileImage: profile.profileImage || "",
+        };
     }
     async getMyContribution(staffId) {
+        const contributionFilter = {
+            adminId: staffId,
+            action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+        };
+        const totalActivities = await this.activityLogService.getLogs(1, 1, contributionFilter);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todaysActivities = await this.activityLogService.getLogs(1, 1, {
+            ...contributionFilter,
+            createdAt: { $gte: today }
+        });
         return {
-            totalActivities: 0,
-            booksAdded: 0,
-            booksIssued: 0,
-            booksReturned: 0,
+            totalActivities: totalActivities.count || 0,
+            todaysActivities: todaysActivities.count || 0,
         };
     }
     async getMyActivitySummary(staffId) {
@@ -215,7 +255,7 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
                 action: actionName,
                 date: log.createdAt,
                 description: log.details?.message || (actionName === 'LOGIN' ? 'Staff logged in' : actionName === 'LOGOUT' ? 'Staff logged out' : ''),
-                referenceId: log.details?.referenceId || log.entityId
+                referenceId: log.entityName || log.details?.referenceId || log.entityId
             };
         });
         return {
@@ -224,21 +264,66 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
             recentActivities: recentActivities,
         };
     }
-    async getBooksByCategory() {
-        return [];
+    async getBooksByCategory(authHeader) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            this.logger.log(`Fetching books by category from: ${booksServiceUrl}/dashboard/inventory`);
+            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/dashboard/inventory`, {
+                headers: authHeader ? { Authorization: authHeader } : undefined,
+            }));
+            const booksByCategory = response.data?.data?.booksByCategory || [];
+            return booksByCategory.map((item) => ({
+                category: item._id || 'Unknown',
+                count: item.count || 0
+            }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch books by category: ${error.message}`);
+            return [];
+        }
     }
-    async getRackUtilization() {
-        return [];
+    async getRackUtilization(authHeader) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            this.logger.log(`Fetching rack utilization from: ${booksServiceUrl}/racks`);
+            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/racks`, {
+                headers: authHeader ? { Authorization: authHeader } : undefined,
+            }));
+            const racks = response.data?.data || [];
+            return racks.map((rack) => ({
+                rackNumber: rack.rackNumber || 'Unknown',
+                usedCount: rack.totalBooks || 0,
+                totalBooks: rack.totalBooks || 0,
+                capacity: rack.capacity || 50,
+            }));
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch rack utilization: ${error.message}`);
+            return [];
+        }
     }
-    async getBooksStatusDistribution() {
-        return {
-            available: 0,
-            issued: 0,
-            overdue: 0,
-            damaged: 0,
-        };
+    async getBooksStatusDistribution(authHeader) {
+        try {
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            this.logger.log(`Fetching books status distribution from: ${booksServiceUrl}/dashboard/stat-cards`);
+            const statsResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${booksServiceUrl}/dashboard/stat-cards`, {
+                headers: authHeader ? { Authorization: authHeader } : undefined,
+            }));
+            const stats = statsResponse.data?.data || {};
+            return {
+                available: stats.availableBooks || stats.availableQuantity || 0,
+                issued: stats.issuedBooks || stats.activeIssues || 0,
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch books status distribution: ${error.message}`);
+            return {
+                available: 0,
+                issued: 0,
+            };
+        }
     }
-    async getTodaysVisitors() {
+    async getTodaysVisitors(authHeader) {
         try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -249,7 +334,42 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
                 .populate('memberId', 'name email memberId')
                 .sort({ timeIn: -1 })
                 .exec();
-            this.logger.log(`Found ${visits.length} visitors today`);
+            const todaysIssues = await this.getTodaysIssues(authHeader);
+            this.logger.log(`Found ${visits.length} explicit visitors and ${todaysIssues.length} issues today`);
+            const visitMemberIds = new Set(visits.map(v => v.memberId?._id?.toString() || v.memberId?.toString()));
+            const uniqueIssueMembers = new Map();
+            todaysIssues.forEach(issue => {
+                const memberIdStr = issue.memberId?.toString();
+                if (memberIdStr && !visitMemberIds.has(memberIdStr)) {
+                    if (!uniqueIssueMembers.has(memberIdStr) || new Date(issue.issueDate) < new Date(uniqueIssueMembers.get(memberIdStr).issueDate)) {
+                        uniqueIssueMembers.set(memberIdStr, issue);
+                    }
+                }
+            });
+            if (uniqueIssueMembers.size > 0) {
+                const additionalMemberIds = Array.from(uniqueIssueMembers.keys());
+                const additionalMembers = await this.memberModel.find({
+                    _id: { $in: additionalMemberIds }
+                }).select('name email memberId').lean();
+                const virtualVisits = additionalMembers.map(member => {
+                    const issue = uniqueIssueMembers.get(member._id.toString());
+                    const isTakingHome = issue.issueType === 'Taking Home';
+                    const isReturned = issue.status === 'Returned';
+                    return {
+                        _id: `auto-${issue._id || issue.issueId}`,
+                        memberId: member,
+                        timeIn: issue.issueDate,
+                        timeOut: isTakingHome ? issue.issueDate : (isReturned ? (issue.returnDate || new Date()) : null),
+                        purpose: isTakingHome ? 'issue' : 'reading',
+                        isAutoRecorded: true,
+                        isActive: !isTakingHome && !isReturned,
+                        notes: 'Auto-included from book issue'
+                    };
+                });
+                const allVisitors = [...visits, ...virtualVisits].sort((a, b) => new Date(b.timeIn).getTime() - new Date(a.timeIn).getTime());
+                this.logger.log(`Total combined visitors: ${allVisitors.length}`);
+                return allVisitors;
+            }
             return visits;
         }
         catch (error) {
@@ -284,6 +404,8 @@ exports.StaffDashboardService = StaffDashboardService = StaffDashboardService_1 
     __param(2, (0, mongoose_1.InjectModel)(library_visit_entity_1.LibraryVisit.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
         mongoose_2.Model,
-        mongoose_2.Model, typeof (_a = typeof axios_1.HttpService !== "undefined" && axios_1.HttpService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
+        mongoose_2.Model,
+        axios_1.HttpService,
+        activity_log_service_1.ActivityLogService])
 ], StaffDashboardService);
 //# sourceMappingURL=staff-dashboard.service.js.map
