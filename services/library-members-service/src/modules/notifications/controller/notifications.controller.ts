@@ -8,7 +8,7 @@ import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
 import { Public } from '../../../auth/guards/public.decorator';
 
-@ApiBearerAuth()
+@ApiBearerAuth()   
 @ApiTags('Notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('notifications')

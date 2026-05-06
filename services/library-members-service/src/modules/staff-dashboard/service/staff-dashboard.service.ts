@@ -75,8 +75,6 @@ export class StaffDashboardService {
       const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
-      // Get all books and filter by createdAt date
       const response: AxiosResponse<{ data: any[]; count: number }> = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,

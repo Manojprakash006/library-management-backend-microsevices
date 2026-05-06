@@ -10,7 +10,7 @@ import { EmailService } from './service/email.service';
 import { Notification, NotificationSchema } from './entities/notification.entity';
 import { Member, MemberSchema } from '../members/entities/member.entity';
 import { User, UserSchema } from '../auth/entities/user.entity';
-
+    
 @Module({
   imports: [
     ConfigModule,
@@ -24,7 +24,7 @@ import { User, UserSchema } from '../auth/entities/user.entity';
       { name: Member.name, schema: MemberSchema },
       { name: User.name, schema: UserSchema },
     ]),
-  ],
+  ],   
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationsGateway, EmailService],
   exports: [NotificationsService, NotificationsGateway, EmailService],

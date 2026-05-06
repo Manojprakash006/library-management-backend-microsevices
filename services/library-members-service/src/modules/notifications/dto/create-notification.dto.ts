@@ -6,7 +6,7 @@ export class CreateNotificationDto {
   @ApiProperty({ description: 'Member ID reference' })
   @IsMongoId()
   memberId: string;
-
+   
   @ApiProperty({ description: 'Issue ID reference', required: false })
   @IsOptional()
   @IsMongoId()
