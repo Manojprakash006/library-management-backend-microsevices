@@ -1,14 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { min } from 'class-validator';
 import { Document } from 'mongoose';
 
 export type ConfigDocument = Config & Document;
 
 @Schema({ timestamps: true })
 export class Config {
-  @Prop({ default: 50 })
+  @Prop({ default: 50, min: 50 })
   maxRackCapacity: number;
 
-  @Prop({ default: 10 })
+  @Prop({ default: 10, min: 10 })
   maxShelfCapacity: number;
 
   @Prop({ default: 'DEFAULT' })
