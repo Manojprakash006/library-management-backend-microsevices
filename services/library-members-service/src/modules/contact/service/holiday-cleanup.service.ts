@@ -11,23 +11,36 @@ export class HolidayCleanupService {
     private libraryConfigModel: Model<LibraryConfigDocument>,
   ) {}
 
-  @Cron('0 0 * * *')
+  @Cron('0 0 * * *', { timeZone: 'Asia/kolkata'})
   async resetExpiredHoliday() {
+    console.log('Cron running...');
+
     const config = await this.libraryConfigModel.findOne();
 
-    if (!config) return;
+    if (!config) {
+      console.log('No config found');
+      return;
+    }
 
-    if (
-      config.holidayToDate &&
-      new Date(config.holidayToDate) < new Date()
-    ) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const toDate = new Date(config.holidayToDate);
+      toDate.setHours(0,0,0,0);
+
+      if (toDate < today) {
+      console.log('Holiday expired, updating...');
+
       config.holidaysInfo = holidays.publicLeave;
-
       config.holidayFromDate = null;
       config.holidayToDate = null;
       config.isHolidayActive = false;
 
       await config.save();
+
+      console.log('DB updated');
+    } else {
+      console.log('No expiry yet');
     }
   }
 }
