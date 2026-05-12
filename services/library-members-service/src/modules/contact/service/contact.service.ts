@@ -98,6 +98,18 @@ export class ContactService {
       config = new this.libraryConfigModel({});
       await config.save();
     }
+    if( config.isHolidayActive && config.holidayToDate ) {
+      const today = new Date();
+
+      if( today > config.holidayToDate ) {
+        config.isHolidayActive = false;
+        config.holidaysInfo = 'Closed on public holidays';
+        config.holidayFromDate = null;
+        config.holidayToDate = null;
+
+        await config.save();
+      }
+    }
     return config;
   }
 
