@@ -268,6 +268,9 @@ export class MemberDashboardService {
 
       const issues = response.data?.data || [];
 
+      issues.sort( (a: any, b: any) =>
+        new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+
       return issues.map((issue: any) => {
         const today = new Date();
 

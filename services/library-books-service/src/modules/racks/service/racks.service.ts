@@ -1,10 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Book, BookDocument } from '../../books/entities/book.entity';
 import { ConfigService } from '../../library-config/service/config.service';
+import { error } from 'console';
 
 interface ShelfInfo {
   shelfNumber: string;

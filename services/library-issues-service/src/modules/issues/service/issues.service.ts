@@ -549,7 +549,7 @@ export class IssuesService {
     const issues = await this.issueBookModel.find({
       memberId: new Types.ObjectId(memberId),
       status: { $ne: IssueStatus.RETURNED },
-    }).lean();
+    }).sort({ createdAt: -1 }).lean();
 
     const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
 

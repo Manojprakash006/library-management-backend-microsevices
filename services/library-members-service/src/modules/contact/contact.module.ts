@@ -5,6 +5,7 @@ import { ContactService } from './service/contact.service';
 import { ContactMessage, ContactMessageSchema } from './entities/contact-message.entity';
 import { LibraryConfig, LibraryConfigSchema } from './entities/library-config.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { HolidayCleanupService } from './service/holiday-cleanup.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [ContactController],
-  providers: [ContactService],
-  exports: [ContactService],
+  providers: [ContactService, HolidayCleanupService],
+  exports: [ContactService, HolidayCleanupService],
 })
 export class ContactModule {}

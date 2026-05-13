@@ -5,12 +5,12 @@ export class UpdateConfigDto {
   @ApiPropertyOptional({ example: 50 })
   @IsOptional()
   @IsNumber()
-  @Min(1)
+  @Min(50)
   maxRackCapacity?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
   @IsNumber()
-  @Min(1)
+  @Min(10)
   maxShelfCapacity?: number;
 }
