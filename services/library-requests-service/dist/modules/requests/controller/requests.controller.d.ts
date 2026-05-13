@@ -8,10 +8,13 @@ export declare class RequestsController {
         message: string;
         data: BookRequest;
     }>;
-    findAll(): Promise<{
+    findAll(page?: string, limit?: string, status?: string, search?: string): Promise<{
         message: string;
-        data: BookRequest[];
-        count: number;
+        data: any[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }>;
     getPendingCount(): Promise<{
         count: number;

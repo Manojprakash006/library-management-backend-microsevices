@@ -30,9 +30,18 @@ let RequestsController = class RequestsController {
         const request = await this.requestsService.create(createDto);
         return { message: 'Book request created successfully', data: request };
     }
-    async findAll() {
-        const requests = await this.requestsService.findAll();
-        return { message: 'Book requests retrieved successfully', data: requests, count: requests.length };
+    async findAll(page = '1', limit = '10', status, search) {
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 10;
+        const result = await this.requestsService.findAll(pageNum, limitNum, status, search);
+        return {
+            message: 'Book requests retrieved successfully',
+            data: result.data,
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages
+        };
     }
     async getPendingCount() {
         const count = await this.requestsService.getPendingCount();
@@ -51,7 +60,7 @@ let RequestsController = class RequestsController {
         return { message: 'Book request updated successfully', data: request };
     }
     async cancel(id, req) {
-        const memberId = req.user.id;
+        const memberId = req.user?.id || req.user?.userId;
         const request = await this.requestsService.cancel(id, memberId);
         return { message: 'Book request cancelled successfully', data: request };
     }
@@ -86,8 +95,12 @@ __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get all book requests' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book requests retrieved successfully', type: [book_request_entity_1.BookRequest] }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('status')),
+    __param(3, (0, common_1.Query)('search')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "findAll", null);
 __decorate([
@@ -129,6 +142,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RequestsController.prototype, "update", null);
 __decorate([
+    (0, roles_decorator_1.Roles)('member'),
     (0, common_1.Put)(':id/cancel'),
     (0, swagger_1.ApiOperation)({ summary: 'Cancel book request' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Book request cancelled successfully', type: book_request_entity_1.BookRequest }),

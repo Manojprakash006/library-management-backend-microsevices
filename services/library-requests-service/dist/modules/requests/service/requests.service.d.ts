@@ -2,17 +2,25 @@ import { Model } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { BookRequest, BookRequestDocument } from '../entities/book-request.entity';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
+import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 export declare class RequestsService {
     private bookRequestModel;
     private readonly httpService;
+    private readonly redisEmitter;
     private readonly logger;
-    constructor(bookRequestModel: Model<BookRequestDocument>, httpService: HttpService);
+    constructor(bookRequestModel: Model<BookRequestDocument>, httpService: HttpService, redisEmitter: RedisEmitterService);
     private logActivity;
     private sendNotification;
     private notifyAdmins;
     create(createDto: CreateBookRequestDto): Promise<BookRequest>;
     private getMemberBorrowingDetails;
-    findAll(): Promise<any[]>;
+    findAll(page?: number, limit?: number, status?: string, search?: string): Promise<{
+        data: any[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     getByMember(memberId: string): Promise<BookRequest[]>;
     findOne(id: string): Promise<BookRequest>;
     update(id: string, updateDto: Partial<CreateBookRequestDto>): Promise<BookRequest>;
@@ -21,4 +29,5 @@ export declare class RequestsService {
     reject(id: string, adminId?: string): Promise<BookRequest>;
     remove(id: string): Promise<void>;
     getPendingCount(): Promise<number>;
+    private invalidatePendingCountCache;
 }
