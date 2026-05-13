@@ -154,6 +154,18 @@ export class BooksController {
     return { message: 'Book status updated successfully', data: book };
   }
 
+  @Public()
+  @Patch(':id/condition-quantity')
+  @ApiOperation({ summary: 'Update book damaged/lost quantities' })
+  async updateConditionQuantity(
+    @Param('id') id: string,
+    @Body('condition') condition: string,
+    @Body('change') change: number
+  ): Promise<{ message: string; data: Book }> {
+    const book = await this.booksService.updateConditionQuantity(id, condition, change);
+    return { message: 'Book condition quantity updated successfully', data: book };
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete book' })
   @ApiResponse({ status: 200, description: 'Book deleted successfully' })

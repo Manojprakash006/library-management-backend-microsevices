@@ -13,6 +13,8 @@ interface BooksStatsResponse {
   totalBooks: number;
   availableBooks: number;
   issuedBooks: number;
+  damagedBooks?: number;
+  lostBooks?: number;
 }
 
 @Injectable()
@@ -57,10 +59,12 @@ export class StaffDashboardService {
 
       this.logger.log(`Books service response: ${JSON.stringify(statsResponse.data)}`);
 
-      const stats: BooksStatsResponse = statsResponse.data?.data || {
+      const stats: any = statsResponse.data?.data || {
         totalBooks: 0,
         availableBooks: 0,
         issuedBooks: 0,
+        damagedBooks: 0,
+        lostBooks: 0,
       };
 
       this.logger.log(`Parsed stats: ${JSON.stringify(stats)}`);
@@ -71,6 +75,8 @@ export class StaffDashboardService {
         totalBooks: stats.totalBooks || 0,
         availableBooks: stats.availableBooks || 0,
         issuedBooks: stats.issuedBooks || 0,
+        damagedBooks: stats.damagedBooks || 0,
+        lostBooks: stats.lostBooks || 0,
         todayBookAdded: todayBookAdded,
       };
     } catch (error) {
@@ -81,6 +87,8 @@ export class StaffDashboardService {
         totalBooks: 0,
         availableBooks: 0,
         issuedBooks: 0,
+        damagedBooks: 0,
+        lostBooks: 0,
         todayBookAdded: 0,
       };
     }

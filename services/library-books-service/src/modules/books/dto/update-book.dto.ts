@@ -105,4 +105,16 @@ export class UpdateBookDto {
   @Min(0)
   @Max(5)
   rating?: number;
+
+  @ApiProperty({ description: 'Number of damaged copies', required: false, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  damagedQuantity?: number;
+
+  @ApiProperty({ description: 'Number of lost copies', required: false, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lostQuantity?: number;
 }

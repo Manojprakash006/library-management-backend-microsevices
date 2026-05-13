@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Book, BookDocument } from '../entities/book.entity';
+import { Book, BookDocument, BookStatus } from '../entities/book.entity';
 import { BookReview, BookReviewDocument } from '../entities/book-review.entity';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
@@ -179,9 +179,10 @@ export class BooksService {
 
     const updatedBooks = books.map((book) => {
       const issuedCount = availabilityMap[book._id.toString()] || 0;
+      const damagedCount = book.damagedQuantity || 0;
       return {
         ...book,
-        available: (book.quantity || 0) - issuedCount,
+        available: Math.max(0, (book.quantity || 0) - issuedCount - damagedCount),
         totalReviews: reviewCountsMap[book._id.toString()] || 0,
         rating: Number((book.rating || 0).toFixed(1)),
       };
@@ -210,12 +211,14 @@ export class BooksService {
           `${issuesServiceUrl}/issues/count/book/${book._id}`) );
 
       const issuedCount = response.data?.count || 0;
+      const damagedCount = book.damagedQuantity || 0;
 
-      return { ...book.toObject(), available: book.quantity - issuedCount };
+      return { ...book.toObject(), available: Math.max(0, book.quantity - issuedCount - damagedCount) };
     } catch (error) {
       console.log("ISSUE COUNT FETCH FAILED:", error);
+      const damagedCount = book.damagedQuantity || 0;
 
-      return { ...book.toObject(), available: book.quantity };
+      return { ...book.toObject(), available: Math.max(0, book.quantity - damagedCount) };
     }
   }
 
@@ -265,6 +268,33 @@ export class BooksService {
     this.logger.log(`Book ${id} status updated to ${status}`);
     return book;
   }
+
+  async updateConditionQuantity(bookId: string, condition: string, change: number): Promise<Book> {
+    const update: any = {};
+    if (condition === 'Damaged') {
+      update.$inc = { damagedQuantity: change };
+    } else if (condition === 'Lost') {
+      // If lost, we increase lostQuantity and decrease total quantity
+      update.$inc = { lostQuantity: change, quantity: -change };
+    }
+
+    const book = await this.bookModel.findByIdAndUpdate(bookId, update, { new: true }).exec();
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+
+    // Auto-update status if quantity is 0
+    if (book.quantity === 0 && condition === 'Lost') {
+      book.status = BookStatus.LOST;
+      await book.save();
+    }
+
+    // Emit real-time updates
+    await this.redisEmitter.emit('BOOKS_UPDATED', { type: 'update', book });
+    return book;
+  }
+
+
 
   async remove(id: string, adminId?: string): Promise<void> {
     const book = await this.bookModel.findById(id).exec();

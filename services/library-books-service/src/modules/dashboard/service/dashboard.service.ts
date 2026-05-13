@@ -73,6 +73,8 @@ export class DashboardService {
     const [
       totalBooks,
       totalBooksResult,
+      totalDamagedResult,
+      totalLostResult,
       issuedBooks,
       pendingRequests,
       overdueBooks,
@@ -82,6 +84,8 @@ export class DashboardService {
     ] = await Promise.all([
       this.bookModel.countDocuments(),
       this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]),
+      this.bookModel.aggregate([{ $group: { _id: null, totalDamaged: { $sum: '$damagedQuantity' } } }]),
+      this.bookModel.aggregate([{ $group: { _id: null, totalLost: { $sum: '$lostQuantity' } } }]),
       this.getActiveIssuesCount(),
       this.bookRequestModel.countDocuments({ status: 'Pending' }),
       this.getOverdueBooksCount(),
@@ -91,6 +95,8 @@ export class DashboardService {
     ]);
 
     const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const damagedBooks = totalDamagedResult.length > 0 ? totalDamagedResult[0].totalDamaged : 0;
+    const lostBooks = totalLostResult.length > 0 ? totalLostResult[0].totalLost : 0;
     const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
     return {
@@ -99,6 +105,8 @@ export class DashboardService {
       availableBooks: availableQuantity,
       availableQuantity,
       issuedBooks,
+      damagedBooks,
+      lostBooks,
       totalMembers,
       activeIssues: issuedBooks,
       overdueBooks,
@@ -124,7 +132,7 @@ export class DashboardService {
   }
 
   async getStatCards(authHeader?: string) {
-    const cacheKey = 'dashboard:stat_cards';
+    const cacheKey = 'dashboard:stat_cards_v2';
     try {
       const cached = await this.redisEmitter.client.get(cacheKey);
       if (cached) return JSON.parse(cached);
@@ -135,6 +143,8 @@ export class DashboardService {
     const [
       totalBooks,
       totalBooksResult,
+      totalDamagedResult,
+      totalLostResult,
       activeIssues,
       pendingRequests,
       overdueBooks,
@@ -144,6 +154,8 @@ export class DashboardService {
     ] = await Promise.all([
       this.bookModel.countDocuments().exec(),
       this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]).exec(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalDamaged: { $sum: '$damagedQuantity' } } }]).exec(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalLost: { $sum: '$lostQuantity' } } }]).exec(),
       this.getActiveIssuesCount(),
       this.getPendingRequestsCount(),
       this.getOverdueBooksCount(),
@@ -153,6 +165,8 @@ export class DashboardService {
     ]);
 
     const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const damagedBooks = totalDamagedResult.length > 0 ? totalDamagedResult[0].totalDamaged : 0;
+    const lostBooks = totalLostResult.length > 0 ? totalLostResult[0].totalLost : 0;
     const issuedBooks = activeIssues;
     const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
@@ -162,6 +176,8 @@ export class DashboardService {
       availableBooks: availableQuantity,
       availableQuantity,
       issuedBooks,
+      damagedBooks,
+      lostBooks,
       overdueBooks,
       totalMembers,
       newArrivals,
