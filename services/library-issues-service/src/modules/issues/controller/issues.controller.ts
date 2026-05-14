@@ -10,7 +10,7 @@ import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@Roles('admin', 'staff')
 @ApiTags('Issues')
 @Controller('issues')
 export class IssuesController {
@@ -214,10 +214,15 @@ export class IssuesController {
   @ApiResponse({ status: 200, description: 'Book returned successfully', type: IssueBook })
   @ApiResponse({ status: 400, description: 'Book already returned' })
   @ApiResponse({ status: 404, description: 'Issued book not found' })
-  async returnBook(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: IssueBook; fine: any }> {
+  async returnBook(
+    @Param('id') id: string, 
+    @Body() returnDto: { condition?: any; remarks?: string },
+    @Req() req: any
+  ): Promise<{ message: string; data: IssueBook; fine: any }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
     const authHeader = req.headers.authorization;
-    const issue = await this.issuesService.returnBook(id, adminId, authHeader);
+    const { condition, remarks } = returnDto;
+    const issue = await this.issuesService.returnBook(id, adminId, authHeader, condition, remarks);
     return {
       message: 'Book returned successfully',
       data: issue,

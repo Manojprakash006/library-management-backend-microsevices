@@ -3,9 +3,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { IssueBook, IssueBookDocument, IssueStatus, IssueType } from '../entities/issue-book.entity';
+import { IssueBook, IssueBookDocument, IssueStatus, IssueType, BookCondition } from '../entities/issue-book.entity';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
+import { DamageReportsService } from '../../damage-reports/service/damage-reports.service';
+import { DamageReportReason } from '../../damage-reports/entities/book-damage-report.entity';
 
 @Injectable()
 export class IssuesService {
@@ -15,14 +17,28 @@ export class IssuesService {
     @InjectModel(IssueBook.name) private issueBookModel: Model<IssueBookDocument>,
     private readonly httpService: HttpService,
     private readonly redisEmitter: RedisEmitterService,
+    private readonly damageReportsService: DamageReportsService,
   ) { }
 
   private calculateOverdue(issue: any): any {
     const today = new Date();
     const updatedIssue = { ...issue };
 
+    // If already returned, don't recalculate but infer breakdown for old records
+    if (issue.status === IssueStatus.RETURNED) {
+      if (updatedIssue.fine > 0 && !updatedIssue.overdueFine && !updatedIssue.conditionFine) {
+        if (updatedIssue.condition && updatedIssue.condition !== BookCondition.GOOD) {
+          updatedIssue.conditionFine = updatedIssue.fine;
+          updatedIssue.overdueFine = 0;
+        } else {
+          updatedIssue.overdueFine = updatedIssue.fine;
+          updatedIssue.conditionFine = 0;
+        }
+      }
+      return updatedIssue;
+    }
+
     if (
-      issue.status !== IssueStatus.RETURNED &&
       issue.issueType === IssueType.TAKING_HOME &&
       issue.dueDate
     ) {
@@ -35,14 +51,18 @@ export class IssuesService {
         );
         updatedIssue.status = IssueStatus.OVERDUE;
         updatedIssue.daysOverdue = overdueDays;
-        updatedIssue.fine = overdueDays * (issue.finePerDay || 10);
+        updatedIssue.overdueFine = overdueDays * (issue.finePerDay || 10);
+        updatedIssue.fine = updatedIssue.overdueFine + (issue.conditionFine || 0);
       } else {
         updatedIssue.daysOverdue = 0;
-        updatedIssue.fine = 0;
+        updatedIssue.overdueFine = 0;
+        updatedIssue.fine = issue.conditionFine || 0;
       }
     } else {
       updatedIssue.daysOverdue = 0;
-      updatedIssue.fine = 0;
+      updatedIssue.overdueFine = 0;
+      updatedIssue.conditionFine = updatedIssue.conditionFine || 0;
+      updatedIssue.fine = updatedIssue.conditionFine;
     }
 
     return updatedIssue;
@@ -398,7 +418,17 @@ export class IssuesService {
       );
     } catch (error) {
       this.logger.error(`Failed to update book status: ${error.message}`);
-      // Rollback might be needed here in a strict system, but let's log for now.
+    }
+  }
+
+  private async updateBookConditionQuantity(bookId: string, condition: string, change: number): Promise<void> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      await firstValueFrom(
+        this.httpService.patch(`${booksServiceUrl}/books/${bookId}/condition-quantity`, { condition, change })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update book condition quantity: ${error.message}`);
     }
   }
 
@@ -437,16 +467,31 @@ export class IssuesService {
 
   async findAll(page: number = 1, limit: number = 10, status?: string): Promise<{ data: IssueBook[], total: number, page: number, limit: number, totalPages: number }> {
     const skip = (page - 1) * limit;
+    this.logger.log(`findAll: status=${status}, page=${page}, limit=${limit}`);
 
     const filter: any = {};
     if (status) {
-      const normalizedStatus = status.toLowerCase();
-      if (normalizedStatus === 'returned') {
+      const s = status.trim().toLowerCase();
+      if (s === 'returned') {
         filter.status = IssueStatus.RETURNED;
-      } else if (normalizedStatus === 'active') {
+        filter.condition = { $nin: [BookCondition.DAMAGED, BookCondition.LOST] };
+      } else if (s === 'active') {
         filter.status = { $ne: IssueStatus.RETURNED };
+      } else if (s === 'overdue') {
+        filter.status = IssueStatus.OVERDUE;
+      } else if (s === 'damaged') {
+        filter.status = IssueStatus.RETURNED;
+        filter.condition = BookCondition.DAMAGED;
+      } else if (s === 'lost') {
+        filter.status = IssueStatus.RETURNED;
+        filter.condition = BookCondition.LOST;
+      } else {
+        // Direct status match if none of the above
+        filter.status = status;
       }
     }
+
+    this.logger.log(`findAll filter: ${JSON.stringify(filter)}`);
 
     const [issuedBooks, total] = await Promise.all([
       this.issueBookModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
@@ -571,7 +616,7 @@ export class IssuesService {
     return enrichedIssues;
   }
 
-  async returnBook(id: string, adminId?: string, authHeader?: string): Promise<IssueBook> {
+  async returnBook(id: string, adminId?: string, authHeader?: string, condition: BookCondition = BookCondition.GOOD, remarks?: string): Promise<IssueBook> {
     const issuedBook = await this.issueBookModel.findById(id).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
@@ -584,8 +629,22 @@ export class IssuesService {
     const returnDate = new Date();
     issuedBook.returnDate = returnDate;
     issuedBook.status = IssueStatus.RETURNED;
+    issuedBook.condition = condition;
+    issuedBook.remarks = remarks;
 
-    // Calculate fine only for Taking Home books that have due date
+    // Fetch book data for price and title
+    const bookId = issuedBook.bookId.toString();
+    let bookData: any = null;
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const bookResponse = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
+      bookData = bookResponse.data?.data;
+    } catch (e) {
+      this.logger.error(`Failed to fetch book data: ${e.message}`);
+    }
+
+    // Calculate overdue fine only for Taking Home books that have due date
+    let overdueFine = 0;
     if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate) {
       const dueDateEnd = new Date(issuedBook.dueDate);
       dueDateEnd.setHours(23, 59, 59, 999);
@@ -593,61 +652,107 @@ export class IssuesService {
       if (returnDate > dueDateEnd) {
         const overdueDays = Math.ceil((returnDate.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24));
         issuedBook.daysOverdue = overdueDays;
-        issuedBook.fine = overdueDays * (issuedBook.finePerDay || 10);
+        overdueFine = overdueDays * (issuedBook.finePerDay || 10);
+      }
+    }
 
-        // Create a Fine in Payments Service
-        try {
-          const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
-          await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
-            memberId: issuedBook.memberId.toString(),
-            issueId: issuedBook._id.toString(),
-            bookId: issuedBook.bookId.toString(),
-            amount: issuedBook.fine,
-            reason: `Overdue by ${overdueDays} days`
-          }, {
-            headers: authHeader ? { Authorization: authHeader } : {}
-          }));
-          this.logger.log(`Created fine of ₹${issuedBook.fine} for member ${issuedBook.memberId}`);
-        } catch (error) {
-          this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
-        }
+    let extraFine = 0;
+    let extraReason = '';
+
+    // Handle Damaged or Lost conditions
+    if (condition !== BookCondition.GOOD) {
+      const bookPrice = bookData?.price || 0;
+      
+      if (condition === BookCondition.LOST) {
+        extraFine = bookPrice; // 100% of price for lost
+        extraReason = 'Book Lost';
+      } else if (condition === BookCondition.DAMAGED) {
+        extraFine = Math.ceil(bookPrice * 0.5); // 50% for damage
+        extraReason = 'Book Damaged';
+      }
+
+      // Create Damage/Loss Report
+      try {
+        await this.damageReportsService.create({
+          reportId: `REP${Date.now()}`,
+          issueId: issuedBook._id.toString(),
+          bookId: bookId,
+          memberId: issuedBook.memberId.toString(),
+          reason: condition === BookCondition.LOST ? DamageReportReason.LOST : DamageReportReason.DAMAGED,
+          bookAmount: bookPrice,
+          fineAmount: extraFine,
+          totalAmount: extraFine
+        });
+      } catch (error) {
+        this.logger.error(`Failed to create damage report: ${error.message}`);
+      }
+    }
+
+    issuedBook.overdueFine = overdueFine;
+    issuedBook.conditionFine = extraFine;
+    issuedBook.fine = overdueFine + extraFine;
+    const totalFine = issuedBook.fine;
+
+    this.logger.log(`Saving return: overdueFine=${issuedBook.overdueFine}, conditionFine=${issuedBook.conditionFine}, fine=${issuedBook.fine}`);
+
+    if (totalFine > 0) {
+      // Create a Fine in Payments Service
+      try {
+        const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+        await firstValueFrom(this.httpService.post(`${paymentsServiceUrl}/fines/create`, {
+          memberId: issuedBook.memberId.toString(),
+          issueId: issuedBook._id.toString(),
+          bookId: issuedBook.bookId.toString(),
+          amount: totalFine,
+          reason: `${overdueFine > 0 ? `Overdue by ${issuedBook.daysOverdue} days. ` : ''}${extraReason ? extraReason : ''}`.trim()
+        }, {
+          headers: authHeader ? { Authorization: authHeader } : {}
+        }));
+        this.logger.log(`Created fine of ₹${totalFine} for member ${issuedBook.memberId}`);
+      } catch (error) {
+        this.logger.error(`Failed to create fine in Payment Service: ${error.message}`);
       }
     }
 
     const savedIssue = await issuedBook.save();
 
-    // Parallel execution of critical updates
-    const bookId = issuedBook.bookId.toString();
-    await Promise.all([
-      this.updateBookStatus(bookId, 'available'),
+    // Prepare updates
+    const updates: Promise<any>[] = [
       this.updateBorrowingHistory(
         issuedBook.memberId.toString(),
         issuedBook._id.toString(),
         returnDate,
-        issuedBook.fine || 0
+        totalFine
       )
-    ]);
+    ];
 
-    // Fetch book title for notifications and logging
-    let bookTitle = 'Book';
-    try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
-      const bookResponse = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
-      bookTitle = bookResponse.data?.data?.title || 'Book';
-    } catch (e) {
-      this.logger.error(`Failed to fetch book title for notification: ${e.message}`);
+    if (condition !== BookCondition.GOOD) {
+      // For Damaged or Lost, we update the specific quantities
+      updates.push(this.updateBookConditionQuantity(bookId, condition, 1));
+      
+      // We don't force 'available' status for Lost books here, 
+      // let the BooksService handle the status based on remaining quantity.
+      if (condition === BookCondition.DAMAGED) {
+        updates.push(this.updateBookStatus(bookId, 'available'));
+      }
+    } else {
+      // Normal return
+      updates.push(this.updateBookStatus(bookId, 'available'));
     }
+
+    await Promise.all(updates);
 
     // Fire and forget non-critical operations (don't await)
     if (adminId) {
       this.logActivity(adminId, 'RETURN_BOOK', savedIssue._id.toString(), {
         bookId: issuedBook.bookId,
         memberId: issuedBook.memberId,
-        bookTitle: bookTitle,
-        memberName: 'Member'
+        bookTitle: bookData?.title || 'Book',
+        memberName: 'Member',
+        condition,
+        remarks
       });
     }
-
 
     const isReadingInside = issuedBook.issueType === 'Reading Inside Library';
     const actionText = isReadingInside ? 'finished reading' : 'successfully returned';
@@ -657,7 +762,7 @@ export class IssuesService {
       issuedBook.memberId.toString(),
       'BOOK_RETURNED',
       titleText,
-      `Thank you! You have ${actionText} "${bookTitle}" (Book ID: ${bookId}) on ${returnDate.toLocaleDateString()}.${issuedBook.fine > 0 ? ` A fine of ₹${issuedBook.fine} was calculated for late return.` : ''}`
+      `Thank you! You have ${actionText} "${bookData?.title || 'Book'}" (Book ID: ${bookId}) on ${returnDate.toLocaleDateString()}.${totalFine > 0 ? ` A fine of ₹${totalFine} was calculated.` : ''}`
     );
 
     this.recordReturnVisit(
@@ -669,7 +774,7 @@ export class IssuesService {
     await this.redisEmitter.emit('ISSUES_UPDATED', { 
       type: 'return', 
       issue: savedIssue,
-      bookTitle
+      bookTitle: bookData?.title || 'Book'
     });
 
     return savedIssue;

@@ -80,6 +80,12 @@ export class Book {
   @Prop({ default: 1, min: 0 })
   quantity: number;
 
+  @Prop({ default: 0, min: 0 })
+  damagedQuantity: number;
+
+  @Prop({ default: 0, min: 0 })
+  lostQuantity: number;
+
   @Prop({ trim: true })
   coverUrl: string;
 

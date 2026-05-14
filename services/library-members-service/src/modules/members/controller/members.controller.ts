@@ -10,6 +10,7 @@ import { Public } from '../../../auth/guards/public.decorator';
 @ApiTags('Members')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'staff')
 @Controller('members')
 export class MembersController {
     constructor(private readonly membersService: MembersService) { }
@@ -103,7 +104,7 @@ export class MembersController {
     }
 
     @Delete(':id')
-    @Roles('admin')
+    @Roles('admin', 'staff')
     @ApiOperation({ summary: 'Delete a member' })
     async remove(@Param('id') id: string, @Req() req: any) {
         const adminId = req.user?.id || req.user?.userId;
