@@ -4,7 +4,8 @@ import { BooksService } from '../service/books.service';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { CreateBookReviewDto } from '../dto/create-book-review.dto';
-import { Book } from '../entities/book.entity';
+import { Book, BookStatus, BookCondition } from '../entities/book.entity';
+import { BookCopy } from '../entities/book-copy.entity';
 import { BookReview } from '../entities/book-review.entity';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
@@ -110,6 +111,13 @@ export class BooksController {
     const book = await this.booksService.findOne(id);
     return { message: 'Book retrieved successfully', data: book };
   }
+
+  @Get(':id/copies')
+  @ApiOperation({ summary: 'Get all copies of a book' })
+  async findCopies(@Param('id') id: string) {
+    const copies = await this.booksService.findCopiesByTitleId(id);
+    return { message: 'Book copies retrieved successfully', data: copies };
+  }
   
   @Public()
   @Get(':bookId/reviews')
@@ -152,6 +160,18 @@ export class BooksController {
   async updateStatus(@Param('id') id: string, @Body('status') status: string): Promise<{ message: string; data: Book }> {
     const book = await this.booksService.updateStatus(id, status);
     return { message: 'Book status updated successfully', data: book };
+  }
+
+  @Public()
+  @Patch('copies/:copyNumber/status')
+  @ApiOperation({ summary: 'Update book copy status' })
+  async updateCopyStatus(
+    @Param('copyNumber') copyNumber: string,
+    @Body('status') status: BookStatus,
+    @Body('condition') condition?: BookCondition
+  ) {
+    const copy = await this.booksService.updateCopyStatus(copyNumber, status, condition);
+    return { message: 'Book copy status updated successfully', data: copy };
   }
 
   @Public()

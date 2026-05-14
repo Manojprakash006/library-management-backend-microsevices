@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Book, BookDocument, BookStatus } from '../entities/book.entity';
+import { Book, BookDocument, BookStatus, BookCondition } from '../entities/book.entity';
+import { BookCopy, BookCopyDocument } from '../entities/book-copy.entity';
 import { BookReview, BookReviewDocument } from '../entities/book-review.entity';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
@@ -18,6 +19,7 @@ export class BooksService {
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookReview.name) private bookReviewModel: Model<BookReviewDocument>,
+    @InjectModel(BookCopy.name) private bookCopyModel: Model<BookCopyDocument>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly redisEmitter: RedisEmitterService,
@@ -105,6 +107,28 @@ export class BooksService {
       createdBy: adminId, // Set the staff/admin who created this book
     });
     const savedBook = await createdBook.save();
+    this.logger.log(`Book saved: ${savedBook._id}, bookId: ${savedBook.bookId}`);
+
+    // Create individual copies
+    const copies = [];
+    const quantity = savedBook.quantity || 1;
+    for (let i = 1; i <= quantity; i++) {
+      copies.push({
+        bookId: savedBook._id,
+        copyNumber: `${savedBook.bookId}-C${i.toString().padStart(2, '0')}`,
+        status: savedBook.status || BookStatus.AVAILABLE,
+        condition: savedBook.condition || BookCondition.GOOD,
+        addedBy: adminId,
+      });
+    }
+    
+    try {
+      const insertedCopies = await this.bookCopyModel.insertMany(copies);
+      this.logger.log(`Successfully created ${insertedCopies.length} copies for book ${savedBook.bookId}`);
+    } catch (copyError) {
+      this.logger.error(`Failed to create copies for book ${savedBook.bookId}: ${copyError.message}`);
+      // Even if copies fail, the book is created, but we should know why
+    }
 
     if (adminId) {
       await this.logActivity(adminId, 'BOOKSADDED', savedBook.bookId, { title: savedBook.title });
@@ -230,6 +254,43 @@ export class BooksService {
     return book;
   }
 
+  async findCopiesByBookId(bookId: string): Promise<BookCopy[]> {
+    const book = await this.bookModel.findById(bookId).exec();
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+    return this.bookCopyModel.find({ bookId: book._id }).exec() as any;
+  }
+
+  async findCopiesByTitleId(id: string): Promise<BookCopy[]> {
+    const book = await this.bookModel.findById(id).exec();
+    if (!book) return [];
+
+    const copies = await this.bookCopyModel.find({ bookId: book._id }).exec();
+    
+    // Self-healing: If no copies found but quantity > 0, generate them now
+    if (copies.length === 0 && book.quantity > 0) {
+      this.logger.log(`No copies found for book ${book.bookId}, generating ${book.quantity} copies now...`);
+      const newCopies = [];
+      for (let i = 1; i <= book.quantity; i++) {
+        newCopies.push({
+          bookId: book._id,
+          copyNumber: `${book.bookId}-C${i.toString().padStart(2, '0')}`,
+          status: BookStatus.AVAILABLE,
+          condition: BookCondition.GOOD,
+        });
+      }
+      try {
+        return await this.bookCopyModel.insertMany(newCopies) as any;
+      } catch (err) {
+        this.logger.error(`Failed to auto-generate copies: ${err.message}`);
+        return [];
+      }
+    }
+    
+    return copies as any;
+  }
+
   async update(id: string, updateBookDto: UpdateBookDto, adminId?: string): Promise<Book> {
     const currentBook = await this.bookModel.findById(id).exec();
     if (!currentBook) {
@@ -267,6 +328,24 @@ export class BooksService {
     }
     this.logger.log(`Book ${id} status updated to ${status}`);
     return book;
+  }
+
+  async updateCopyStatus(copyNumber: string, status: BookStatus, condition?: BookCondition): Promise<BookCopy> {
+    const update: any = { status };
+    if (condition) {
+      update.condition = condition;
+    }
+
+    const copy = await this.bookCopyModel.findOneAndUpdate({ copyNumber }, update, { new: true }).exec();
+    if (!copy) {
+      throw new NotFoundException(`Book copy ${copyNumber} not found`);
+    }
+
+    // Also update the main book's status if necessary
+    // (e.g. if all copies are issued, mark book as issued)
+    // For now, we'll keep it simple.
+    
+    return copy;
   }
 
   async updateConditionQuantity(bookId: string, condition: string, change: number): Promise<Book> {
