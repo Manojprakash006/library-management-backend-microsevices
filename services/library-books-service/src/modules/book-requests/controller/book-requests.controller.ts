@@ -42,7 +42,7 @@ export class BookRequestsController {
   }
 
    @Get()
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
   async findAll(): Promise<{ message: string; data: BookRequest[]; count: number }> {
@@ -70,7 +70,7 @@ export class BookRequestsController {
   }
 
    @Get(':id')
-  @Roles('admin', 'member')
+  @Roles('admin', 'staff', 'member')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
   @ApiResponse({ status: 404, description: 'Book request not found' })
@@ -116,24 +116,26 @@ export class BookRequestsController {
   }
 
    @Put(':id/approve')
-  @Roles('admin')
-  @ApiOperation({ summary: 'Approve book request (Admin only)' })
+  @Roles('admin', 'staff')
+  @ApiOperation({ summary: 'Approve book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
   @ApiResponse({ status: 404, description: 'Book request not found' })
   @ApiResponse({ status: 400, description: 'Only pending requests can be approved' })
-  async approve(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
-    const bookRequest = await this.bookRequestsService.approve(id);
+  async approve(@Param('id') id: string, @Req() req): Promise<{ message: string; data: BookRequest }> {
+    const userId = req.user.id;
+    const bookRequest = await this.bookRequestsService.approve(id, userId);
     return { message: 'Book request approved successfully', data: bookRequest };
   }
 
    @Put(':id/reject')
-  @Roles('admin')
-  @ApiOperation({ summary: 'Reject book request (Admin only)' })
+  @Roles('admin', 'staff')
+  @ApiOperation({ summary: 'Reject book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })
   @ApiResponse({ status: 404, description: 'Book request not found' })
   @ApiResponse({ status: 400, description: 'Only pending requests can be rejected' })
-  async reject(@Param('id') id: string): Promise<{ message: string; data: BookRequest }> {
-    const bookRequest = await this.bookRequestsService.reject(id);
+  async reject(@Param('id') id: string, @Req() req): Promise<{ message: string; data: BookRequest }> {
+    const userId = req.user.id;
+    const bookRequest = await this.bookRequestsService.reject(id, userId);
     return { message: 'Book request rejected successfully', data: bookRequest };
   }
 }

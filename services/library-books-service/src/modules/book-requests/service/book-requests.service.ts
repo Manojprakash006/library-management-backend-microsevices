@@ -59,6 +59,7 @@ export class BookRequestsService {
       .find()
       .populate('bookId', 'title bookId author rackNumber')
       .populate('memberId', 'fullName memberId email phoneNumber membershipDate')
+      .populate('processedBy', 'fullName staffId')
       .sort({ requestDate: -1 })
       .exec();
   }
@@ -69,6 +70,7 @@ export class BookRequestsService {
       .populate('bookId', 'title bookId author rackNumber shelfNumber')
       .populate('memberId', 'fullName memberId email phoneNumber membershipDate')
       .populate('activeBookIds')
+      .populate('processedBy', 'fullName staffId')
       .exec();
 
     if (!bookRequest) {
@@ -104,7 +106,7 @@ export class BookRequestsService {
       .exec();
   }
 
-  async approve(id: string): Promise<BookRequest> {
+  async approve(id: string, processedBy: string): Promise<BookRequest> {
     const bookRequest = await this.bookRequestModel.findById(id).exec();
 
     if (!bookRequest) {
@@ -117,6 +119,7 @@ export class BookRequestsService {
 
     bookRequest.status = BookRequestStatus.APPROVED;
     bookRequest.processedDate = new Date();
+    bookRequest.processedBy = new Types.ObjectId(processedBy);
 
     await bookRequest.save();
 
@@ -127,7 +130,7 @@ export class BookRequestsService {
       .exec();
   }
 
-  async reject(id: string): Promise<BookRequest> {
+  async reject(id: string, processedBy: string): Promise<BookRequest> {
     const bookRequest = await this.bookRequestModel.findById(id).exec();
 
     if (!bookRequest) {
@@ -140,6 +143,7 @@ export class BookRequestsService {
 
     bookRequest.status = BookRequestStatus.REJECTED;
     bookRequest.processedDate = new Date();
+    bookRequest.processedBy = new Types.ObjectId(processedBy);
 
     await bookRequest.save();
 
