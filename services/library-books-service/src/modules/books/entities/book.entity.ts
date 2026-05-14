@@ -14,6 +14,7 @@ export enum BookCondition {
   FAIR = 'Fair',
   POOR = 'Poor',
   DAMAGED = 'Damaged',
+  LOST = 'Lost',
 }
 
 export enum BookStatus {

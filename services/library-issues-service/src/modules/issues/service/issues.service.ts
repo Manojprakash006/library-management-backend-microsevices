@@ -122,6 +122,22 @@ export class IssuesService {
             issue: { ...updatedIssue, _id: issue._id } 
           });
         }
+
+        // AUTO-LOST LOGIC: If overdue for more than 30 days, mark as Lost
+        if (updatedIssue.daysOverdue >= 30) {
+          this.logger.log(`Auto-marking issue ${issue._id} as LOST due to 30+ days overdue.`);
+          try {
+            await this.returnBook(
+              issue._id.toString(), 
+              'SYSTEM', 
+              undefined, 
+              BookCondition.LOST, 
+              'Automatically marked as lost after 30 days of overdue.'
+            );
+          } catch (autoLostError) {
+            this.logger.error(`Failed to auto-mark issue ${issue._id} as lost: ${autoLostError.message}`);
+          }
+        }
       }
     }
   }
@@ -319,6 +335,7 @@ export class IssuesService {
 
     const issuedBook = new this.issueBookModel({
       bookId: bookObjectId,
+      copyNumber: createIssueDto.copyNumber,
       memberId: memberObjectId,
       issueType: createIssueDto.issueType,
       numberOfDays,
@@ -338,6 +355,7 @@ export class IssuesService {
 
     // Parallel execution of critical updates
     await Promise.all([
+      this.updateCopyStatus(createIssueDto.copyNumber, 'issued'),
       this.updateBookStatus(createIssueDto.bookId, newBookStatus),
       this.addToBorrowingHistory(
         createIssueDto.memberId,
@@ -429,6 +447,17 @@ export class IssuesService {
       );
     } catch (error) {
       this.logger.error(`Failed to update book condition quantity: ${error.message}`);
+    }
+  }
+
+  private async updateCopyStatus(copyNumber: string, status: string, condition?: string): Promise<void> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      await firstValueFrom(
+        this.httpService.patch(`${booksServiceUrl}/books/copies/${copyNumber}/status`, { status, condition })
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update copy status: ${error.message}`);
     }
   }
 
@@ -734,10 +763,15 @@ export class IssuesService {
       // let the BooksService handle the status based on remaining quantity.
       if (condition === BookCondition.DAMAGED) {
         updates.push(this.updateBookStatus(bookId, 'available'));
+        updates.push(this.updateCopyStatus(issuedBook.copyNumber, 'available', 'Damaged'));
+      } else {
+        // For Lost, we mark copy as lost
+        updates.push(this.updateCopyStatus(issuedBook.copyNumber, 'lost', 'Lost'));
       }
     } else {
       // Normal return
       updates.push(this.updateBookStatus(bookId, 'available'));
+      updates.push(this.updateCopyStatus(issuedBook.copyNumber, 'available', 'Good'));
     }
 
     await Promise.all(updates);

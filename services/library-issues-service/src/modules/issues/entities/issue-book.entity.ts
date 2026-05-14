@@ -28,6 +28,9 @@ export class IssueBook {
   @Prop({ type: Types.ObjectId, required: true, ref: 'Book' })
   bookId: Types.ObjectId;
 
+  @Prop({ type: String, required: true })
+  copyNumber: string; // The specific copy's ID (e.g. BK-1-C01)
+
   @Prop({ type: Types.ObjectId, required: true, ref: 'Member' })
   memberId: Types.ObjectId;
 
