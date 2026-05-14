@@ -166,8 +166,31 @@ export class StaffDashboardService {
     }
   }
 
-  async getRecentActivities() {
-    return [];
+  async getRecentActivities(staffId: string) {
+    try {
+      const lastActivityQuery = await this.activityLogService.getLogs(1, 5, {
+        adminId: staffId,
+        action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+      });
+
+      return lastActivityQuery.data.map((log: any) => {
+        let actionName = log.action;
+        if (log.action === 'BOOKSADDED') actionName = 'ADD BOOK';
+        else if (log.action === 'REQUEST_APPROVED') actionName = 'APPROVE REQUEST';
+        else if (log.action === 'REQUEST_REJECTED') actionName = 'REJECT REQUEST';
+
+        return {
+          _id: log._id,
+          action: actionName,
+          date: log.createdAt,
+          description: log.details?.message || log.details?.title || actionName,
+          referenceId: log.entityName || log.details?.referenceId || log.entityId
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Failed to fetch recent activities: ${error.message}`);
+      return [];
+    }
   }
 
   async getRackDistribution(authHeader?: string) {

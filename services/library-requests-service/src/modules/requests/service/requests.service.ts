@@ -273,7 +273,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be updated');
     }
 
@@ -307,7 +307,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be approved');
     }
 
@@ -370,7 +370,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be rejected');
     }
 

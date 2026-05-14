@@ -33,26 +33,34 @@ export class AttendanceService {
       throw new ConflictException('Already checked in today');
     }
 
-    const staff = await this.staffService.findById(staffId);
+    const [staff, config] = await Promise.all([
+      this.staffService.findById(staffId),
+      this.configService.getConfig(),
+    ]);
+
     const shift = staff.shift;
     const now = new Date();
     let status = AttendanceStatus.PRESENT;
 
-    if (shift) {
-      // Parse shiftStartTime (e.g. "09:00 AM")
-      const [time, modifier] = shift.startTime.split(' ');
-      let [hours, minutes] = time.split(':').map(Number);
-      if (modifier === 'PM' && hours < 12) hours += 12;
-      if (modifier === 'AM' && hours === 12) hours = 0;
+    // Use specific shift or global config
+    const startTimeStr = shift?.startTime || config?.shiftStartTime || '09:00 AM';
+    const gracePeriodMins = (shift?.gracePeriod !== undefined && shift?.gracePeriod !== null) 
+      ? shift.gracePeriod 
+      : (config?.gracePeriod || 15);
 
-      const shiftStart = new Date();
-      shiftStart.setHours(hours, minutes, 0, 0);
-      
-      const graceTime = new Date(shiftStart.getTime() + (shift.gracePeriod || 15) * 60000);
+    // Parse startTime (e.g. "09:00 AM")
+    const [time, modifier] = startTimeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
 
-      if (now > graceTime) {
-        status = AttendanceStatus.LATE;
-      }
+    const shiftStart = new Date();
+    shiftStart.setHours(hours, minutes, 0, 0);
+    
+    const graceTime = new Date(shiftStart.getTime() + gracePeriodMins * 60000);
+
+    if (now > graceTime) {
+      status = AttendanceStatus.LATE;
     }
 
     attendance = new this.attendanceModel({
