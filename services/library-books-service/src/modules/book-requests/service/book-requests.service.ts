@@ -25,7 +25,7 @@ export class BookRequestsService {
   constructor(
     @InjectModel(BookRequest.name)
     private bookRequestModel: Model<BookRequestDocument>,
-  ) {}
+  ) { }
 
   async create(
     createBookRequestDto: CreateBookRequestDto,

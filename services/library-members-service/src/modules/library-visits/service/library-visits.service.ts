@@ -47,7 +47,7 @@ export class LibraryVisitsService {
         memberId: checkInDto.memberId,
         timeIn: new Date(),
         purpose: checkInDto.purpose || 'reading',
-        bookId: checkInDto.bookId,
+        bookIds: checkInDto.bookId ? [checkInDto.bookId] : [],
         notes: checkInDto.notes,
         isActive: true,
       });
@@ -296,6 +296,35 @@ export class LibraryVisitsService {
     } catch (error) {
       this.logger.error(`Failed to get visit stats: ${error.message}`);
       return 0;
+    }
+  }
+
+  async getVisitsByDate(dateStr?: string) {
+    try {
+      let query = {};
+      
+      if (dateStr) {
+        const start = new Date(dateStr);
+        start.setHours(0, 0, 0, 0);
+        
+        const end = new Date(dateStr);
+        end.setHours(23, 59, 59, 999);
+        
+        query = {
+          timeIn: { $gte: start, $lte: end }
+        };
+      }
+
+      const visits = await this.libraryVisitModel
+        .find(query)
+        .populate('memberId', 'name email memberId')
+        .sort({ timeIn: -1 })
+        .exec();
+
+      return visits;
+    } catch (error) {
+      this.logger.error(`Failed to get visits by date: ${error.message}`);
+      return [];
     }
   }
 }
