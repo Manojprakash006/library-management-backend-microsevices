@@ -27,6 +27,7 @@ interface RackInfo {
   books?: any[];
   recentBooks?: any[];
   booksByCategory?: Record<string, any[]>;
+  damagedQuantity: number;
 }
 
 @Injectable()
@@ -62,6 +63,7 @@ export class RacksService {
           shelves: {},
           recentBooks: [],
           books: [],
+          damagedQuantity: 0,
         };
       }
 
@@ -71,6 +73,7 @@ export class RacksService {
 
       rackMap[rackNumber].totalBooks += 1;
       rackMap[rackNumber].totalQuantity += (book.quantity || 0);
+      rackMap[rackNumber].damagedQuantity += (book.damagedQuantity || 0);
       
       const shelfNumber = book.shelfNumber || 'S1';
       if (!rackMap[rackNumber].shelves![shelfNumber]) {
@@ -106,6 +109,7 @@ export class RacksService {
         condition: book.condition,
         description: book.description,
         quantity: book.quantity,
+        damagedQuantity: book.damagedQuantity ?? 0,
         available: availableCount,
         issued: issuedCount,
         status: availableCount > 0 ? 'Available' : 'Issued',
@@ -143,7 +147,8 @@ export class RacksService {
   }
 
   async findByRackNumber(rackNumber: string): Promise<RackInfo> {
-    const books = await this.bookModel.find({ rackNumber }).exec();
+    console.log('Inside Rack service');
+    const books = await this.bookModel.find({ rackNumber }).lean();
     const config = await this.configService.getConfig();
     const maxRackCapacity = config?.maxRackCapacity || 50;
     const maxShelfCapacity = config?.maxShelfCapacity || 10;
@@ -163,13 +168,18 @@ export class RacksService {
       shelves: {},
       books: [],
       booksByCategory: {},
+      damagedQuantity: 0,
     };
 
     for (const book of books) {
+      console.log('before from db book :', book);
       const issuedCount = await this.getIssuedCountForBook(book._id.toString());
       const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
 
+      console.log('Damage value:', book.damagedQuantity);
+
       rackData.totalQuantity += (book.quantity || 0);
+      rackData.damagedQuantity += (book.damagedQuantity || 0);
 
       const shelfNumber = book.shelfNumber || 'S1';
       if (!rackData.shelves![shelfNumber]) {
@@ -205,6 +215,7 @@ export class RacksService {
         condition: book.condition,
         description: book.description,
         quantity: book.quantity,
+        damagedQuantity: book.damagedQuantity || 0,
         available: availableCount,
         issued: issuedCount,
         status: availableCount > 0 ? 'Available' : 'Issued',
@@ -212,6 +223,7 @@ export class RacksService {
         createdAt: book.createdAt,
         updatedAt: book.updatedAt,
       };
+      console.log('Book Data :', bookData);
 
       rackData.books.push(bookData);
 
@@ -223,6 +235,7 @@ export class RacksService {
 
     rackData.capacityPercentage = ((rackData.totalQuantity / rackData.capacity) * 100).toFixed(0);
 
+    console.log('Final rack data :', JSON.stringify(rackData, null,2));
     return rackData;
   }
 }
