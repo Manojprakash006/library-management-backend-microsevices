@@ -13,4 +13,19 @@ export class UpdateConfigDto {
   @IsNumber()
   @Min(10)
   maxShelfCapacity?: number;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  overdueFinePerDay?: number;
+
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @IsNumber()
+  damagedFinePercent?: number;
+
+  @ApiPropertyOptional({ example: 100 })
+  @IsOptional()
+  @IsNumber()
+  lostFinePercent?: number;
 }

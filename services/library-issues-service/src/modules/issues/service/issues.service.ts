@@ -20,7 +20,7 @@ export class IssuesService {
     private readonly damageReportsService: DamageReportsService,
   ) { }
 
-  private calculateOverdue(issue: any): any {
+  private calculateOverdue(issue: any, overdueFinePerDay: number = 10): any {
     const today = new Date();
     const updatedIssue = { ...issue };
 
@@ -51,7 +51,7 @@ export class IssuesService {
         );
         updatedIssue.status = IssueStatus.OVERDUE;
         updatedIssue.daysOverdue = overdueDays;
-        updatedIssue.overdueFine = overdueDays * (issue.finePerDay || 10);
+        updatedIssue.overdueFine = overdueDays * (issue.finePerDay || overdueFinePerDay);
         updatedIssue.fine = updatedIssue.overdueFine + (issue.conditionFine || 0);
       } else {
         updatedIssue.daysOverdue = 0;
@@ -65,6 +65,49 @@ export class IssuesService {
       updatedIssue.fine = updatedIssue.conditionFine;
     }
 
+    return updatedIssue;
+  }
+
+  private async getLibraryConfig(): Promise<any> {
+    try {
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const response = await firstValueFrom(
+        this.httpService.get(`${booksServiceUrl}/config`)
+      );
+      return response.data?.data || {};
+    } catch (error) {
+      this.logger.error(`Failed to fetch library config: ${error.message}`);
+      return {};
+    }
+  }
+
+  private async calculateOverdueDynamic(issue: any): Promise<any> {
+    const config = await this.getLibraryConfig();
+    const overdueFinePerDay = config.overdueFinePerDay || 10;
+    
+    const today = new Date();
+    const updatedIssue = { ...issue };
+
+    if (issue.status === IssueStatus.RETURNED) {
+      return updatedIssue;
+    }
+
+    if (issue.issueType === IssueType.TAKING_HOME && issue.dueDate) {
+      const dueDateEnd = new Date(issue.dueDate);
+      dueDateEnd.setHours(23, 59, 59, 999);
+
+      if (dueDateEnd < today) {
+        const overdueDays = Math.ceil((today.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24));
+        updatedIssue.status = IssueStatus.OVERDUE;
+        updatedIssue.daysOverdue = overdueDays;
+        updatedIssue.overdueFine = overdueDays * overdueFinePerDay;
+        updatedIssue.fine = updatedIssue.overdueFine + (issue.conditionFine || 0);
+      } else {
+        updatedIssue.daysOverdue = 0;
+        updatedIssue.overdueFine = 0;
+        updatedIssue.fine = issue.conditionFine || 0;
+      }
+    }
     return updatedIssue;
   }
 
@@ -527,10 +570,12 @@ export class IssuesService {
       this.issueBookModel.countDocuments(filter).exec(),
     ]);
 
+    const config = await this.getLibraryConfig();
+    const overdueFinePerDay = config.overdueFinePerDay || 10;
     const today = new Date();
 
     const data = await Promise.all(issuedBooks.map(async (issue) => {
-      const updatedIssue = this.calculateOverdue(issue.toObject());
+      const updatedIssue = this.calculateOverdue(issue.toObject(), overdueFinePerDay);
       
       // If status changed to Overdue, save it to DB and emit event
       if (updatedIssue.status === IssueStatus.OVERDUE && issue.status !== IssueStatus.OVERDUE) {
@@ -672,6 +717,12 @@ export class IssuesService {
       this.logger.error(`Failed to fetch book data: ${e.message}`);
     }
 
+    // Fetch library config for fine rates
+    const config = await this.getLibraryConfig();
+    const overdueFinePerDay = config.overdueFinePerDay || 10;
+    const damagedFinePercent = (config.damagedFinePercent || 50) / 100;
+    const lostFinePercent = (config.lostFinePercent || 100) / 100;
+
     // Calculate overdue fine only for Taking Home books that have due date
     let overdueFine = 0;
     if (issuedBook.issueType === IssueType.TAKING_HOME && issuedBook.dueDate) {
@@ -681,7 +732,7 @@ export class IssuesService {
       if (returnDate > dueDateEnd) {
         const overdueDays = Math.ceil((returnDate.getTime() - dueDateEnd.getTime()) / (1000 * 60 * 60 * 24));
         issuedBook.daysOverdue = overdueDays;
-        overdueFine = overdueDays * (issuedBook.finePerDay || 10);
+        overdueFine = overdueDays * overdueFinePerDay;
       }
     }
 
@@ -693,10 +744,10 @@ export class IssuesService {
       const bookPrice = bookData?.price || 0;
       
       if (condition === BookCondition.LOST) {
-        extraFine = bookPrice; // 100% of price for lost
+        extraFine = Math.ceil(bookPrice * lostFinePercent);
         extraReason = 'Book Lost';
       } else if (condition === BookCondition.DAMAGED) {
-        extraFine = Math.ceil(bookPrice * 0.5); // 50% for damage
+        extraFine = Math.ceil(bookPrice * damagedFinePercent);
         extraReason = 'Book Damaged';
       }
 
