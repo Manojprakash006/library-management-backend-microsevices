@@ -36,7 +36,8 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       }
 
       const payload = this.jwtService.verify(token);
-      const userId = payload.userId || payload.id || payload.sub;
+      const userId = (payload.userId || payload.id || payload.sub)?.toString();
+      const role = payload.role;
 
       if (!userId) {
         this.logger.log(`Public client connected (invalid token): ${client.id}`);
@@ -50,11 +51,17 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       client.join(`user_${userId}`);
       client.join(userId);
       client.join('public');
+      
+      // Join role-based room
+      if (role) {
+        client.join(`role_${role}`);
+        this.logger.log(`Client ${userId} joined role room: role_${role}`);
+      }
 
-      this.logger.log(`Client connected and joined rooms: user_${userId}, ${userId}, public (${client.id})`);
+      this.logger.log(`Client connected and joined rooms: user_${userId}, role_${role || 'none'}, public (${client.id})`);
       
       // Send confirmation
-      client.emit('connected', { message: 'Connected to notifications', userId });
+      client.emit('connected', { message: 'Connected to notifications', userId, role });
     } catch (error) {
       this.logger.error(`Connection error: ${error.message}. Connecting as public.`);
       client.join('public');
@@ -93,6 +100,12 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   sendNotificationToUser(userId: string, notification: any) {
     this.server.to(`user_${userId}`).to(userId).emit('newNotification', notification);
     this.logger.log(`Notification sent to user ${userId} in rooms user_${userId} and ${userId}`);
+  }
+
+  // Method to send notification to all users with a specific role
+  sendNotificationToRole(role: string, notification: any) {
+    this.server.to(`role_${role}`).emit('newNotification', notification);
+    this.logger.log(`Notification broadcasted to role: role_${role}`);
   }
 
   // Method to broadcast to all connected clients (including public)

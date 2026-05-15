@@ -170,6 +170,15 @@ export class NotificationsService {
           memberName: admin.name
         });
       }
+
+      // Also broadcast real-time to all connected admins
+      this.notificationsGateway.sendNotificationToRole('admin', {
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        timestamp: new Date().toISOString()
+      });
+
       this.logger.log(`Notified ${admins.length} admins about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify admins: ${err.message}`);
@@ -197,6 +206,15 @@ export class NotificationsService {
           memberName: staff.name
         });
       }
+
+      // Also broadcast real-time to all connected staff
+      this.notificationsGateway.sendNotificationToRole('staff', {
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        timestamp: new Date().toISOString()
+      });
+
       this.logger.log(`Notified ${allStaffToNotify.length} staff members about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify staff: ${err.message}`);
@@ -224,6 +242,15 @@ export class NotificationsService {
           memberName: member.name
         });
       }
+
+      // Also broadcast real-time to all connected members
+      this.notificationsGateway.sendNotificationToRole('member', {
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        timestamp: new Date().toISOString()
+      });
+
       this.logger.log(`Notified ${allMembersToNotify.length} members about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify members: ${err.message}`);

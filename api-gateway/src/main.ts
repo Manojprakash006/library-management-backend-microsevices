@@ -116,9 +116,6 @@ async function bootstrap() {
       target: 'http://library-members-service:3012',
       changeOrigin: true,
       ws: true,
-      pathRewrite: {
-        '^/notifications': '',
-      },
       onProxyReq: (proxyReq, req) => {
         if (req.headers.authorization) {
           proxyReq.setHeader('Authorization', req.headers.authorization);

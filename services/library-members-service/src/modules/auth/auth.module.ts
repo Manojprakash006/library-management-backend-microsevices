@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './controller/auth.controller';
 import { AuthService } from './service/auth.service';
 import { User, UserSchema } from './entities/user.entity';
@@ -9,13 +10,18 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
+    ConfigModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Staff.name, schema: StaffSchema },
     ]),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'defaultsecret',
-      signOptions: { expiresIn: '24h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET') || 'your-secret-key',
+        signOptions: { expiresIn: '24h' },
+      }),
     }),
     ActivityLogModule,
   ],
