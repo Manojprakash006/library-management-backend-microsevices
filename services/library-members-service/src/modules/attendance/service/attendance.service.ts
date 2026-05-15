@@ -15,6 +15,29 @@ export class AttendanceService {
     private readonly staffService: StaffService,
   ) {}
 
+  private calculateWorkDuration(record: Attendance): number {
+    if (!record.checkInTime) return 0;
+    const end = record.checkOutTime || new Date();
+    const totalMs = end.getTime() - new Date(record.checkInTime).getTime();
+    
+    // Subtract break durations
+    const breakMs = this.calculateBreakDuration(record) * 60000;
+    const workMs = Math.max(0, totalMs - breakMs);
+    
+    return Math.floor(workMs / 60000); // return in minutes
+  }
+
+  private calculateBreakDuration(record: Attendance): number {
+    let totalMs = 0;
+    record.breaks.forEach(b => {
+      if (b.startTime) {
+        const end = b.endTime || new Date();
+        totalMs += end.getTime() - new Date(b.startTime).getTime();
+      }
+    });
+    return Math.floor(totalMs / 60000); // return in minutes
+  }
+
   async markAttendance(dto: CreateAttendanceDto) {
     const existing = await this.attendanceModel.findOne({ staffId: dto.staffId, date: dto.date });
     if (existing) {
@@ -33,6 +56,21 @@ export class AttendanceService {
       throw new ConflictException('Already checked in today');
     }
 
+    // Check for open sessions from previous days
+    const openSession = await this.attendanceModel.findOne({ 
+      staffId, 
+      checkOutTime: { $exists: false },
+      date: { $ne: today }
+    }).sort({ date: -1 });
+
+    if (openSession) {
+      // Auto-close previous session at 11:59 PM of that day (or just mark as incomplete)
+      // For now, let's just mark it as closed with a remark
+      openSession.checkOutTime = openSession.checkOutTime || new Date(new Date(openSession.date).setHours(23, 59, 59));
+      openSession.remarks = (openSession.remarks || '') + ' [Auto-closed: Missing clock-out]';
+      await openSession.save();
+    }
+
     const [staff, config] = await Promise.all([
       this.staffService.findById(staffId),
       this.configService.getConfig(),
@@ -43,9 +81,9 @@ export class AttendanceService {
     let status = AttendanceStatus.PRESENT;
 
     // Use specific shift or global config
-    const startTimeStr = shift?.startTime || config?.shiftStartTime || '09:00 AM';
-    const gracePeriodMins = (shift?.gracePeriod !== undefined && shift?.gracePeriod !== null) 
-      ? shift.gracePeriod 
+    const startTimeStr = (shift as any)?.startTime || config?.shiftStartTime || '09:00 AM';
+    const gracePeriodMins = (shift as any)?.gracePeriod !== undefined && (shift as any)?.gracePeriod !== null
+      ? (shift as any).gracePeriod 
       : (config?.gracePeriod || 15);
 
     // Parse startTime (e.g. "09:00 AM")
@@ -54,12 +92,17 @@ export class AttendanceService {
     if (modifier === 'PM' && hours < 12) hours += 12;
     if (modifier === 'AM' && hours === 12) hours = 0;
 
-    const shiftStart = new Date();
-    shiftStart.setHours(hours, minutes, 0, 0);
+    // Use minutes since midnight for robust comparison across timezones
+    const nowMinutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+    const shiftMinutesSinceMidnight = hours * 60 + minutes;
     
-    const graceTime = new Date(shiftStart.getTime() + gracePeriodMins * 60000);
+    const graceLimitMins = shiftMinutesSinceMidnight + gracePeriodMins;
+    const halfDayThresholdMins = config?.halfDayLimit || 120;
+    const halfDayLimitMins = shiftMinutesSinceMidnight + halfDayThresholdMins;
 
-    if (now > graceTime) {
+    if (nowMinutesSinceMidnight > halfDayLimitMins) {
+      status = AttendanceStatus.HALF_DAY;
+    } else if (nowMinutesSinceMidnight > graceLimitMins) {
       status = AttendanceStatus.LATE;
     }
 
@@ -105,7 +148,7 @@ export class AttendanceService {
 
     // Optional: Check max breaks from shift
     const staff = await this.staffService.findById(staffId);
-    const maxAllowed = staff.shift?.maxBreaks || 3;
+    const maxAllowed = (staff.shift as any)?.maxBreaks || 3;
     if (attendance.breaks.length >= maxAllowed) {
       throw new ConflictException(`Maximum of ${maxAllowed} breaks allowed per shift`);
     }
@@ -140,12 +183,59 @@ export class AttendanceService {
   }
 
   async getStaffAttendance(staffId: string) {
-    return await this.attendanceModel.find({ staffId }).sort({ date: -1 }).exec();
+    const records = await this.attendanceModel.find({ staffId }).sort({ date: -1 }).exec();
+    return records.map(r => ({
+      ...r.toObject(),
+      workDuration: this.calculateWorkDuration(r),
+      breakDuration: this.calculateBreakDuration(r)
+    }));
   }
 
   async getAllAttendance(date?: string) {
-    const query = date ? { date } : {};
-    return await this.attendanceModel.find(query).populate('staffId', 'fullName staffId').sort({ date: -1 }).exec();
+    const today = new Date().toISOString().split('T')[0];
+    const queryDate = date || today;
+
+    // Get all active staff to show who is missing
+    const allStaff = await this.staffService.findAll(1, 1000);
+    const records = await this.attendanceModel.find({ date: queryDate })
+      .populate({
+        path: 'staffId',
+        select: 'fullName staffId shift status',
+        populate: { path: 'shift' }
+      })
+      .exec();
+
+    const recordMap = new Map();
+    records.forEach(r => recordMap.set(r.staffId?._id?.toString() || (r.staffId as any).toString(), r));
+
+    return allStaff.data.map(staff => {
+      const record = recordMap.get(staff._id.toString());
+      if (record) {
+        return {
+          ...record.toObject(),
+          workDuration: this.calculateWorkDuration(record),
+          breakDuration: this.calculateBreakDuration(record)
+        };
+      } else {
+        // Determine status based on time and date
+        let status = AttendanceStatus.ABSENT;
+        if (queryDate === today) {
+          status = 'Not Checked In' as any;
+          // You could add logic here to mark as ABSENT if past a certain time
+        }
+        
+        return {
+          staffId: staff,
+          date: queryDate,
+          status: status,
+          checkInTime: null,
+          checkOutTime: null,
+          breaks: [],
+          workDuration: 0,
+          breakDuration: 0
+        };
+      }
+    });
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_11PM)
@@ -168,3 +258,4 @@ export class AttendanceService {
     }
   }
 }
+
