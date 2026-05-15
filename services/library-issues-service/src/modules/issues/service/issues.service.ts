@@ -971,8 +971,8 @@ export class IssuesService {
       throw new BadRequestException('Cannot renew a returned book');
     }
 
-    if (issue.renewCount >= 2) {
-      throw new BadRequestException('Renewal limit reached (Max 2 times)');
+    if (issue.renewCount >= 1) {
+      throw new BadRequestException('Renewal limit reached (Max 1 times)');
     }
 
     const today = new Date();
