@@ -1,5 +1,6 @@
-import { IsString, IsMongoId, IsOptional, IsDateString, IsNumber, Min, MinLength, IsIn } from 'class-validator';
+import { IsString, IsMongoId, IsOptional, IsDateString, IsNumber, Min, MinLength, IsIn, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { RequestType } from '../entities/book-request.entity';
 
 export class CreateBookRequestDto {
 
@@ -11,12 +12,20 @@ export class CreateBookRequestDto {
   @IsMongoId()
   memberId: string;
 
-  @ApiProperty({ description: 'Request Type'})
+  @IsOptional()
   @IsString()
-  @IsIn(['Taking Home', 'Reading Inside Library'], {
-    message: 'Please select a valid request type',
-  })
-  requestType: string;
+  issueId?: string;
+
+  @ApiProperty({ description: 'Request Type'})
+  @IsEnum(RequestType)
+  // @IsIn(['Taking Home', 'Reading Inside Library'], {
+  //   message: 'Please select a valid request type',
+  // })
+  requestType: RequestType;
+
+  @IsOptional()
+  @IsNumber()
+  renewDays?: number;
 
   @ApiProperty({ description: 'Request date', required: false })
   @IsOptional()

@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
 import { Public } from '../../../auth/guards/public.decorator';
+import { ApproveRequestDto } from '../dto/approve-request.dto';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -98,9 +99,9 @@ export class RequestsController {
   @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
-  async approve(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
+  async approve(@Param('id') id: string, @Body() approveDto: ApproveRequestDto, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
-    const request = await this.requestsService.approve(id, adminId);
+    const request = await this.requestsService.approve(id, adminId, approveDto);
     return { message: 'Book request approved successfully', data: request };
   }
 

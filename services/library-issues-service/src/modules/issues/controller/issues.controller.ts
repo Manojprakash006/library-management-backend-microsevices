@@ -190,6 +190,7 @@ export class IssuesController {
     return { message: 'Overdue books retrieved successfully', data: overdueIssues, count: overdueIssues.length };
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get issued book by ID' })
   @ApiResponse({ status: 200, description: 'Issued book retrieved successfully', type: IssueBook })
@@ -240,8 +241,8 @@ export class IssuesController {
 
   @Public()
   @Put('renew/:id')
-  async renewBook(@Param('id') id: string) {
-    const result = await this.issuesService.renewBook(id);
+  async renewBook(@Param('id') id: string, @Body() body: { renewDays?: number}) {
+    const result = await this.issuesService.renewBook(id, body.renewDays || 7);
     return { message: 'Book renewed successfully', data: result };
   }
 

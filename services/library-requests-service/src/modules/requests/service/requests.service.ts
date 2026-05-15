@@ -4,9 +4,10 @@ import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
-import { BookRequest, BookRequestDocument, RequestStatus } from '../entities/book-request.entity';
+import { BookRequest, BookRequestDocument, RequestStatus, RequestType } from '../entities/book-request.entity';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
 import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
+import { ApproveRequestDto } from '../dto/approve-request.dto';
 
 @Injectable()
 export class RequestsService {
@@ -77,8 +78,8 @@ export class RequestsService {
       status: RequestStatus.PENDING
     }).exec();
 
-    if (existingPendingRequest) {
-      throw new ConflictException('You have already requested this book and it is pending approval.');
+    if (existingPendingRequest && createDto.requestType === RequestType.NEW) {
+      throw new ConflictException('You already have a pending request for this book.');
     }
 
     // Fetch member borrowing statistics
@@ -86,19 +87,39 @@ export class RequestsService {
 
     // 2. Check if member already has this book actively borrowed
     const alreadyBorrowed = activeBookIds.some(id => id.toString() === createDto.bookId.toString());
-    if (alreadyBorrowed) {
-      throw new ConflictException('You have already borrowed this book. Please return it before requesting again.');
-    }
+      if (createDto.requestType === RequestType.NEW && alreadyBorrowed) {
+        throw new ConflictException(
+          'You have already borrowed this book. Please return it before requesting again.'
+        );
+      }
 
     const bookRequest = new this.bookRequestModel({
       ...createDto,
       bookId: new Types.ObjectId(createDto.bookId),
       memberId: new Types.ObjectId(createDto.memberId),
       requestDate: createDto.requestDate || new Date(),
-      status: RequestStatus.PENDING,
+      status:
+        createDto.requestType === 'RENEW'
+          ? RequestStatus.RENEW_PENDING
+          : RequestStatus.PENDING,
       currentlyBorrowed,
       totalHistory,
     });
+
+    if (createDto.requestType === 'RENEW') {
+
+      const existingRenewRequest =
+        await this.bookRequestModel.findOne({
+          issueId: createDto.issueId,
+          status: RequestStatus.RENEW_PENDING,
+        });
+
+      if (existingRenewRequest) {
+        throw new ConflictException(
+          'Renew request already pending'
+        );
+      }
+    }
 
     const savedRequest = await bookRequest.save();
 
@@ -301,7 +322,7 @@ export class RequestsService {
     return request.save();
   }
 
-  async approve(id: string, adminId?: string): Promise<BookRequest> {
+  async approve(id: string, adminId?: string, approveDto?: ApproveRequestDto): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
@@ -311,29 +332,54 @@ export class RequestsService {
       throw new BadRequestException('Only pending requests can be approved');
     }
 
+    if (request.requestType === 'RENEW') {
+
+      const issueServiceURL =
+        process.env.ISSUE_SERVICE_URL ||
+        'http://library-issues-service:3013';
+
+      await firstValueFrom(
+        this.httpService.put(
+          `${issueServiceURL}/issues/renew/${request.issueId}`,
+          {
+            renewDays:
+              approveDto?.renewDays ||
+              request.renewDays ||
+              7,
+          }
+        )
+      );
+
+      request.renewDays =
+        approveDto?.renewDays ||
+        request.renewDays ||
+        7;
+    }
+
     request.status = RequestStatus.APPROVED;
     request.processedDate = new Date();
     const savedRequest = await request.save();
 
-    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || "http://library-members-service:3012";
+    if (request.requestType !== 'RENEW') {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || "http://library-members-service:3012";
 
-    try {
-      await firstValueFrom(
-        this.httpService.post(
-          `${membersServiceUrl}/members/${request.memberId}/borrow`,
-          {
-            bookId: request.bookId.toString(),
-            issueId: request._id.toString(),
-            borrowedAt: new Date(),
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            status: 'borrowed',
-          }
-        )
-      );
-    } catch (error) {
-      this.logger.error(`Failed to update borrowing history: ${error.message}`);
+      try {
+        await firstValueFrom(
+          this.httpService.post(
+            `${membersServiceUrl}/members/${request.memberId}/borrow`,
+            {
+              bookId: request.bookId.toString(),
+              issueId: request._id.toString(),
+              borrowedAt: new Date(),
+              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+              status: 'borrowed',
+            }
+          )
+        );
+      } catch (error) {
+        this.logger.error(`Failed to update borrowing history: ${error.message}`);
+      }
     }
-
     if (adminId) {
       this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }

@@ -67,8 +67,9 @@ export class MemberDashboardController {
 
    @Post('renew-book')
   @ApiOperation({ summary: 'Renew a book' })
-  async renewBook(@Body() renewDto: RenewBookDto) {
-    const result = await this.memberDashboardService.renewBook(renewDto);
+  async renewBook(@Body() renewDto: RenewBookDto, @Req() req: any) {
+    const token = req.headers.authorization;
+    const result = await this.memberDashboardService.renewBook(renewDto, token);
     return { message: 'Book renewal requested', data: result };
   }
 

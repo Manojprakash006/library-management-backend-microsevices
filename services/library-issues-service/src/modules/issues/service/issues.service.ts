@@ -615,7 +615,7 @@ export class IssuesService {
   }
 
   async findOne(id: string): Promise<IssueBook> {
-    const issuedBook = await this.issueBookModel.findById(id).exec();
+    const issuedBook = await this.issueBookModel.findOne({ issueId: id}).exec();
     if (!issuedBook) {
       throw new NotFoundException('Issued book record not found');
     }
@@ -960,8 +960,8 @@ export class IssuesService {
     });
   }
 
-  async renewBook(issueId: string) {
-    const issue = await this.issueBookModel.findById(issueId);
+  async renewBook(issueId: string, renewDays: number = 7) {
+    const issue = await this.issueBookModel.findOne({issueId: issueId});
 
     if (!issue) {
       throw new NotFoundException('Issue not found');
@@ -986,7 +986,7 @@ export class IssuesService {
     }
 
     const newDueDate = new Date(issue.dueDate);
-    newDueDate.setDate(newDueDate.getDate() + 7);
+    newDueDate.setDate(newDueDate.getDate() + renewDays);
 
     issue.dueDate = newDueDate;
     issue.renewCount = (issue.renewCount || 0) + 1;
