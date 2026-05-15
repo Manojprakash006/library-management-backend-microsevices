@@ -21,8 +21,8 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [
       'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 
       'http://localhost:7070',
-      'http://192.168.1.18:5173', 'http://192.168.1.18:5174', 'http://192.168.1.18:5175', 'http://192.168.1.18:5176',
-      'http://192.168.1.18:7070'
+      'http://192.168.1.16:5173', 'http://192.168.1.16:5174', 'http://192.168.1.16:5175', 'http://192.168.1.16:5176',
+      'http://192.168.1.16:7070'
     ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

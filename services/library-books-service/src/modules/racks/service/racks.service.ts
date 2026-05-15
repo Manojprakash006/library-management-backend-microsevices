@@ -41,7 +41,7 @@ export class RacksService {
   ) {}
 
   async findAll(): Promise<RackInfo[]> {
-    const books = await this.bookModel.find().exec();
+    const books = await this.bookModel.find().lean().select('+damagedQuantity');
     const config = await this.configService.getConfig();
     const maxRackCapacity = config?.maxRackCapacity || 50;
     const maxShelfCapacity = config?.maxShelfCapacity || 10;
@@ -145,10 +145,10 @@ export class RacksService {
       return 0;
     }
   }
-
+  
   async findByRackNumber(rackNumber: string): Promise<RackInfo> {
-    console.log('Inside Rack service');
-    const books = await this.bookModel.find({ rackNumber }).lean();
+    console.log('New code running');
+    const books = await this.bookModel.find({ rackNumber }).lean().select('+damagedQuantity');
     const config = await this.configService.getConfig();
     const maxRackCapacity = config?.maxRackCapacity || 50;
     const maxShelfCapacity = config?.maxShelfCapacity || 10;
@@ -172,11 +172,10 @@ export class RacksService {
     };
 
     for (const book of books) {
-      console.log('before from db book :', book);
+      console.log('RAW BOOK from DB :', book);
+      
       const issuedCount = await this.getIssuedCountForBook(book._id.toString());
       const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
-
-      console.log('Damage value:', book.damagedQuantity);
 
       rackData.totalQuantity += (book.quantity || 0);
       rackData.damagedQuantity += (book.damagedQuantity || 0);
@@ -235,7 +234,6 @@ export class RacksService {
 
     rackData.capacityPercentage = ((rackData.totalQuantity / rackData.capacity) * 100).toFixed(0);
 
-    console.log('Final rack data :', JSON.stringify(rackData, null,2));
     return rackData;
   }
 }
