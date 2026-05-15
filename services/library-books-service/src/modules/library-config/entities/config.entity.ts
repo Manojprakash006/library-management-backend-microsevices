@@ -13,7 +13,16 @@ export class Config {
   maxShelfCapacity: number;
 
   @Prop({ default: 'DEFAULT' })
-  configKey: string; // To ensure we only have one config document
+  configKey: string; // To ensure we only have one document
+
+  @Prop({ default: 10 })
+  overdueFinePerDay: number;
+
+  @Prop({ default: 50 })
+  damagedFinePercent: number;
+
+  @Prop({ default: 100 })
+  lostFinePercent: number;
 }
 
 export const ConfigSchema = SchemaFactory.createForClass(Config);

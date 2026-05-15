@@ -163,7 +163,7 @@ export class RequestsService {
     if (status) {
       const statuses = status.split(',').map(s => s.trim());
       // Use case-insensitive regex for each status to be 100% sure
-      query.status = { $in: statuses.map(s => new RegExp(`^${s}$`, 'i')) };
+      query.status = { $in: statuses.map(s => new RegExp(s, 'i')) };
     }
     
     if (search) {
@@ -273,7 +273,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be updated');
     }
 
@@ -307,7 +307,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be approved');
     }
 
@@ -370,7 +370,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be rejected');
     }
 
@@ -427,7 +427,9 @@ export class RequestsService {
       this.logger.error(`Redis cache get error: ${e.message}`);
     }
 
-    const count = await this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING }).exec();
+    const count = await this.bookRequestModel.countDocuments({ 
+      status: { $regex: /pending/i } 
+    }).exec();
     
     try {
       // Cache for 5 minutes

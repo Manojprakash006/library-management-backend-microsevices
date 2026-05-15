@@ -24,7 +24,7 @@ export class RequestsController {
     return { message: 'Book request created successfully', data: request };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @Get()
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
@@ -66,7 +66,7 @@ export class RequestsController {
     return { data: requests };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
@@ -94,7 +94,7 @@ export class RequestsController {
     return { message: 'Book request cancelled successfully', data: request };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
@@ -104,7 +104,7 @@ export class RequestsController {
     return { message: 'Book request approved successfully', data: request };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @Put(':id/reject')
   @ApiOperation({ summary: 'Reject a book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })

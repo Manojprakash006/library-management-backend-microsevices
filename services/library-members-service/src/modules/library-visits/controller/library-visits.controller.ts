@@ -97,4 +97,13 @@ export class LibraryVisitsController {
     const visits = await this.libraryVisitsService.getMemberVisitHistory(memberId);
     return { message: 'Visit history retrieved', data: visits };
   }
+  
+  @Get('by-date')
+  @Roles('staff', 'admin')
+  @ApiOperation({ summary: 'Get all visits for a specific date' })
+  async getVisitsByDate(@Request() req) {
+    const dateStr = req.query.date;
+    const visits = await this.libraryVisitsService.getVisitsByDate(dateStr);
+    return { message: 'Visits retrieved', data: visits };
+  }
 }

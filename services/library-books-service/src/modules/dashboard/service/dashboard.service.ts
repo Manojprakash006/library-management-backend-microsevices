@@ -87,7 +87,7 @@ export class DashboardService {
       this.bookModel.aggregate([{ $group: { _id: null, totalDamaged: { $sum: '$damagedQuantity' } } }]),
       this.bookModel.aggregate([{ $group: { _id: null, totalLost: { $sum: '$lostQuantity' } } }]),
       this.getActiveIssuesCount(),
-      this.bookRequestModel.countDocuments({ status: 'Pending' }),
+      this.bookRequestModel.countDocuments({ status: { $regex: /pending/i } }),
       this.getOverdueBooksCount(),
       this.getTotalMembersCount(),
       this.getNewArrivalsCount(),
@@ -274,7 +274,7 @@ export class DashboardService {
         })
       );
 
-      const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
+      const pendingRequests = response.data?.data?.filter(req => req.status?.toLowerCase().includes('pending')) || [];
       if (pendingRequests.length === 0) return [];
 
       // Sort by latest first
