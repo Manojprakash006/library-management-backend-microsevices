@@ -244,5 +244,246 @@ export class FinesService {
 
     return fine;
   }
+
+  async updateFine(id: string, data: Partial<CreateFineDto>): Promise<Fine> {
+    const fine = await this.fineModel.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true }
+    ).exec();
+    if (!fine) throw new NotFoundException('Fine not found');
+    
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'update', fine });
+    return fine;
+  }
+
+  async deleteFine(id: string): Promise<{ message: string }> {
+    const fine = await this.fineModel.findByIdAndDelete(id).exec();
+    if (!fine) throw new NotFoundException('Fine not found');
+    
+    await this.redisEmitter.emit('FINES_UPDATED', { type: 'delete', id });
+    return { message: 'Fine deleted successfully' };
+  }
+
+  async getInvoiceHtml(id: string): Promise<string> {
+    const fine = await this.fineModel.findById(id).exec();
+    if (!fine) throw new NotFoundException('Fine not found');
+
+    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+    const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+
+    let bookTitle = 'N/A';
+    let memberName = 'Member';
+    let memberEmail = '';
+    let libraryName = process.env.LIBRARY_NAME || 'City Central Library';
+    let libraryAddress = process.env.LIBRARY_ADDRESS || '123 Library Street, City Center, State - 600001, India';
+    let libraryPhone = process.env.LIBRARY_PHONE || '+91-44-1234-5678';
+    let libraryEmail = process.env.LIBRARY_EMAIL || 'info@citycentrallibrary.org';
+    let memberPhone = '';
+
+    try {
+      const [bookRes, memberRes] = await Promise.all([
+        fine.bookId ? firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${fine.bookId}`)) : Promise.resolve(null),
+        firstValueFrom(this.httpService.get(`${membersServiceUrl}/members/${fine.memberId}`))
+      ]);
+      if (bookRes) bookTitle = bookRes.data?.data?.title || 'N/A';
+      memberName = memberRes.data?.name || memberRes.data?.data?.name || 'Member';
+      memberEmail = memberRes.data?.email || memberRes.data?.data?.email || '';
+      memberPhone = memberRes.data?.phone || memberRes.data?.data?.phone || '';
+    } catch (e) {
+      this.logger.error(`Failed to fetch details for invoice: ${e.message}`);
+    }
+
+    const statusColor = fine.status === FineStatus.PAID ? '#10b981' : '#f59e0b';
+    const statusBg = fine.status === FineStatus.PAID ? '#ecfdf5' : '#fffbeb';
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Invoice - ${fine.fineId}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --bg-light: #f9fafb;
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            color: var(--text-main); 
+            background: #f3f4f6;
+            padding: 40px 20px;
+            line-height: 1.5;
+          }
+          .invoice-card { 
+            max-width: 850px; 
+            margin: auto; 
+            background: white; 
+            border-radius: 24px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            position: relative;
+          }
+          .invoice-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--primary), #818cf8);
+          }
+          .header { padding: 48px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+          .logo-area h1 { font-size: 28px; font-weight: 800; color: var(--primary); letter-spacing: -0.025em; margin-bottom: 4px; }
+          .logo-area p { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+          .status-badge {
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: ${statusBg};
+            color: ${statusColor};
+            border: 1px solid ${statusColor}20;
+          }
+
+          .details-grid { padding: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+          .info-block h3 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+          .info-block p { font-size: 15px; font-weight: 500; color: var(--text-main); margin-bottom: 4px; }
+          .info-block .id-badge { font-family: monospace; background: var(--bg-light); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+
+          .table-section { padding: 0 48px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { text-align: left; padding: 16px 0; border-bottom: 2px solid var(--border); font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+          td { padding: 24px 0; border-bottom: 1px solid var(--border); }
+          .item-desc { font-weight: 600; color: var(--text-main); font-size: 15px; margin-bottom: 4px; }
+          .item-sub { font-size: 13px; color: var(--text-muted); }
+          .price-cell { text-align: right; font-weight: 700; color: var(--text-main); font-size: 16px; }
+
+          .footer-section { padding: 48px; background: var(--bg-light); display: flex; justify-content: space-between; align-items: flex-end; }
+          .total-box { text-align: right; }
+          .total-box .label { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+          .total-box .amount { font-size: 32px; font-weight: 800; color: var(--text-main); letter-spacing: -0.025em; }
+          .note-area { max-width: 400px; }
+          .note-area h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-main); }
+          .note-area p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+          .action-bar { max-width: 850px; margin: 0 auto 24px auto; display: flex; justify-content: flex-end; }
+          .print-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+          }
+          .print-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+          @media print {
+            body { padding: 0; background: white; }
+            .invoice-card { box-shadow: none; border: 1px solid var(--border); border-radius: 0; }
+            .action-bar { display: none; }
+            .invoice-card::before { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="action-bar no-print">
+          <button class="print-btn" onclick="window.print()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print Invoice
+          </button>
+        </div>
+
+        <div class="invoice-card">
+          <div class="header">
+            <div class="logo-area">
+              <h1>${libraryName}</h1>
+            </div>
+            <div style="text-align: right;">
+              <div class="status-badge" style="margin-bottom: 12px;">${fine.status}</div>
+              <p style="font-size: 13px; color: var(--text-muted);">Invoice #: <span class="id-badge" style="color: var(--text-main); font-weight: 600;">${fine.fineId}</span></p>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Date: <span style="color: var(--text-main); font-weight: 600;">${new Date(fine.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
+            </div>
+          </div>
+
+          <div class="details-grid">
+            <div class="info-block">
+              <h3>Billed From</h3>
+              <p style="font-size: 16px; font-weight: 700; color: var(--primary);">${libraryName}</p>
+              <p>${libraryAddress}</p>
+              <p style="margin-top: 8px; color: var(--text-muted); font-size: 13px;">Email: ${libraryEmail}</p>
+              <p style="color: var(--text-muted); font-size: 13px;">Phone: ${libraryPhone}</p>
+            </div>
+            <div class="info-block">
+              <h3>Billed To</h3>
+              <p style="font-size: 16px; font-weight: 700;">${memberName}</p>
+              <p>Member ID: <span class="id-badge">${fine.memberId}</span></p>
+              <p>${memberEmail}</p>
+              ${memberPhone ? `<p>${memberPhone}</p>` : ''}
+            </div>
+          </div>
+
+          <div class="table-section">
+            <table>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th style="text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="item-desc">Fine for: ${fine.reason}</div>
+                    <div class="item-sub">Related Book: ${bookTitle}</div>
+                    ${fine.paymentMethod && fine.paymentMethod !== 'CASH' ? `<div class="item-sub" style="color: var(--primary); font-weight: 600;">Transaction Reference: ${fine.referenceId}</div>` : ''}
+                  </td>
+                  <td class="price-cell">₹${fine.amount.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="footer-section">
+            <div class="note-area">
+              <h4>Important Note</h4>
+              <p>This invoice is automatically generated based on library records. For any discrepancies, please contact the library administration within 48 hours.</p>
+              <p style="margin-top: 12px; font-weight: 600;">Payment Method: <span style="color: var(--primary);">${fine.paymentMethod || 'Manual Record'}</span></p>
+            </div>
+            <div class="total-box">
+              <p class="label">Total Amount</p>
+              <p class="amount">₹${fine.amount.toFixed(2)}</p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; padding-bottom: 24px; border-top: 1px solid var(--border); margin: 0 48px; padding-top: 24px;">
+            <p style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Thank you for your continued support of our library services.</p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 24px; color: var(--text-muted); font-size: 11px; font-weight: 500;">
+          Computer generated invoice. No physical signature required. &copy; ${new Date().getFullYear()} ${libraryName}
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
 }
 

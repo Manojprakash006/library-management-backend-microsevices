@@ -116,5 +116,29 @@ export class FinesController {
     );
     return { message: 'Payment verified successfully', data };
   }
+
+  @Post(':id/update')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Update a fine (Admin only)' })
+  @ApiParam({ name: 'id', required: true })
+  async updateFine(@Param('id') id: string, @Body() data: any) {
+    return this.finesService.updateFine(id, data);
+  }
+
+  @Post(':id/delete')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Delete a fine (Admin only)' })
+  @ApiParam({ name: 'id', required: true })
+  async deleteFine(@Param('id') id: string) {
+    return this.finesService.deleteFine(id);
+  }
+
+  @Public()
+  @Get(':id/invoice')
+  @ApiOperation({ summary: 'Get invoice HTML for a fine' })
+  @ApiParam({ name: 'id', required: true })
+  async getInvoice(@Param('id') id: string) {
+    return this.finesService.getInvoiceHtml(id);
+  }
 }
 
