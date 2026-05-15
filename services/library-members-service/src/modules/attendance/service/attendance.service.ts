@@ -15,6 +15,35 @@ export class AttendanceService {
     private readonly staffService: StaffService,
   ) {}
 
+  private async getLocalTimeInfo() {
+    const config = await this.configService.getConfig();
+    const timezone = config?.timezone || 'Asia/Kolkata';
+    const now = new Date();
+    
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+    
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const hours = parseInt(getPart('hour') || '0');
+    const minutes = parseInt(getPart('minute') || '0');
+    
+    return {
+      now,
+      today: `${year}-${month}-${day}`,
+      minutesSinceMidnight: hours * 60 + minutes,
+      config
+    };
+  }
+
   private calculateWorkDuration(record: Attendance): number {
     if (!record.checkInTime) return 0;
     const end = record.checkOutTime || new Date();
@@ -49,7 +78,7 @@ export class AttendanceService {
   }
 
   async checkIn(staffId: string) {
-    const today = new Date().toISOString().split('T')[0];
+    const { now, today, minutesSinceMidnight, config } = await this.getLocalTimeInfo();
     let attendance = await this.attendanceModel.findOne({ staffId, date: today });
 
     if (attendance) {
@@ -64,20 +93,15 @@ export class AttendanceService {
     }).sort({ date: -1 });
 
     if (openSession) {
-      // Auto-close previous session at 11:59 PM of that day (or just mark as incomplete)
-      // For now, let's just mark it as closed with a remark
+      // Auto-close previous session at 11:59 PM of that day
       openSession.checkOutTime = openSession.checkOutTime || new Date(new Date(openSession.date).setHours(23, 59, 59));
       openSession.remarks = (openSession.remarks || '') + ' [Auto-closed: Missing clock-out]';
       await openSession.save();
     }
 
-    const [staff, config] = await Promise.all([
-      this.staffService.findById(staffId),
-      this.configService.getConfig(),
-    ]);
+    const staff = await this.staffService.findById(staffId);
 
     const shift = staff.shift;
-    const now = new Date();
     let status = AttendanceStatus.PRESENT;
 
     // Use specific shift or global config
@@ -92,17 +116,15 @@ export class AttendanceService {
     if (modifier === 'PM' && hours < 12) hours += 12;
     if (modifier === 'AM' && hours === 12) hours = 0;
 
-    // Use minutes since midnight for robust comparison across timezones
-    const nowMinutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
     const shiftMinutesSinceMidnight = hours * 60 + minutes;
     
     const graceLimitMins = shiftMinutesSinceMidnight + gracePeriodMins;
     const halfDayThresholdMins = config?.halfDayLimit || 120;
     const halfDayLimitMins = shiftMinutesSinceMidnight + halfDayThresholdMins;
 
-    if (nowMinutesSinceMidnight > halfDayLimitMins) {
+    if (minutesSinceMidnight > halfDayLimitMins) {
       status = AttendanceStatus.HALF_DAY;
-    } else if (nowMinutesSinceMidnight > graceLimitMins) {
+    } else if (minutesSinceMidnight > graceLimitMins) {
       status = AttendanceStatus.LATE;
     }
 
@@ -117,7 +139,7 @@ export class AttendanceService {
   }
 
   async checkOut(staffId: string) {
-    const today = new Date().toISOString().split('T')[0];
+    const { now, today } = await this.getLocalTimeInfo();
     const attendance = await this.attendanceModel.findOne({ staffId, date: today });
 
     if (!attendance) {
@@ -133,7 +155,7 @@ export class AttendanceService {
   }
 
   async breakStart(staffId: string, type: string = 'Tea') {
-    const today = new Date().toISOString().split('T')[0];
+    const { now, today } = await this.getLocalTimeInfo();
     const attendance = await this.attendanceModel.findOne({ staffId, date: today });
 
     if (!attendance) {
@@ -163,7 +185,7 @@ export class AttendanceService {
   }
 
   async breakEnd(staffId: string) {
-    const today = new Date().toISOString().split('T')[0];
+    const { now, today } = await this.getLocalTimeInfo();
     const attendance = await this.attendanceModel.findOne({ staffId, date: today });
 
     if (!attendance) {
@@ -192,7 +214,7 @@ export class AttendanceService {
   }
 
   async getAllAttendance(date?: string) {
-    const today = new Date().toISOString().split('T')[0];
+    const { today } = await this.getLocalTimeInfo();
     const queryDate = date || today;
 
     // Get all active staff to show who is missing
@@ -240,10 +262,8 @@ export class AttendanceService {
 
   @Cron(CronExpression.EVERY_DAY_AT_11PM)
   async markAutoAbsent() {
-    const config = await this.configService.getConfig();
+    const { today, config } = await this.getLocalTimeInfo();
     if (!config?.autoAbsentEnabled) return;
-
-    const today = new Date().toISOString().split('T')[0];
     const allStaff = await this.staffService.findAll(1, 1000);
     
     for (const staff of allStaff.data) {
