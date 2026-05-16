@@ -69,7 +69,6 @@ export class RequestsService {
   }
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
-    // 1. Check if member already has a pending request for this book
 
     // 1. Check if member already has a pending request for this book
     const existingPendingRequest = await this.bookRequestModel.findOne({
@@ -323,6 +322,8 @@ export class RequestsService {
   }
 
   async approve(id: string, adminId?: string, approveDto?: ApproveRequestDto): Promise<BookRequest> {
+
+    console.log('approveDto in service :', approveDto);
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
@@ -331,8 +332,11 @@ export class RequestsService {
     if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be approved');
     }
-
+    console.log("renew days from dto :", approveDto.renewDays);
     if (request.requestType === 'RENEW') {
+
+      const renewDays = approveDto?.renewDays ?? request.renewDays ?? 7;
+      console.log("renew days from inside logic :", renewDays);
 
       const issueServiceURL =
         process.env.ISSUE_SERVICE_URL ||
@@ -340,20 +344,14 @@ export class RequestsService {
 
       await firstValueFrom(
         this.httpService.put(
-          `${issueServiceURL}/issues/renew/${request.issueId}`,
-          {
-            renewDays:
-              approveDto?.renewDays ||
-              request.renewDays ||
-              7,
-          }
+          `${issueServiceURL}/issues/renew/${request.issueId}`, { renewDays}
         )
       );
 
-      request.renewDays =
-        approveDto?.renewDays ||
-        request.renewDays ||
-        7;
+      console.log('before assign :', request.renewDays);
+
+      request.renewDays = renewDays;
+      console.log("after assign :", request.renewDays);
     }
 
     request.status = RequestStatus.APPROVED;

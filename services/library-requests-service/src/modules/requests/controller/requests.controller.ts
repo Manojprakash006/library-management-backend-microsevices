@@ -100,8 +100,11 @@ export class RequestsController {
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
   async approve(@Param('id') id: string, @Body() approveDto: ApproveRequestDto, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
+    console.log('APPROVE API HIT');
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
+    console.log('from req contr BODY:', approveDto);
     const request = await this.requestsService.approve(id, adminId, approveDto);
+    console.log('result from req contro:', request);
     return { message: 'Book request approved successfully', data: request };
   }
 

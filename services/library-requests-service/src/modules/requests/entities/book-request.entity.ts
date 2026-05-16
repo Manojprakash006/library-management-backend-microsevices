@@ -30,7 +30,7 @@ export class BookRequest {
   @Prop({ type: String, enum: RequestType, default: RequestType.NEW, required: true })
   requestType: RequestType
 
-  @Prop({ default: 7 })
+  @Prop({ required: true })
   renewDays: number;
 
   @Prop()

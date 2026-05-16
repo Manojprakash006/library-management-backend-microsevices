@@ -242,7 +242,7 @@ export class IssuesController {
   @Public()
   @Put('renew/:id')
   async renewBook(@Param('id') id: string, @Body() body: { renewDays?: number}) {
-    const result = await this.issuesService.renewBook(id, body.renewDays || 7);
+    const result = await this.issuesService.renewBook(id, body.renewDays ?? 7);
     return { message: 'Book renewed successfully', data: result };
   }
 

@@ -13,5 +13,5 @@ export class RenewBookDto {
 
   @IsOptional()
   @IsNumber()
-  renewDays?: number = 7;
+  renewDays?: number;
 }

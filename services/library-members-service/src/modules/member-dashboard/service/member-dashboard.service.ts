@@ -351,14 +351,17 @@ export class MemberDashboardService {
 
       const issue = issueResponse.data?.data;
 
-      const requestPayload = {
+      const requestPayload: any = {
         memberId: issue.memberId,
         bookId: issue.bookId,
         issueId: renewDto.issueId,
         requestType: 'RENEW',
-        renewDays: renewDto.renewDays || 7,
         reason: renewDto.reason,
       };
+
+      if (renewDto.renewDays) {
+        requestPayload.renewDays = renewDto.renewDays;
+      }
 
       const response = await firstValueFrom(
         this.httpService.post(

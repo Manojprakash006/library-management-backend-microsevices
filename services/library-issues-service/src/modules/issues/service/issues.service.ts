@@ -960,9 +960,9 @@ export class IssuesService {
     });
   }
 
-  async renewBook(issueId: string, renewDays: number = 7) {
+  async renewBook(issueId: string, renewDays?: number) {
     const issue = await this.issueBookModel.findOne({issueId: issueId});
-
+    
     if (!issue) {
       throw new NotFoundException('Issue not found');
     }
@@ -974,19 +974,21 @@ export class IssuesService {
     if (issue.renewCount >= 1) {
       throw new BadRequestException('Renewal limit reached (Max 1 times)');
     }
-
+    
     const today = new Date();
     const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
+    
     const due = new Date(issue.dueDate);
     const dueOnly = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-
+    
     if (dueOnly < todayOnly) {
       throw new BadRequestException('Cannot renew overdue book. Please clear fine.');
     }
-
+    
+    const finalRenewDays = renewDays ?? 7;
+    
     const newDueDate = new Date(issue.dueDate);
-    newDueDate.setDate(newDueDate.getDate() + renewDays);
+    newDueDate.setDate(newDueDate.getDate() + finalRenewDays);
 
     issue.dueDate = newDueDate;
     issue.renewCount = (issue.renewCount || 0) + 1;
