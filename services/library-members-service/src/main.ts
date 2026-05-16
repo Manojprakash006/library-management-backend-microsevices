@@ -25,6 +25,9 @@ async function bootstrap() {
       url: process.env.GRPC_URL || '0.0.0.0:5002',
     },
   });
+  
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   app.useGlobalPipes(
     new ValidationPipe({

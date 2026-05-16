@@ -5,7 +5,10 @@ import { firstValueFrom } from 'rxjs';
 import { Model, Types } from 'mongoose';
 import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Razorpay = require('razorpay');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const html_to_pdf = require('html-pdf-node');
 import { Fine, FineDocument, FineStatus, PaymentMethod } from '../entities/fine.entity';
 
 import { CreateFineDto } from '../dto/create-fine.dto';
@@ -48,22 +51,26 @@ export class FinesService {
       }
 
       // Notify Member
-      await this.httpService.post(`${membersServiceUrl}/notifications`, {
+      await firstValueFrom(this.httpService.post(`${membersServiceUrl}/notifications`, {
         memberId: memberIdStr,
         type: 'PAYMENT_SUCCESS',
         title: 'Payment Successful',
         message: `Hi ${memberName}, your payment of ₹${amount} for "${bookTitle}" has been successfully received. Reference ID: ${referenceId}`,
-      }).toPromise();
+      }));
 
       // Notify Admin
-      await this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
+      await firstValueFrom(this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
         type: 'PAYMENT_RECEIVED',
         title: 'New Payment Received',
         message: `Member ${memberName} (ID: ${memberIdStr}) has paid a fine of ₹${amount} for "${bookTitle}". Reference ID: ${referenceId}`,
-      }).toPromise();
+      }));
 
+      this.logger.log(`Successfully sent payment notification for member ${memberIdStr}`);
     } catch (error) {
-      this.logger.error(`Failed to send payment notification: ${error.message}`);
+      this.logger.error(`Failed to send payment notification for member ${memberIdStr}: ${error.message}`);
+      if (error.response) {
+        this.logger.error(`Error details: ${JSON.stringify(error.response.data)}`);
+      }
     }
   }
 
@@ -83,12 +90,12 @@ export class FinesService {
         }
       }
 
-      await this.httpService.post(`${membersServiceUrl}/notifications`, {
+      await firstValueFrom(this.httpService.post(`${membersServiceUrl}/notifications`, {
         memberId: memberIdStr,
         type: 'FINE_ADDED',
         title: 'New Fine Added',
         message: `Dear member, a fine of ₹${amount} has been added for "${bookTitle}". Reason: ${reason}. Please clear it at your earliest convenience.`,
-      }).toPromise();
+      }));
     } catch (error) {
       this.logger.error(`Failed to send fine creation notification: ${error.message}`);
     }
@@ -164,8 +171,9 @@ export class FinesService {
     fine.paidAt = new Date();
     await fine.save();
 
-    // Fire and forget notification
+    // Fire and forget notification and email invoice
     this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId || fine._id.toString(), fine.bookId?.toString());
+    this.sendInvoiceByEmail(fine._id.toString());
 
     // Emit real-time event
     await this.redisEmitter.emit('FINE_PAID', fine);
@@ -235,8 +243,9 @@ export class FinesService {
 
     await fine.save();
 
-    // Fire and forget notification
+    // Fire and forget notification and email invoice
     this.sendPaymentNotification(fine.memberId.toString(), fine.amount, fine.referenceId, fine.bookId?.toString());
+    this.sendInvoiceByEmail(fine._id.toString());
 
     // Emit real-time event
     await this.redisEmitter.emit('FINE_PAID', fine);
@@ -265,7 +274,7 @@ export class FinesService {
     return { message: 'Fine deleted successfully' };
   }
 
-  async getInvoiceHtml(id: string): Promise<string> {
+  async getInvoiceHtml(id: string, hideActions = false): Promise<string> {
     const fine = await this.fineModel.findById(id).exec();
     if (!fine) throw new NotFoundException('Fine not found');
 
@@ -282,14 +291,25 @@ export class FinesService {
     let memberPhone = '';
 
     try {
-      const [bookRes, memberRes] = await Promise.all([
+      const [bookRes, memberRes, libRes] = await Promise.all([
         fine.bookId ? firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${fine.bookId}`)) : Promise.resolve(null),
-        firstValueFrom(this.httpService.get(`${membersServiceUrl}/members/${fine.memberId}`))
+        firstValueFrom(this.httpService.get(`${membersServiceUrl}/members/${fine.memberId}`)),
+        firstValueFrom(this.httpService.get(`${membersServiceUrl}/contact/info`))
       ]);
+      
       if (bookRes) bookTitle = bookRes.data?.data?.title || 'N/A';
+      
       memberName = memberRes.data?.name || memberRes.data?.data?.name || 'Member';
       memberEmail = memberRes.data?.email || memberRes.data?.data?.email || '';
       memberPhone = memberRes.data?.phone || memberRes.data?.data?.phone || '';
+      
+      const libData = libRes.data?.data || libRes.data;
+      if (libData) {
+        libraryName = libData.libraryName || libraryName;
+        libraryAddress = libData.address || libraryAddress;
+        libraryPhone = libData.phone || libraryPhone;
+        libraryEmail = libData.email || libraryEmail;
+      }
     } catch (e) {
       this.logger.error(`Failed to fetch details for invoice: ${e.message}`);
     }
@@ -403,12 +423,14 @@ export class FinesService {
         </style>
       </head>
       <body>
+        ${hideActions ? '' : `
         <div class="action-bar no-print">
           <button class="print-btn" onclick="window.print()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
             Print Invoice
           </button>
         </div>
+        `}
 
         <div class="invoice-card">
           <div class="header">
@@ -485,5 +507,64 @@ export class FinesService {
     `;
   }
 
+  async sendInvoiceByEmail(id: string): Promise<void> {
+    try {
+      this.logger.log(`Starting invoice email process for fine ID: ${id}`);
+      
+      // 1. Get HTML content (hide actions for PDF)
+      const html = await this.getInvoiceHtml(id, true);
+      
+      // 2. Fetch member details for email and name
+      const fine = await this.fineModel.findById(id).exec();
+      if (!fine) return;
+      
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const memberRes = await firstValueFrom(this.httpService.get(`${membersServiceUrl}/members/${fine.memberId}`));
+      const memberName = memberRes.data?.name || memberRes.data?.data?.name || 'Member';
+      const memberEmail = memberRes.data?.email || memberRes.data?.data?.email;
+      
+      if (!memberEmail) {
+        this.logger.warn(`No email found for member ${fine.memberId}, skipping invoice email.`);
+        return;
+      }
+      
+      // 3. Convert HTML to PDF
+      this.logger.log(`Converting HTML to PDF for invoice ${fine.fineId}...`);
+      const options = { 
+        format: 'A4', 
+        printBackground: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+      };
+      const file = { content: html };
+      
+      const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+      this.logger.log(`PDF generated successfully for ${fine.fineId}`);
+      
+      // 4. Send to members service for email delivery
+      await firstValueFrom(this.httpService.post(`${membersServiceUrl}/notifications/send-invoice-email`, {
+        email: memberEmail,
+        memberName: memberName,
+        invoiceId: fine.fineId,
+        pdfBase64: pdfBuffer.toString('base64'),
+      }));
+      
+      this.logger.log(`Invoice email sent successfully to ${memberEmail}`);
+    } catch (error) {
+      this.logger.error(`Failed to send invoice email: ${error.message}`);
+    }
+  }
+
+  async getInvoicePdf(id: string): Promise<Buffer> {
+    const html = await this.getInvoiceHtml(id, true);
+    const options = { 
+      format: 'A4', 
+      printBackground: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+    };
+    const file = { content: html };
+    return await html_to_pdf.generatePdf(file, options);
+  }
 }
 

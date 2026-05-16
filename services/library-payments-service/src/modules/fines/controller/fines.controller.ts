@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Param, Body, Query, UsePipes, ValidationPipe, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UsePipes, ValidationPipe, HttpStatus, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { FinesService } from '../service/fines.service';
 import { PayFineDto } from '../dto/pay-fine.dto';
@@ -139,6 +140,20 @@ export class FinesController {
   @ApiParam({ name: 'id', required: true })
   async getInvoice(@Param('id') id: string) {
     return this.finesService.getInvoiceHtml(id);
+  }
+
+  @Public()
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Download invoice PDF' })
+  @ApiParam({ name: 'id', required: true })
+  async downloadInvoicePdf(@Param('id') id: string, @Res() res: Response) {
+    const buffer = await this.finesService.getInvoicePdf(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=Invoice_${id}.pdf`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 }
 

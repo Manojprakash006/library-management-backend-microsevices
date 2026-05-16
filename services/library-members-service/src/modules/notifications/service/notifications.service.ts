@@ -475,4 +475,13 @@ export class NotificationsService {
       this.logger.error(`Failed to send web push notifications: ${err.message}`);
     }
   }
+
+  async sendInvoiceEmail(email: string, memberName: string, invoiceId: string, pdfBuffer: Buffer): Promise<void> {
+    try {
+      await this.emailService.sendInvoiceEmail(email, memberName, invoiceId, pdfBuffer);
+      this.logger.log(`Invoice email sent to ${email} for invoice ${invoiceId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send invoice email to ${email}: ${error.message}`);
+    }
+  }
 }
