@@ -70,42 +70,64 @@ export class RequestsService {
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
 
-    // 1. Check if member already has a pending request for this book
-    const existingPendingRequest = await this.bookRequestModel.findOne({
+    const isBorrowRequest =
+      createDto.requestType === RequestType.TAKE_HOME ||
+      createDto.requestType === RequestType.READING_INSIDE_LIBRARY;
+
+    const existingRequests = await this.bookRequestModel.find({
       memberId: new Types.ObjectId(createDto.memberId),
       bookId: new Types.ObjectId(createDto.bookId),
-      status: RequestStatus.PENDING
     }).exec();
+      
+      const {
+        currentlyBorrowed,
+        totalHistory,
+        activeBookIds,
+      } = await this.getMemberBorrowingDetails(createDto.memberId);
+  
+      const alreadyBorrowed = activeBookIds.some(
+        (id) => id.toString() === createDto.bookId.toString()
+      );
 
-    if (existingPendingRequest && createDto.requestType === RequestType.NEW) {
-      throw new ConflictException('You already have a pending request for this book.');
-    }
+    if (isBorrowRequest) {
 
-    // Fetch member borrowing statistics
-    const { currentlyBorrowed, totalHistory, activeBookIds } = await this.getMemberBorrowingDetails(createDto.memberId);
-
-    // 2. Check if member already has this book actively borrowed
-    const alreadyBorrowed = activeBookIds.some(id => id.toString() === createDto.bookId.toString());
-      if (createDto.requestType === RequestType.NEW && alreadyBorrowed) {
+      // Already borrowed / issued
+      if (alreadyBorrowed) {
         throw new ConflictException(
           'You have already borrowed this book. Please return it before requesting again.'
         );
       }
 
-    const bookRequest = new this.bookRequestModel({
-      ...createDto,
-      bookId: new Types.ObjectId(createDto.bookId),
-      memberId: new Types.ObjectId(createDto.memberId),
-      requestDate: createDto.requestDate || new Date(),
-      status:
-        createDto.requestType === 'RENEW'
-          ? RequestStatus.RENEW_PENDING
-          : RequestStatus.PENDING,
-      currentlyBorrowed,
-      totalHistory,
-    });
+      // Pending request exists
+      const hasPendingRequest = existingRequests.some(
+        (req) => req.status === RequestStatus.PENDING
+      );
 
-    if (createDto.requestType === 'RENEW') {
+      if (hasPendingRequest) {
+        throw new ConflictException(
+          'You already have a pending request for this book.'
+        );
+      }
+
+      // Approved but not yet issued
+      const hasApprovedRequest = existingRequests.some(
+        (req) => req.status === RequestStatus.APPROVED && !req.issueId
+      );
+
+      if (hasApprovedRequest) {
+        throw new ConflictException(
+          'Book request already approved. Please visit the library to collect the book.'
+        );
+      }
+    }
+
+    if (createDto.requestType === RequestType.RENEW) {
+
+      if (!alreadyBorrowed) {
+        throw new ConflictException(
+          'Renew request is only allowed for borrowed books.'
+        );
+      }
 
       const existingRenewRequest =
         await this.bookRequestModel.findOne({
@@ -120,19 +142,39 @@ export class RequestsService {
       }
     }
 
+    const bookRequest = new this.bookRequestModel({
+      ...createDto,
+
+      bookId: new Types.ObjectId(createDto.bookId),
+      memberId: new Types.ObjectId(createDto.memberId),
+
+      requestDate: createDto.requestDate || new Date(),
+
+      status:
+        createDto.requestType === RequestType.RENEW
+          ? RequestStatus.RENEW_PENDING
+          : RequestStatus.PENDING,
+
+      currentlyBorrowed,
+      totalHistory,
+    });
+
     const savedRequest = await bookRequest.save();
 
-    // Notify admins about the new request
     await this.notifyAdmins(
       'NEW_BOOK_REQUEST',
       'New Book Request Received',
       `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}.`,
-      createDto.bookId // Pass bookId as issueId for enrichment
+      createDto.bookId
     );
 
-    // Emit real-time event
     await this.redisEmitter.emit('REQUEST_CREATED', savedRequest);
-    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'create', request: savedRequest });
+
+    await this.redisEmitter.emit('REQUESTS_UPDATED', {
+      type: 'create',
+      request: savedRequest,
+    });
+
     await this.invalidatePendingCountCache();
 
     return savedRequest;
@@ -265,7 +307,7 @@ export class RequestsService {
           };
 
         } catch (error) {
-          console.log("❌ BOOK FETCH FAILED:", error.message);
+          console.log("BOOK FETCH FAILED:", error.message);
 
           return {
             ...req,
@@ -277,6 +319,27 @@ export class RequestsService {
 
 
     return enriched;
+  }
+
+  async linkIssue(body: {
+    memberId: string;
+    bookId: string;
+    issueId: string;
+  }) {
+
+    const request = await this.bookRequestModel.findOne({
+      memberId: new Types.ObjectId(body.memberId),
+      bookId: new Types.ObjectId(body.bookId),
+      status: RequestStatus.APPROVED,
+    }).sort({ createdAt: -1 });
+
+    if (!request) {
+      return null;
+    }
+
+    request.issueId = body.issueId;
+
+    return await request.save();
   }
 
   async findOne(id: string): Promise<BookRequest> {
@@ -323,7 +386,6 @@ export class RequestsService {
 
   async approve(id: string, adminId?: string, approveDto?: ApproveRequestDto): Promise<BookRequest> {
 
-    console.log('approveDto in service :', approveDto);
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
@@ -332,26 +394,27 @@ export class RequestsService {
     if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be approved');
     }
-    console.log("renew days from dto :", approveDto.renewDays);
     if (request.requestType === 'RENEW') {
 
       const renewDays = approveDto?.renewDays ?? request.renewDays ?? 7;
-      console.log("renew days from inside logic :", renewDays);
 
       const issueServiceURL =
-        process.env.ISSUE_SERVICE_URL ||
+        process.env.ISSUES_SERVICE_URL ||
         'http://library-issues-service:3013';
 
-      await firstValueFrom(
-        this.httpService.put(
-          `${issueServiceURL}/issues/renew/${request.issueId}`, { renewDays}
-        )
-      );
+      try {
+        await firstValueFrom(
+          this.httpService.put(
+            `${issueServiceURL}/issues/renew/${request.issueId}`, { renewDays}
+          )
+        );
+      } catch (error) {
+        console.log('RENEW FAILED :', error.response?.data || error.message);
+        throw new BadRequestException('Renew Failed');
+      }
 
-      console.log('before assign :', request.renewDays);
 
       request.renewDays = renewDays;
-      console.log("after assign :", request.renewDays);
     }
 
     request.status = RequestStatus.APPROVED;
@@ -406,6 +469,25 @@ export class RequestsService {
     await this.invalidatePendingCountCache();
 
     return savedRequest;
+  }
+
+  async markRequestAsReturned(issueId: string) {
+    console.log('SERVICE ISSUE ID:', issueId);
+
+    const request = await this.bookRequestModel.findOne({
+      issueId,
+      status: RequestStatus.APPROVED,
+    });
+    console.log('FOUND REQUEST :', request);
+
+    if (!request) {
+      return null;
+    }
+
+    request.status = RequestStatus.RETURNED;
+    const save =  await request.save();
+    console.log('UPDATED SYATUS:', request.status);
+    return save;
   }
 
   async reject(id: string, adminId?: string): Promise<BookRequest> {

@@ -4,10 +4,10 @@ import { HydratedDocument, Types } from 'mongoose';
 export type BookRequestDocument = HydratedDocument<BookRequest>;
 
 export enum RequestStatus {
-  PENDING = 'Pending',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
-  CANCELLED = 'Cancelled',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
 }
 
 @Schema({ timestamps: true })

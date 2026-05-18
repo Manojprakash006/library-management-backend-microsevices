@@ -44,9 +44,9 @@ export class CreateLeaveRequestDto {
 }
 
 export class UpdateLeaveStatusDto {
-  @ApiProperty({ description: 'New status of the leave request', enum: ['Approved', 'Rejected'] })
-  @IsEnum(['Approved', 'Rejected'])
-  status: 'Approved' | 'Rejected';
+  @ApiProperty({ description: 'New status of the leave request', enum: ['APPROVED', 'REJECTED'] })
+  @IsEnum(['APPROVED', 'REJECTED'])
+  status: 'APPROVED' | 'REJECTED';
 
   @ApiProperty({ description: 'ID of the admin approving/rejecting' })
   @IsMongoId()

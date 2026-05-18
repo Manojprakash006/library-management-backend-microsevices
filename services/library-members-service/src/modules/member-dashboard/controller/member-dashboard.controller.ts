@@ -106,7 +106,6 @@ export class MemberDashboardController {
   ) {
     const userId = req.user.id;
     const token = req.headers.authorization;
-    console.log("Token log from member-dashboar at line 100 :", token);
     const result = await this.memberDashboardService.updateReview(
       reviewId,
       userId,

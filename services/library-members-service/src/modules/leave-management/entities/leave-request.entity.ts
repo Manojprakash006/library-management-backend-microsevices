@@ -11,9 +11,9 @@ export enum LeaveType {
 }
 
 export enum LeaveStatus {
-  PENDING = 'Pending',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 @Schema({ timestamps: true })

@@ -389,6 +389,34 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
+    try {
+
+      const requestsServiceUrl =
+        process.env.REQUESTS_SERVICE_URL ||
+        'http://library-requests-service:3014';
+
+      await firstValueFrom(
+        this.httpService.put(
+          `${requestsServiceUrl}/requests/link-issue`,
+          {
+            memberId: createIssueDto.memberId,
+            bookId: createIssueDto.bookId,
+            issueId: savedIssue.issueId,
+          }
+        )
+      );
+
+      this.logger.log(
+        `Linked request with issueId ${savedIssue.issueId}`
+      );
+
+    } catch (error) {
+
+      this.logger.error(
+        `Failed to link issueId to request: ${error.message}`
+      );
+    }
+
     // Re-use already fetched bookData instead of re-fetching
     const currentIssuesCountAfterThis = await this.getBookIssueCount(createIssueDto.bookId);
     let newBookStatus = 'available';
@@ -796,6 +824,29 @@ export class IssuesService {
 
     const savedIssue = await issuedBook.save();
 
+    try {
+
+      const requestsServiceUrl =
+        process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+
+      await firstValueFrom(
+        this.httpService.put(
+          `${requestsServiceUrl}/requests/${issuedBook.issueId}/mark-returned`
+        )
+      );
+
+      this.logger.log(
+        `Updated request status to RETURNED for issueId ${issuedBook.issueId}`
+      );
+
+    } catch (error) {
+
+      console.log('REQUEST UPDATE ERROR :', error);
+      this.logger.error(
+        `Failed to update request status: ${error.message}`
+      );
+    }
+
     // Prepare updates
     const updates: Promise<any>[] = [
       this.updateBorrowingHistory(
@@ -961,6 +1012,7 @@ export class IssuesService {
   }
 
   async renewBook(issueId: string, renewDays?: number) {
+
     const issue = await this.issueBookModel.findOne({issueId: issueId});
     
     if (!issue) {
@@ -991,6 +1043,7 @@ export class IssuesService {
     newDueDate.setDate(newDueDate.getDate() + finalRenewDays);
 
     issue.dueDate = newDueDate;
+    issue.numberOfDays = finalRenewDays;
     issue.renewCount = (issue.renewCount || 0) + 1;
 
     await issue.save();

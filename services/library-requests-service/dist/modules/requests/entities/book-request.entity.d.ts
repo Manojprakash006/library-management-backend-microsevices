@@ -1,10 +1,10 @@
 import { HydratedDocument, Types } from 'mongoose';
 export type BookRequestDocument = HydratedDocument<BookRequest>;
 export declare enum RequestStatus {
-    PENDING = "Pending",
-    APPROVED = "Approved",
-    REJECTED = "Rejected",
-    CANCELLED = "Cancelled"
+    PENDING = "PENDING",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    CANCELLED = "CANCELLED"
 }
 export declare class BookRequest {
     requestId: string;

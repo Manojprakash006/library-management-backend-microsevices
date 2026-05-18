@@ -241,8 +241,8 @@ export class IssuesController {
 
   @Public()
   @Put('renew/:id')
-  async renewBook(@Param('id') id: string, @Body() body: { renewDays?: number}) {
-    const result = await this.issuesService.renewBook(id, body.renewDays ?? 7);
+  async renewBook(@Param('id') issueId: string, @Body('renewDays') renewDays?: number) {
+    const result = await this.issuesService.renewBook(issueId, renewDays ?? 7);
     return { message: 'Book renewed successfully', data: result };
   }
 

@@ -9,7 +9,9 @@ import { DamageReportsModule } from '../damage-reports/damage-reports.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: IssueBook.name, schema: IssueBookSchema }, { name: Book.name, schema: BookSchema },]),
+    MongooseModule.forFeature([
+      { name: IssueBook.name, schema: IssueBookSchema }, 
+      { name: Book.name, schema: BookSchema },]),
     HttpModule,
     DamageReportsModule,
   ],

@@ -9,9 +9,9 @@ export enum DamageReportReason {
 }
 
 export enum DamageReportStatus {
-  PENDING = 'Pending',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 @Schema({ timestamps: true })

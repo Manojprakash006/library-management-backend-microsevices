@@ -4,16 +4,18 @@ import { HydratedDocument, Types } from 'mongoose';
 export type BookRequestDocument = HydratedDocument<BookRequest>;
 
 export enum RequestStatus {
-  PENDING = 'Pending',
+  PENDING = 'PENDING',
   RENEW_PENDING = 'RENEW_PENDING',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
-  CANCELLED = 'Cancelled',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+  RETURNED = 'RETURNED',
 }
 
 export enum RequestType {
-  NEW = 'NEW',
+  TAKE_HOME = 'TAKE_HOME',
   RENEW = 'RENEW',
+  READING_INSIDE_LIBRARY = 'READING_INSIDE_LIBRARY',
 }
 
 @Schema({ timestamps: true })
@@ -27,10 +29,10 @@ export class BookRequest {
   @Prop({ type: Types.ObjectId, required: true, ref: 'Member' })
   memberId: Types.ObjectId;
 
-  @Prop({ type: String, enum: RequestType, default: RequestType.NEW, required: true })
+  @Prop({ type: String, enum: RequestType, default: RequestType.TAKE_HOME, required: true })
   requestType: RequestType
 
-  @Prop({ required: true })
+  @Prop({ required: false, default: null })
   renewDays: number;
 
   @Prop()

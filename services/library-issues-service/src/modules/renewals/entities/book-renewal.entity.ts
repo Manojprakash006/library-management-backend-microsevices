@@ -4,9 +4,9 @@ import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 export type BookRenewalDocument = HydratedDocument<BookRenewal>;
 
 export enum RenewalStatus {
-  PENDING = 'Pending',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 @Schema({ timestamps: true })
