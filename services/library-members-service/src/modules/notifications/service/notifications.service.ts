@@ -356,7 +356,7 @@ export class NotificationsService {
     this.logger.log('Executing automated Due Date Reminders cron job...');
     let count = 0;
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues`));
       const allIssues = response.data?.data || [];
 
@@ -400,7 +400,7 @@ export class NotificationsService {
     this.logger.log('Executing automated Overdue Notifications cron job...');
     let count = 0;
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues/overdue`));
       const overdueIssues = response.data?.data || [];
 

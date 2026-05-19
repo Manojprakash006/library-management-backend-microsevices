@@ -114,6 +114,7 @@ services:
       - KAFKA_BROKER=localhost:9092
       - MEMBERS_SERVICE_URL=http://library-members-service:3012
       - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - REQUESTS_SERVICE_URL=http://library-requests-service:3014
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PAYMENTS_SERVICE_URL=http://library-payments-service:3005

@@ -135,7 +135,7 @@ export class RacksService {
 
   private async getIssuedCountForBook(bookId: string): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count/book/${bookId}`)
       );

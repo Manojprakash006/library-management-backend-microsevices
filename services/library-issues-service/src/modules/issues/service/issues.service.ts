@@ -68,11 +68,15 @@ export class IssuesService {
     return updatedIssue;
   }
 
-  private async getLibraryConfig(): Promise<any> {
+  private async getLibraryConfig(authHeader?: string): Promise<any> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       const response = await firstValueFrom(
-        this.httpService.get(`${booksServiceUrl}/config`)
+        this.httpService.get(`${booksServiceUrl}/config`,
+          {
+            headers:authHeader? {Authorization: authHeader} : {},
+          },
+        )
       );
       return response.data?.data || {};
     } catch (error) {
@@ -153,7 +157,7 @@ export class IssuesService {
         if (!wasAlreadyOverdue) {
           let bookTitle = 'A book';
           try {
-            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+            const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
             const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`));
             bookTitle = bookRes.data?.data?.title || 'A book';
           } catch (e) {}
@@ -187,7 +191,7 @@ export class IssuesService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -204,7 +208,7 @@ export class IssuesService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -220,7 +224,7 @@ export class IssuesService {
 
   private async autoRecordLibraryVisit(memberId: string, bookId: string, issueType: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
 
       // Map issueType to purpose
       // "Taking Home" -> "issue" (immediate in/out)
@@ -260,7 +264,7 @@ export class IssuesService {
 
   private async recordReturnVisit(memberId: string, bookId: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
 
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/library-visits/record-return`, {
@@ -293,7 +297,7 @@ export class IssuesService {
 
     // STRICT FINE CHECK: Only check with Payments Service (Single Source of Truth)
     try {
-      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://localhost:3005';
+      const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || 'http://library-members-service:3012';
       const checkResponse = await firstValueFrom(
         this.httpService.get<{ data: { hasPendingFines: boolean; totalPendingAmount: number } }>(
           `${paymentsServiceUrl}/fines/member/${createIssueDto.memberId}/pending-check`,
@@ -340,7 +344,7 @@ export class IssuesService {
     // Check book availability first before issuing
     let bookData: any;
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       const bookResponse = await firstValueFrom(
         this.httpService.get(`${booksServiceUrl}/books/${createIssueDto.bookId}`)
       );
@@ -411,7 +415,7 @@ export class IssuesService {
       );
 
     } catch (error) {
-
+      console.log('ERROR while trying Request service to save ISSUE ID :', error);
       this.logger.error(
         `Failed to link issueId to request: ${error.message}`
       );
@@ -482,7 +486,7 @@ export class IssuesService {
     bookTitle?: string
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrowing-history`, {
           bookId,
@@ -501,7 +505,7 @@ export class IssuesService {
 
   private async updateBookStatus(bookId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookId}/status`, { status })
       );
@@ -512,7 +516,7 @@ export class IssuesService {
 
   private async updateBookConditionQuantity(bookId: string, condition: string, change: number): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookId}/condition-quantity`, { condition, change })
       );
@@ -523,7 +527,7 @@ export class IssuesService {
 
   private async updateCopyStatus(copyNumber: string, status: string, condition?: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/copies/${copyNumber}/status`, { status, condition })
       );
@@ -539,7 +543,7 @@ export class IssuesService {
     fine: number
   ): Promise<void> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/members/${memberId}/borrow`, {
           issueId, // Critical: Missing in original code
@@ -556,7 +560,7 @@ export class IssuesService {
 
   private async updateBookStatusByObjectId(bookObjectId: string, status: string): Promise<void> {
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       await firstValueFrom(
         this.httpService.patch(`${booksServiceUrl}/books/${bookObjectId}/status`, { status })
       );
@@ -616,7 +620,7 @@ export class IssuesService {
         // Fetch basic details for the notification
         let bookTitle = 'A book';
         try {
-          const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+          const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library--service:3001';
           const bookRes = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${issue.bookId}`));
           bookTitle = bookRes.data?.data?.title || 'A book';
         } catch (e) {}
@@ -661,7 +665,7 @@ export class IssuesService {
       let reviewed = false;
 
       try {
-        const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://localhost:3001";
+        const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
 
 
         const response = await firstValueFrom(
@@ -698,7 +702,7 @@ export class IssuesService {
       status: { $ne: IssueStatus.RETURNED },
     }).sort({ createdAt: -1 }).lean();
 
-    const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+    const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
 
     const enrichedIssues = await Promise.all(
       issues.map(async (issue) => {
@@ -738,7 +742,7 @@ export class IssuesService {
     const bookId = issuedBook.bookId.toString();
     let bookData: any = null;
     try {
-      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://localhost:3001';
+      const booksServiceUrl = process.env.BOOKS_SERVICE_URL || 'http://library-books-service:3001';
       const bookResponse = await firstValueFrom(this.httpService.get(`${booksServiceUrl}/books/${bookId}`));
       bookData = bookResponse.data?.data;
     } catch (e) {
@@ -746,7 +750,7 @@ export class IssuesService {
     }
 
     // Fetch library config for fine rates
-    const config = await this.getLibraryConfig();
+    const config = await this.getLibraryConfig(authHeader);
     const overdueFinePerDay = config.overdueFinePerDay || 10;
     const damagedFinePercent = (config.damagedFinePercent || 50) / 100;
     const lostFinePercent = (config.lostFinePercent || 100) / 100;
@@ -827,21 +831,27 @@ export class IssuesService {
     try {
 
       const requestsServiceUrl =
-        process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+        process.env.REQUESTS_SERVICE_URL || 'http://library-requests-service:3014';
 
       await firstValueFrom(
         this.httpService.put(
-          `${requestsServiceUrl}/requests/${issuedBook.issueId}/mark-returned`
-        )
+          `${requestsServiceUrl}/requests/${issuedBook.issueId}/mark-returned`,
+          {},
+          {
+            headers: authHeader
+              ? { Authorization: authHeader }
+              : {},
+          },
+        ),
       );
-
+      console.log('Retuen running while return the book :', IssueBook);
       this.logger.log(
         `Updated request status to RETURNED for issueId ${issuedBook.issueId}`
       );
 
     } catch (error) {
 
-      console.log('REQUEST UPDATE ERROR :', error);
+      console.log('REQUEST UPDATE ERROR while RETURN BOOk :', error);
       this.logger.error(
         `Failed to update request status: ${error.message}`
       );

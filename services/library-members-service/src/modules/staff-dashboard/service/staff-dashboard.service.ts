@@ -498,7 +498,7 @@ export class StaffDashboardService {
 
   async getTodaysIssues(authHeader?: string) {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issus-service:3013';
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

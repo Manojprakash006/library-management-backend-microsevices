@@ -472,7 +472,7 @@ export class RequestsService {
   }
 
   async markRequestAsReturned(issueId: string) {
-    console.log('SERVICE ISSUE ID:', issueId);
+    console.log('SERVICE ISSUE ID on REQUEST SERVICE:', issueId);
 
     const request = await this.bookRequestModel.findOne({
       issueId,

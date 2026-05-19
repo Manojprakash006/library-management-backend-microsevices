@@ -438,7 +438,7 @@ export class DashboardService {
 
   private async getActiveIssuesCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count`)
       );
@@ -450,7 +450,7 @@ export class DashboardService {
 
   private async getPendingRequestsCount(): Promise<number> {
     try {
-      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://library-requests-service:3014';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${requestsServiceUrl}/requests/count/pending`)
       );
@@ -462,7 +462,7 @@ export class DashboardService {
 
   private async getOverdueBooksCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/overdue/count`)
       );
@@ -474,7 +474,7 @@ export class DashboardService {
 
   private async getTotalMembersCount(authHeader?: string): Promise<number> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       const response: AxiosResponse<any> = await firstValueFrom(
         this.httpService.get(`${membersServiceUrl}/members/stats/total`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -496,7 +496,7 @@ export class DashboardService {
 
   private async getTodayIssuesCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const today = new Date().toISOString().split('T')[0];
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count?date=${today}`)

@@ -27,7 +27,7 @@ export class BooksService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -44,7 +44,7 @@ export class BooksService {
 
   private async notifyAdmins(type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,

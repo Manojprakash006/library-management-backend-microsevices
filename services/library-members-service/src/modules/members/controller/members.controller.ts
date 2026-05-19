@@ -120,6 +120,7 @@ export class MembersController {
         return { message: 'Borrowing history added successfully' };
     }
 
+    @Public()
     @Post(':id/borrow')
     @Roles('admin', 'staff', 'member')
     @ApiOperation({ summary: 'Update member borrowing history (return book)' })

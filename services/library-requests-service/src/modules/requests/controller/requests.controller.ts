@@ -67,6 +67,7 @@ export class RequestsController {
     return { data: requests };
   }
 
+  @Public()
   @Put('link-issue')
   async linkIssue(
     @Body() body: {
