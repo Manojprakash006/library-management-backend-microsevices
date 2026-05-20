@@ -23,6 +23,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { LeaveManagementModule } from './modules/leave-management/leave-management.module';
 import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { ShiftModule } from './modules/shift/shift.module';
+import { MemberProgressModule } from './modules/member-progress/member-progress.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ShiftModule } from './modules/shift/shift.module';
     LeaveManagementModule,
     SystemConfigModule,
     ShiftModule,
+    MemberProgressModule,
   ],
   providers: [
     {

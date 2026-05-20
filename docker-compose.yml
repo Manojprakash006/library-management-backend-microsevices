@@ -82,6 +82,8 @@ services:
       - KAFKA_BROKER=localhost:9092
       - ISSUES_SERVICE_URL=http://library-issues-service:3013
       - BOOKS_SERVICE_URL=http://library-books-service:3001
+      - PAYMENTS_SERVICE_URL=http://library-payments-service:3005
+      - REQUESTS_SERVICE_URL=http://library-requests-service:3014
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SMTP_HOST=smtp.gmail.com
