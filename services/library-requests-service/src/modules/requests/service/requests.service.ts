@@ -469,7 +469,6 @@ export class RequestsService {
       this.logger.error(`Failed to fetch book title for approval notification: ${e.message}`);
     }
 
-    // Send notification to member (fire and forget)
     this.sendNotification(
       request.memberId.toString(),
       'REQUEST_APPROVED',
