@@ -17,6 +17,12 @@ export class SystemConfig {
   @Prop({ default: 15 }) // in minutes
   gracePeriod: number;
 
+  @Prop({ default: 120 }) // in minutes (e.g., 2 hours late = half day)
+  halfDayLimit: number;
+
+  @Prop({ default: 'Asia/Kolkata' })
+  timezone: string;
+
   @Prop({ default: true })
   autoAbsentEnabled: boolean;
 }

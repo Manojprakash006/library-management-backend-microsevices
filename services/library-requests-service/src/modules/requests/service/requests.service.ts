@@ -8,6 +8,7 @@ import { BookRequest, BookRequestDocument, RequestStatus, RequestType } from '..
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
 import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
 import { ApproveRequestDto } from '../dto/approve-request.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RequestsService {
@@ -17,11 +18,24 @@ export class RequestsService {
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
     private readonly redisEmitter: RedisEmitterService,
+    private readonly configService: ConfigService,
   ) { }
+
+  private getMembersServiceUrl(): string {
+    return this.configService.get('MEMBERS_SERVICE_URL') || 'http://localhost:3012';
+  }
+
+  private getIssuesServiceUrl(): string {
+    return this.configService.get('ISSUES_SERVICE_URL') || 'http://localhost:3013';
+  }
+
+  private getBooksServiceUrl(): string {
+    return this.configService.get('BOOKS_SERVICE_URL') || 'http://localhost:3001';
+  }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
+      const membersServiceUrl = this.getMembersServiceUrl();
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -38,7 +52,7 @@ export class RequestsService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
+      const membersServiceUrl = this.getMembersServiceUrl();
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -54,7 +68,7 @@ export class RequestsService {
 
   private async notifyAdmins(type: string, title: string, message: string, issueId?: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
+      const membersServiceUrl = this.getMembersServiceUrl();
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
@@ -182,7 +196,7 @@ export class RequestsService {
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+      const issuesServiceUrl = this.getIssuesServiceUrl();
 
       // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
@@ -247,7 +261,7 @@ export class RequestsService {
     let bulkStats: Record<string, any> = {};
     
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+      const issuesServiceUrl = this.getIssuesServiceUrl();
       const response = await firstValueFrom(
         this.httpService.post(`${issuesServiceUrl}/issues/batch-stats`, { memberIds })
       );
@@ -295,7 +309,7 @@ export class RequestsService {
         }
 
         try {
-          const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+          const bookServiceURL = this.getBooksServiceUrl();
           const bookResponse = await firstValueFrom(
             this.httpService.get(`${bookServiceURL}/books/${bookId}`)
           );
@@ -448,7 +462,7 @@ export class RequestsService {
     // Fetch book details for notification
     let bookTitle = 'Book';
     try {
-      const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+      const bookServiceURL = this.getBooksServiceUrl();
       const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
       bookTitle = bookRes.data?.data?.title || 'Book';
     } catch (e) {
@@ -511,7 +525,7 @@ export class RequestsService {
     // Fetch book details for notification
     let bookTitle = 'Book';
     try {
-      const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+      const bookServiceURL = this.getBooksServiceUrl();
       const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
       bookTitle = bookRes.data?.data?.title || 'Book';
     } catch (e) {

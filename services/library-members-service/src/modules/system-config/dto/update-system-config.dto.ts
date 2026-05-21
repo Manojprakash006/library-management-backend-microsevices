@@ -19,6 +19,11 @@ export class UpdateSystemConfigDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsNumber()
+  halfDayLimit?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   autoAbsentEnabled?: boolean;
 }
