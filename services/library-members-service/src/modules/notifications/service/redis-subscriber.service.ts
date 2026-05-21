@@ -40,7 +40,7 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
     });
 
     await this.redisClient.subscribe('lms_updates');
-
+ 
     this.logger.log('Subscribed to lms_updates channel');
   }
 
