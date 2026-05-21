@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { MemberDashboardService } from '../../member-dashboard/service/member-dashboard.service';
 
 @Injectable()
 export class MemberProgressService {
@@ -8,6 +9,7 @@ export class MemberProgressService {
 
   constructor(
     private readonly httpService: HttpService,
+    private readonly memberDashboardService: MemberDashboardService,
   ) {}
 
   async getSummary(memberId: string, authHeader?: string) {
@@ -149,7 +151,10 @@ export class MemberProgressService {
     }
   }
 
-  async getReadingActivity(memberId: string) {
+  async getReadingActivity(memberId: string, year?: number) {
+
+    // const currentYear = new Date().getFullYear();
+    const selectedYear = year || new Date().getFullYear();
 
     try {
       const issuesService =
@@ -186,17 +191,22 @@ export class MemberProgressService {
 
       issues.forEach((issue: any) => {
 
-
         const date = new Date(issue.issueDate);
 
-        const monthIndex = date.getMonth();
+        const issueYear = date.getFullYear();
 
-        monthlyData[monthIndex].books += 1;
+        if (issueYear === selectedYear) {
+
+          const monthIndex = date.getMonth();
+
+          monthlyData[monthIndex].books += 1;
+        }
 
       });
 
       return {
         success: true,
+        year: selectedYear,
         data: monthlyData,
       };
 
@@ -208,6 +218,255 @@ export class MemberProgressService {
 
       throw new InternalServerErrorException(
         'Failed to fetch reading activity'
+      );
+    }
+  }
+
+  async getFinePaymentActivity(memberId: string, year?: number, authHeader?: string) {
+
+    const selectedYear = year || new Date().getFullYear();
+
+    try {
+
+      const paymentsService =
+        process.env.PAYMENTS_SERVICE_URL ||
+        'http://library-payments-service:3015';
+
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${paymentsService}/fines/member/${memberId}`,
+          {
+            headers: {
+              Authorization: authHeader,
+            },
+          }
+        )
+      );
+
+      const fines = response.data?.data || [];
+
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+
+      const monthlyData = months.map((month) => ({
+        month,
+        amount: 0,
+      }));
+
+      fines.forEach((fine: any) => {
+
+        const date = new Date(fine.paidAt || fine.createdAt);
+
+        const fineYear = date.getFullYear();
+
+        if (fineYear === selectedYear) {
+
+          const monthIndex = date.getMonth();
+
+          monthlyData[monthIndex].amount += fine.amount || 0;
+        }
+      });
+
+      return {
+        success: true,
+        year: selectedYear,
+        data: monthlyData,
+      };
+
+    } catch (error) {
+
+      this.logger.error(
+        `Failed to fetch fine payment activity: ${error.message}`
+      );
+
+      throw new InternalServerErrorException(
+        'Failed to fetch fine payment activity'
+      );
+    }
+  }
+
+  async getOverdueBooks(memberId: string) {
+    try {
+      const overdueBooks =
+        await this.memberDashboardService.getOverdueBooks(memberId);
+
+      return { success: true, data: overdueBooks };
+
+    } catch (error) { this.logger.error( `Failed to fetch overdue books: ${error.message}` );
+
+      throw new InternalServerErrorException(
+        'Failed to fetch overdue books'
+      );
+    }
+  }
+
+  async getAchievements( memberId: string, authHeader: string ) {
+    try {
+
+      const issuesServiceUrl =
+        process.env.ISSUES_SERVICE_URL ||
+        'http://library-api-gateway:3000/library/issues';
+
+      const response = await firstValueFrom(
+
+        this.httpService.get(
+          `${issuesServiceUrl}/issues/member/${memberId}`,
+          {
+            headers: {
+              Authorization: authHeader,
+            },
+          }
+        )
+
+      );
+
+      const issues = response.data?.data || [];
+      const today = new Date();
+
+      const returnedBooks = issues.filter(
+        (issue: any) =>
+          issue.status === "Returned"
+      ).length;
+
+      const activityDates = new Set<string>();
+
+      issues.forEach((issue: any) => {
+
+        if (issue.issueDate) {
+          activityDates.add(
+            new Date(issue.issueDate)
+              .toISOString()
+              .split("T")[0]
+          );
+        }
+
+        if (issue.returnDate) {
+          activityDates.add(
+            new Date(issue.returnDate)
+              .toISOString()
+              .split("T")[0]
+          );
+        }
+      });
+
+      const sortedDates = Array.from(activityDates)
+        .sort(
+          (a: any, b: any) =>
+            new Date(b).getTime() -
+            new Date(a).getTime()
+        );
+
+      let streak = 0;
+
+      let currentDate = new Date();
+
+      for (const date of sortedDates) {
+
+        const currentStr =
+          currentDate
+            .toISOString()
+            .split("T")[0];
+
+        if (date === currentStr) {
+
+          streak++;
+
+          currentDate.setDate(
+            currentDate.getDate() - 1
+          );
+
+        } else {
+          break;
+        }
+      }
+
+      const overdueBooks = issues.filter(
+        (issue: any) => {
+
+          if (
+            issue.issueType !== "Taking Home" ||
+            !issue.dueDate
+          ) {
+            return false;
+          }
+
+          const dueDate = new Date(issue.dueDate);
+
+          return (
+            issue.status !== "Returned" &&
+            dueDate < today
+          );
+        }
+      );
+
+      const responsibleMember =
+        overdueBooks.length === 0;
+
+      const completedThisMonth = issues.filter(
+        (issue: any) => {
+
+          if (
+            issue.status !== "Returned" ||
+            !issue.returnDate
+          ) {
+            return false;
+          }
+
+          const returnDate =
+            new Date(issue.returnDate);
+
+          return (
+            returnDate.getMonth() === today.getMonth() &&
+
+            returnDate.getFullYear() === today.getFullYear()
+          );
+        }
+      );
+
+      const monthlyGoal = 5;
+
+      const monthlyGoalCompleted =
+        completedThisMonth.length >= monthlyGoal;
+
+      const eliteReader =
+        returnedBooks >= 10;
+
+      return {
+
+        success: true,
+
+        data: {
+          returnedBooks,
+          readingStreak: streak,
+          responsibleMember,
+          monthlyGoal,
+          monthlyCompleted: completedThisMonth.length,
+          monthlyGoalCompleted,
+          eliteReader,
+          overdueBooksCount: overdueBooks.length,
+        },
+      };
+
+    } catch (error) {
+
+      this.logger.error(
+        `Failed to fetch achievements: ${error.message}`
+      );
+
+      throw new InternalServerErrorException(
+        'Failed to fetch achievements'
       );
     }
   }
