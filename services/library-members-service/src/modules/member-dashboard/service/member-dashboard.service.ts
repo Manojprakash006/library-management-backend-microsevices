@@ -291,6 +291,7 @@ export class MemberDashboardService {
           issueId: issue.issueId,
           returnDate: issue.returnDate,
           reviewed: issue.reviewed,
+          copyNumber: issue.copyNumber,
         };
       });
 

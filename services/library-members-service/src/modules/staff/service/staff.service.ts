@@ -67,7 +67,6 @@ export class StaffService {
 
   async logout(staffId: string) {
     const staff = await this.staffModel.findById(staffId);
-    console.log("logout before save :", staff);
 
     if(!staff) {
       throw new NotFoundException("Staff not found");

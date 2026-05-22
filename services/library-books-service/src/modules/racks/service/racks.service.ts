@@ -147,7 +147,6 @@ export class RacksService {
   }
   
   async findByRackNumber(rackNumber: string): Promise<RackInfo> {
-    console.log('New code running');
     const books = await this.bookModel.find({ rackNumber }).lean().select('+damagedQuantity');
     const config = await this.configService.getConfig();
     const maxRackCapacity = config?.maxRackCapacity || 50;
@@ -172,7 +171,6 @@ export class RacksService {
     };
 
     for (const book of books) {
-      console.log('RAW BOOK from DB :', book);
       
       const issuedCount = await this.getIssuedCountForBook(book._id.toString());
       const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
@@ -222,7 +220,6 @@ export class RacksService {
         createdAt: book.createdAt,
         updatedAt: book.updatedAt,
       };
-      console.log('Book Data :', bookData);
 
       rackData.books.push(bookData);
 

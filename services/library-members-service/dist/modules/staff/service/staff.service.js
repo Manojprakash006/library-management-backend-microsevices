@@ -67,7 +67,6 @@ let StaffService = class StaffService {
     }
     async logout(staffId) {
         const staff = await this.staffModel.findById(staffId);
-        console.log("logout before save :", staff);
         if (!staff) {
             throw new common_1.NotFoundException("Staff not found");
         }

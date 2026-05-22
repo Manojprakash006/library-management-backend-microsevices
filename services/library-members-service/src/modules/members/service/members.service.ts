@@ -364,4 +364,23 @@ export class MembersService {
       totalFines: memberStats.totalFines,
     };
   }
+
+  async getMemberRewards(memberId: string) {
+
+    const member = await this.memberModel.findById(memberId);
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    return {
+      success: true,
+
+      data: {
+        extraRenewals: member.extraRenewals || 0,
+        currentStreak: member.currentStreak || 0,
+        longestStreak: member.longestStreak || 0,
+      },
+    };
+  }
 }

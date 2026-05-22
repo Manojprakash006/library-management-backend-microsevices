@@ -688,7 +688,7 @@ export class IssuesService {
         console.log("BOOK FETCH FAILED:", error.message);
       }
 
-      return { ...updatedIssue, book, reviewed: reviewed };
+      return { ...updatedIssue, book, reviewed: reviewed, copyNumber: issue.copyNumber };
     })
     );
 
@@ -844,7 +844,6 @@ export class IssuesService {
           },
         ),
       );
-      console.log('Retuen running while return the book :', IssueBook);
       this.logger.log(
         `Updated request status to RETURNED for issueId ${issuedBook.issueId}`
       );
@@ -1033,8 +1032,23 @@ export class IssuesService {
       throw new BadRequestException('Cannot renew a returned book');
     }
 
-    if (issue.renewCount >= 1) {
-      throw new BadRequestException('Renewal limit reached (Max 1 times)');
+    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 
+          'http://library-members-service:3012';
+
+    const memberResponse: any = await firstValueFrom(
+      this.httpService.get( `${membersServiceUrl}/members/${issue.memberId}/rewards` )
+    );
+
+    const extraRenewals = memberResponse.data?.data?.extraRenewals || 0;
+
+    const maxRenewals = 1 + extraRenewals;
+
+    if (issue.renewCount >= maxRenewals) {
+
+      throw new BadRequestException(
+        `Renewal limit reached (Max ${maxRenewals} times)`
+      );
+
     }
     
     const today = new Date();

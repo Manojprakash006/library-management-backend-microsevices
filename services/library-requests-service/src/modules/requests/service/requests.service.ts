@@ -485,13 +485,11 @@ export class RequestsService {
   }
 
   async markRequestAsReturned(issueId: string) {
-    console.log('SERVICE ISSUE ID on REQUEST SERVICE:', issueId);
 
     const request = await this.bookRequestModel.findOne({
       issueId,
       status: RequestStatus.APPROVED,
     });
-    console.log('FOUND REQUEST :', request);
 
     if (!request) {
       return null;
@@ -499,7 +497,6 @@ export class RequestsService {
 
     request.status = RequestStatus.RETURNED;
     const save =  await request.save();
-    console.log('UPDATED SYATUS:', request.status);
     return save;
   }
 

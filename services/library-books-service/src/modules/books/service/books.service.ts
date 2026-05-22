@@ -91,7 +91,9 @@ export class BooksService {
   async create(createBookDto: CreateBookDto, adminId?: string, role?: string): Promise<Book> {
     // Force auto-generate bookId
     const count = await this.bookModel.countDocuments().exec();
-    createBookDto.bookId = `BK-${count + 1}`;
+
+    const categoryCode = createBookDto.category ?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+    createBookDto.bookId = `BK-${count + 1}-${categoryCode}`;
 
     // Validate Rack & Shelf Capacity
     if (createBookDto.rackNumber) {
@@ -112,10 +114,12 @@ export class BooksService {
     // Create individual copies
     const copies = [];
     const quantity = savedBook.quantity || 1;
+    const firstWord = savedBook.title?.split(' ')[0]?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
     for (let i = 1; i <= quantity; i++) {
       copies.push({
         bookId: savedBook._id,
-        copyNumber: `${savedBook.bookId}-C${i.toString().padStart(2, '0')}`,
+        copyNumber: `${savedBook.bookId}-${firstWord}-C${i.toString().padStart(2, '0')}`,
         status: savedBook.status || BookStatus.AVAILABLE,
         condition: savedBook.condition || BookCondition.GOOD,
         addedBy: adminId,

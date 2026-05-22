@@ -129,4 +129,12 @@ export class MembersController {
         await this.membersService.updateBorrowingHistory(id, issueId, updateData);
         return { message: 'Borrowing history updated successfully' };
     }
+
+    @Public()
+    @Get(':id/rewards')
+      async getMemberRewards(
+      @Param('id') id: string
+      ) {
+      return this.membersService.getMemberRewards(id);
+      }
 }
