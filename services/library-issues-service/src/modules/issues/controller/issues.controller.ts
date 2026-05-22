@@ -254,4 +254,14 @@ export class IssuesController {
     await this.issuesService.remove(id, adminId);
     return { message: 'Issued book record deleted successfully' };
   }
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.issuesService.getReportsData(today, today);
+    }
+    return this.issuesService.getReportsData(startDate, endDate);
+  }
 }

@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const config_module_1 = require("./config/config.module");
 const fines_module_1 = require("./modules/fines/fines.module");
+const redis_emitter_module_1 = require("./modules/redis-emitter/redis-emitter.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -22,6 +23,7 @@ exports.AppModule = AppModule = __decorate([
                 dbName: process.env.MONGODB_DB || 'library_payments',
             }),
             fines_module_1.FinesModule,
+            redis_emitter_module_1.RedisEmitterModule,
         ],
     })
 ], AppModule);

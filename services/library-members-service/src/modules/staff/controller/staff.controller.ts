@@ -115,6 +115,13 @@ export class StaffController {
     await this.staffService.delete(id, adminId);
     return { message: 'Staff deleted successfully' };
   }
+
+  @Roles('admin')
+  @Get('reports/staff-performance')
+  @ApiOperation({ summary: 'Get staff performance report' })
+  async getStaffPerformanceReport() {
+    return this.staffService.getStaffPerformanceReport();
+  }
 }
 
 // function diskStorage(arg0: { destination: string; filename: (req: any, file: any, callback: any) => void; }): any {

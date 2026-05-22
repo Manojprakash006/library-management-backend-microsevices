@@ -20,6 +20,31 @@ import { Public } from '../../../auth/guards/public.decorator';
 export class BooksController {
   constructor(private readonly booksService: BooksService) { }
 
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.booksService.getReportsData(today, today);
+    }
+    return this.booksService.getReportsData(startDate, endDate);
+  }
+
+  @Roles('admin')
+  @Get('reports/books-performance')
+  @ApiOperation({ summary: 'Get books performance report' })
+  async getBooksPerformanceReport() {
+    return this.booksService.getBooksPerformanceReport();
+  }
+
+  @Roles('admin')
+  @Get('reports/reviews')
+  @ApiOperation({ summary: 'Get reviews report' })
+  async getReviewsReport() {
+    return this.booksService.getReviewsReport();
+  }
+
   @Public()
   @Get('public/collection-stats')
   @ApiOperation({ summary: 'Get book collection stats for landing page' })
@@ -259,5 +284,4 @@ export class BooksController {
       throw new ForbiddenException(error.message);
     }
   }
-
 }

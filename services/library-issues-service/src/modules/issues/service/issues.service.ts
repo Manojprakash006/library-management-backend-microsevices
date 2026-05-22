@@ -1069,4 +1069,158 @@ export class IssuesService {
 
     return counts;
   }
+  async getReportsData(startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const issues = await this.issueBookModel.find({
+      issueDate: { $gte: start, $lte: end }
+    }).exec();
+
+    const returns = await this.issueBookModel.find({
+      returnDate: { $gte: start, $lte: end }
+    }).exec();
+
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let hourlyData: { time: string; issues: number; returns: number }[] = [];
+
+    if (diffDays <= 1) {
+      const buckets = Array.from({ length: 24 }, (_, i) => ({
+        time: i.toString().padStart(2, '0') + ':00',
+        issues: 0,
+        returns: 0
+      }));
+
+      issues.forEach(issue => {
+        const hour = new Date(issue.issueDate).getHours();
+        buckets[hour].issues += 1;
+      });
+
+      returns.forEach(ret => {
+        if (ret.returnDate) {
+          const hour = new Date(ret.returnDate).getHours();
+          buckets[hour].returns += 1;
+        }
+      });
+
+      hourlyData = buckets;
+    } else if (diffDays <= 7) {
+      const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const buckets: { time: string; issues: number; returns: number; dateKey: string }[] = [];
+      let current = new Date(start);
+      while (current <= end) {
+        const dayName = weekdays[current.getDay()];
+        const dateStr = current.toDateString();
+        buckets.push({ time: dayName, issues: 0, returns: 0, dateKey: dateStr });
+        current.setDate(current.getDate() + 1);
+      }
+
+      issues.forEach(issue => {
+        const dateStr = new Date(issue.issueDate).toDateString();
+        const bucket = buckets.find(b => b.dateKey === dateStr);
+        if (bucket) {
+          bucket.issues += 1;
+        }
+      });
+
+      returns.forEach(ret => {
+        if (ret.returnDate) {
+          const dateStr = new Date(ret.returnDate).toDateString();
+          const bucket = buckets.find(b => b.dateKey === dateStr);
+          if (bucket) {
+            bucket.returns += 1;
+          }
+        }
+      });
+
+      hourlyData = buckets.map(({ time, issues, returns }) => ({ time, issues, returns }));
+    } else if (diffDays <= 31) {
+      const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const buckets: { time: string; issues: number; returns: number; dateKey: string }[] = [];
+      let current = new Date(start);
+      while (current <= end) {
+        const label = `${monthsShort[current.getMonth()]} ${current.getDate()}`;
+        const dateStr = current.toDateString();
+        buckets.push({ time: label, issues: 0, returns: 0, dateKey: dateStr });
+        current.setDate(current.getDate() + 1);
+      }
+
+      issues.forEach(issue => {
+        const dateStr = new Date(issue.issueDate).toDateString();
+        const bucket = buckets.find(b => b.dateKey === dateStr);
+        if (bucket) {
+          bucket.issues += 1;
+        }
+      });
+
+      returns.forEach(ret => {
+        if (ret.returnDate) {
+          const dateStr = new Date(ret.returnDate).toDateString();
+          const bucket = buckets.find(b => b.dateKey === dateStr);
+          if (bucket) {
+            bucket.returns += 1;
+          }
+        }
+      });
+
+      hourlyData = buckets.map(({ time, issues, returns }) => ({ time, issues, returns }));
+    } else {
+      const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const buckets: { time: string; issues: number; returns: number; monthKey: string }[] = [];
+      let current = new Date(start);
+      current.setDate(1);
+      while (current <= end) {
+        const label = `${monthsShort[current.getMonth()]} ${current.getFullYear().toString().slice(-2)}`;
+        const monthKey = `${current.getFullYear()}-${current.getMonth()}`;
+        if (!buckets.some(b => b.monthKey === monthKey)) {
+          buckets.push({ time: label, issues: 0, returns: 0, monthKey });
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+
+      issues.forEach(issue => {
+        const d = new Date(issue.issueDate);
+        const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+        const bucket = buckets.find(b => b.monthKey === monthKey);
+        if (bucket) {
+          bucket.issues += 1;
+        }
+      });
+
+      returns.forEach(ret => {
+        if (ret.returnDate) {
+          const d = new Date(ret.returnDate);
+          const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+          const bucket = buckets.find(b => b.monthKey === monthKey);
+          if (bucket) {
+            bucket.returns += 1;
+          }
+        }
+      });
+
+      hourlyData = buckets.map(({ time, issues, returns }) => ({ time, issues, returns }));
+    }
+
+    const bookCounts: Record<string, number> = {};
+    issues.forEach(issue => {
+      const bookId = issue.bookId.toString();
+      bookCounts[bookId] = (bookCounts[bookId] || 0) + 1;
+    });
+
+    const mostBorrowed = Object.entries(bookCounts)
+      .map(([bookId, count]) => ({ bookId, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      totalIssues: issues.length,
+      totalReturns: returns.length,
+      hourlyData,
+      mostBorrowed
+    };
+  }
 }

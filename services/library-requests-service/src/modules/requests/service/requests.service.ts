@@ -462,4 +462,9 @@ export class RequestsService {
       this.logger.error(`Redis cache invalidate error: ${e.message}`);
     }
   }
+
+  async getRequestsReport() {
+    const requests = await this.bookRequestModel.find().lean().exec();
+    return requests;
+  }
 }

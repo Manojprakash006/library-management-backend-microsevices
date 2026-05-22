@@ -632,4 +632,49 @@ export class BooksService {
       { $limit: 10 }
     ]).exec();
   }
+  async getReportsData(startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const allBooks = await this.bookModel.find().exec();
+    const booksAddedRange = await this.bookModel.find({
+      createdAt: { $gte: start, $lte: end }
+    }).exec();
+
+    let totalValue = 0;
+    let totalInventory = 0;
+    const categoryCount: Record<string, number> = {};
+
+    allBooks.forEach(book => {
+      totalValue += (book.price || 0) * (book.quantity || 1);
+      totalInventory += (book.quantity || 1);
+      const cat = book.category || 'Uncategorized';
+      categoryCount[cat] = (categoryCount[cat] || 0) + (book.quantity || 1);
+    });
+
+    const colors = ['#6366F1', '#10B981', '#F59E0B', '#EC4899', '#3B82F6', '#8B5CF6'];
+    const categoryData = Object.entries(categoryCount)
+      .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5); // top 5
+
+    return {
+      totalValue,
+      totalInventory,
+      booksAdded: booksAddedRange.length,
+      categoryData
+    };
+  }
+
+  async getBooksPerformanceReport() {
+    const books = await this.bookModel.find().lean().exec();
+    return books;
+  }
+
+  async getReviewsReport() {
+    const reviews = await this.bookReviewModel.find().lean().exec();
+    return reviews;
+  }
 }

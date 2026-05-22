@@ -566,5 +566,92 @@ export class FinesService {
     const file = { content: html };
     return await html_to_pdf.generatePdf(file, options);
   }
-}
+  async getReportsData(startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
 
+    const fines = await this.fineModel.find({
+      createdAt: { $gte: start, $lte: end }
+    }).exec();
+
+    let totalCollected = 0;
+    let overdueFines = 0;
+    let lostBooksFines = 0;
+    let damageFines = 0;
+
+    const recentTransactions = [];
+
+    fines.forEach(fine => {
+      if (fine.status === 'PAID') {
+        totalCollected += fine.amount;
+      }
+
+      const reason = (fine.reason || '').toLowerCase();
+      if (reason.includes('overdue')) {
+        overdueFines += fine.amount;
+      } else if (reason.includes('lost')) {
+        lostBooksFines += fine.amount;
+      } else if (reason.includes('damage')) {
+        damageFines += fine.amount;
+      }
+
+      recentTransactions.push({
+        id: fine.fineId,
+        memberId: fine.memberId ? fine.memberId.toString() : null,
+        name: 'Unknown',
+        reason: fine.reason,
+        amount: fine.amount,
+        time: fine.createdAt.toISOString(),
+        status: fine.status
+      });
+    });
+
+    recentTransactions.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    const slicedTransactions = recentTransactions.slice(0, 10);
+
+    // Resolve member names in parallel
+    const uniqueMemberIds = Array.from(new Set(slicedTransactions.map(t => t.memberId).filter(Boolean)));
+    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3012';
+    
+    const memberNameMap: { [id: string]: string } = {};
+
+    await Promise.all(
+      uniqueMemberIds.map(async (memberId) => {
+        try {
+          const res = await firstValueFrom(this.httpService.get(`${membersServiceUrl}/members/${memberId}`));
+          const name = res.data?.name || res.data?.data?.name || 'Unknown';
+          memberNameMap[memberId] = name;
+        } catch (e) {
+          this.logger.error(`Failed to fetch member details for ${memberId}: ${e.message}`);
+          memberNameMap[memberId] = 'Unknown';
+        }
+      })
+    );
+
+    slicedTransactions.forEach(t => {
+      if (t.memberId && memberNameMap[t.memberId]) {
+        t.name = memberNameMap[t.memberId];
+      }
+      // Remove temporary memberId field to match the exact expected response format
+      delete (t as any).memberId;
+    });
+
+    return {
+      totalCollected,
+      breakdown: {
+        overdue: overdueFines,
+        lost: lostBooksFines,
+        damage: damageFines
+      },
+      recentTransactions: slicedTransactions
+    };
+  }
+
+  async getPaymentsReport() {
+    const fines = await this.fineModel.find().lean().exec();
+    return fines;
+  }
+}

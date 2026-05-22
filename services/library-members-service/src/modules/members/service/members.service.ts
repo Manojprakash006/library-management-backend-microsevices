@@ -364,4 +364,39 @@ export class MembersService {
       totalFines: memberStats.totalFines,
     };
   }
+  async getReportsData(startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const activeMembersCount = await this.memberModel.countDocuments({ isActive: true }).exec();
+    const totalMembersCount = await this.memberModel.countDocuments().exec();
+    const newMembersRange = await this.memberModel.countDocuments({
+      createdAt: { $gte: start, $lte: end }
+    }).exec();
+
+    const topMembers = await this.memberModel.find({ isActive: true })
+      .select('name booksHeld')
+      .sort({ booksHeld: -1 })
+      .limit(3)
+      .exec();
+
+    const topMembersFormatted = topMembers.map(m => ({
+      m: m.name || 'Unknown',
+      b: m.booksHeld || 0
+    }));
+
+    return {
+      activeMembers: activeMembersCount,
+      totalMembers: totalMembersCount,
+      newMembers: newMembersRange,
+      topMembers: topMembersFormatted
+    };
+  }
+
+  async getMembersPerformanceReport() {
+    const members = await this.memberModel.find().lean().exec();
+    return members;
+  }
 }

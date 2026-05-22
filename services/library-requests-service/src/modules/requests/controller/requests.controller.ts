@@ -122,4 +122,11 @@ export class RequestsController {
     await this.requestsService.remove(id);
     return { message: 'Book request deleted successfully' };
   }
+
+  @Roles('admin')
+  @Get('reports/requests')
+  @ApiOperation({ summary: 'Get requests report data' })
+  async getRequestsReport() {
+    return this.requestsService.getRequestsReport();
+  }
 }
