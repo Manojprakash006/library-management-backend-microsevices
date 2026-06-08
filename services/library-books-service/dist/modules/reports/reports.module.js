@@ -13,17 +13,13 @@ const axios_1 = require("@nestjs/axios");
 const reports_controller_1 = require("./controller/reports.controller");
 const reports_service_1 = require("./service/reports.service");
 const book_entity_1 = require("../books/entities/book.entity");
-const book_review_entity_1 = require("../books/entities/book-review.entity");
 let ReportsModule = class ReportsModule {
 };
 exports.ReportsModule = ReportsModule;
 exports.ReportsModule = ReportsModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            mongoose_1.MongooseModule.forFeature([
-                { name: book_entity_1.Book.name, schema: book_entity_1.BookSchema },
-                { name: book_review_entity_1.BookReview.name, schema: book_review_entity_1.BookReviewSchema },
-            ]),
+            mongoose_1.MongooseModule.forFeature([{ name: book_entity_1.Book.name, schema: book_entity_1.BookSchema }]),
             axios_1.HttpModule,
         ],
         controllers: [reports_controller_1.ReportsController],

@@ -23,41 +23,6 @@ let ReportsController = class ReportsController {
     constructor(reportsService) {
         this.reportsService = reportsService;
     }
-    async getOverviewReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getOverviewReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Overview report retrieved successfully', data };
-    }
-    async getStaffReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getStaffReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Staff report retrieved successfully', data };
-    }
-    async getBooksReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getBooksReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Book report retrieved successfully', data };
-    }
-    async getMembersReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getMembersReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Member report retrieved successfully', data };
-    }
-    async getPaymentsReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getPaymentsReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Payment report retrieved successfully', data };
-    }
-    async getRequestsReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getRequestsReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Requests report retrieved successfully', data };
-    }
-    async getReviewsReport(req, filterType, startDate, endDate) {
-        const authHeader = req.headers['authorization'];
-        const data = await this.reportsService.getReviewsReport(authHeader, filterType, startDate, endDate);
-        return { message: 'Reviews report retrieved successfully', data };
-    }
     async getAllReports(req) {
         const authHeader = req.headers['authorization'];
         const reports = await this.reportsService.getAllReports(authHeader);
@@ -87,97 +52,6 @@ let ReportsController = class ReportsController {
     }
 };
 exports.ReportsController = ReportsController;
-__decorate([
-    (0, common_1.Get)('overview'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get overview dashboard report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Overview report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getOverviewReport", null);
-__decorate([
-    (0, common_1.Get)('staff'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get staff performance report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Staff report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getStaffReport", null);
-__decorate([
-    (0, common_1.Get)('books'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get book performance report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Book report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getBooksReport", null);
-__decorate([
-    (0, common_1.Get)('members'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get member engagement report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Member report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getMembersReport", null);
-__decorate([
-    (0, common_1.Get)('payments'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get payment financial report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Payment report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getPaymentsReport", null);
-__decorate([
-    (0, common_1.Get)('requests'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get book requests and trends report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Requests report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getRequestsReport", null);
-__decorate([
-    (0, common_1.Get)('reviews'),
-    (0, roles_decorator_1.Roles)('admin'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get book reviews report' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Reviews report retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('filterType')),
-    __param(2, (0, common_1.Query)('startDate')),
-    __param(3, (0, common_1.Query)('endDate')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getReviewsReport", null);
 __decorate([
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('admin'),

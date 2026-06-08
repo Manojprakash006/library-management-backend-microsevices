@@ -83,4 +83,28 @@ export declare class BooksService {
     deleteReview(reviewId: string, userId: string, role: string): Promise<void>;
     getCollectionStats(): Promise<any>;
     getTopReviews(): Promise<any[]>;
+    getReportsData(startDate: string, endDate: string): Promise<{
+        totalValue: number;
+        totalInventory: number;
+        booksAdded: number;
+        categoryData: {
+            name: string;
+            value: number;
+            color: string;
+        }[];
+    }>;
+    getBooksPerformanceReport(): Promise<(import("mongoose").FlattenMaps<import("mongoose").Document<unknown, {}, Book, {}, {}> & Book & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }> & Required<{
+        _id: Types.ObjectId;
+    }>)[]>;
+    getReviewsReport(): Promise<(import("mongoose").FlattenMaps<import("mongoose").Document<unknown, {}, BookReview, {}, {}> & BookReview & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }> & Required<{
+        _id: Types.ObjectId;
+    }>)[]>;
 }

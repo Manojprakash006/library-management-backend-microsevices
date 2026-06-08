@@ -155,5 +155,21 @@ export class FinesController {
     });
     res.end(buffer);
   }
-}
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.finesService.getReportsData(today, today);
+    }
+    return this.finesService.getReportsData(startDate, endDate);
+  }
 
+  @Roles('admin')
+  @Get('reports/payments')
+  @ApiOperation({ summary: 'Get payments report data' })
+  async getPaymentsReport() {
+    return this.finesService.getPaymentsReport();
+  }
+}

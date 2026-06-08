@@ -137,4 +137,21 @@ export class MembersController {
       ) {
       return this.membersService.getMemberRewards(id);
       }
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.membersService.getReportsData(today, today);
+    }
+    return this.membersService.getReportsData(startDate, endDate);
+  }
+
+  @Roles('admin')
+  @Get('reports/members-performance')
+  @ApiOperation({ summary: 'Get members performance report' })
+  async getMembersPerformanceReport() {
+    return this.membersService.getMembersPerformanceReport();
+  }
 }

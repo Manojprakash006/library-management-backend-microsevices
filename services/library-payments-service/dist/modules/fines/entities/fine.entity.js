@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FineSchema = exports.Fine = exports.PaymentMethod = exports.FineStatus = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
+const mongoose_2 = require("mongoose");
 var FineStatus;
 (function (FineStatus) {
     FineStatus["PAID"] = "PAID";
@@ -26,13 +27,21 @@ let Fine = class Fine {
 };
 exports.Fine = Fine;
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)({ unique: true, index: true, sparse: true }),
     __metadata("design:type", String)
+], Fine.prototype, "fineId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_2.Types.ObjectId, required: true, index: true }),
+    __metadata("design:type", mongoose_2.Types.ObjectId)
 ], Fine.prototype, "memberId", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
-    __metadata("design:type", String)
+    (0, mongoose_1.Prop)({ type: mongoose_2.Types.ObjectId, required: true, index: true }),
+    __metadata("design:type", mongoose_2.Types.ObjectId)
 ], Fine.prototype, "issueId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_2.Types.ObjectId, required: false }),
+    __metadata("design:type", mongoose_2.Types.ObjectId)
+], Fine.prototype, "bookId", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ required: true }),
     __metadata("design:type", Number)
@@ -42,7 +51,7 @@ __decorate([
     __metadata("design:type", String)
 ], Fine.prototype, "reason", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, enum: FineStatus, default: FineStatus.UNPAID }),
+    (0, mongoose_1.Prop)({ required: true, enum: FineStatus, default: FineStatus.UNPAID, index: true }),
     __metadata("design:type", String)
 ], Fine.prototype, "status", void 0);
 __decorate([
@@ -65,4 +74,11 @@ exports.Fine = Fine = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], Fine);
 exports.FineSchema = mongoose_1.SchemaFactory.createForClass(Fine);
+exports.FineSchema.pre('save', async function (next) {
+    if (this.fineId)
+        return next();
+    const count = await this.constructor.countDocuments();
+    this.fineId = `FINE${count + 1}`;
+    next();
+});
 //# sourceMappingURL=fine.entity.js.map

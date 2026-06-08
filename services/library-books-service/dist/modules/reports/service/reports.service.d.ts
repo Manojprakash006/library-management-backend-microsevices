@@ -1,35 +1,37 @@
 import { Model } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { BookDocument } from '../../books/entities/book.entity';
-import { BookReviewDocument } from '../../books/entities/book-review.entity';
+interface DailyIssueReturnReport {
+    date: string;
+    booksIssued: number;
+    booksReturned: number;
+}
+interface OverdueReport {
+    overdueStatus: number;
+    booksOverdue: number;
+}
+interface RackInventoryReport {
+    rackNumber: string;
+    location: string;
+    total: number;
+    available: number;
+    issued: number;
+    capacityPercentage: number;
+}
+interface MemberActivityReport {
+    activeMembers: number;
+    inactiveMembers: number;
+}
 export declare class ReportsService {
     private bookModel;
-    private bookReviewModel;
     private readonly httpService;
     private readonly logger;
-    constructor(bookModel: Model<BookDocument>, bookReviewModel: Model<BookReviewDocument>, httpService: HttpService);
-    private getHeaders;
-    private getFilterDateRange;
-    private filterByDateRange;
-    private fetchIssues;
-    private fetchMembers;
-    private fetchStaff;
-    private fetchAttendance;
-    private fetchFines;
-    private fetchRequests;
-    private fetchSuggestions;
-    getOverviewReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getStaffReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getBooksReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getMembersReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getPaymentsReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getRequestsReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getReviewsReport(authHeader?: string, filterType?: string, startDate?: string, endDate?: string): Promise<any>;
-    getDailyIssueReturnReport(): Promise<any>;
-    getOverdueReport(): Promise<any>;
-    getRackInventoryReport(): Promise<any[]>;
-    getRackInventoryById(rackNumber: string): Promise<any>;
-    getMemberActivityReport(authHeader?: string): Promise<any>;
+    constructor(bookModel: Model<BookDocument>, httpService: HttpService);
+    getDailyIssueReturnReport(): Promise<DailyIssueReturnReport>;
+    getOverdueReport(): Promise<OverdueReport>;
+    getRackInventoryReport(): Promise<RackInventoryReport[]>;
+    getRackInventoryById(rackNumber: string): Promise<RackInventoryReport>;
+    getMemberActivityReport(authHeader?: string): Promise<MemberActivityReport>;
     getAllReports(authHeader?: string): Promise<any>;
     private getTodayIssuesCount;
     private getTodayReturnsCount;
@@ -39,3 +41,4 @@ export declare class ReportsService {
     private getActiveMembersCount;
     private getInactiveMembersCount;
 }
+export {};

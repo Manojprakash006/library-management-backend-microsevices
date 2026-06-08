@@ -216,4 +216,9 @@ export class StaffService {
       {timestamps: false,});
     }
   }
+
+  async getStaffPerformanceReport() {
+    const staff = await this.staffModel.find().lean().exec();
+    return staff;
+  }
 }

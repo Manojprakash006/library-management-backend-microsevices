@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FinesModule = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
+const axios_1 = require("@nestjs/axios");
 const config_module_1 = require("../../config/config.module");
 const fine_entity_1 = require("./entities/fine.entity");
 const fines_service_1 = require("./service/fines.service");
@@ -21,6 +22,7 @@ exports.FinesModule = FinesModule = __decorate([
         imports: [
             mongoose_1.MongooseModule.forFeature([{ name: fine_entity_1.Fine.name, schema: fine_entity_1.FineSchema }]),
             config_module_1.ConfigModule,
+            axios_1.HttpModule,
         ],
         controllers: [fines_controller_1.FinesController],
         providers: [fines_service_1.FinesService],
