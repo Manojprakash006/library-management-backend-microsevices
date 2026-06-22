@@ -57,6 +57,8 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
                 totalBooks: 0,
                 availableBooks: 0,
                 issuedBooks: 0,
+                damagedBooks: 0,
+                lostBooks: 0,
             };
             this.logger.log(`Parsed stats: ${JSON.stringify(stats)}`);
             const todayBookAdded = await this.getBooksAddedTodayCount(authHeader);
@@ -64,6 +66,8 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
                 totalBooks: stats.totalBooks || 0,
                 availableBooks: stats.availableBooks || 0,
                 issuedBooks: stats.issuedBooks || 0,
+                damagedBooks: stats.damagedBooks || 0,
+                lostBooks: stats.lostBooks || 0,
                 todayBookAdded: todayBookAdded,
             };
         }
@@ -74,6 +78,8 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
                 totalBooks: 0,
                 availableBooks: 0,
                 issuedBooks: 0,
+                damagedBooks: 0,
+                lostBooks: 0,
                 todayBookAdded: 0,
             };
         }
@@ -132,8 +138,33 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
             return [];
         }
     }
-    async getRecentActivities() {
-        return [];
+    async getRecentActivities(staffId) {
+        try {
+            const lastActivityQuery = await this.activityLogService.getLogs(1, 5, {
+                adminId: staffId,
+                action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+            });
+            return lastActivityQuery.data.map((log) => {
+                let actionName = log.action;
+                if (log.action === 'BOOKSADDED')
+                    actionName = 'ADD BOOK';
+                else if (log.action === 'REQUEST_APPROVED')
+                    actionName = 'APPROVE REQUEST';
+                else if (log.action === 'REQUEST_REJECTED')
+                    actionName = 'REJECT REQUEST';
+                return {
+                    _id: log._id,
+                    action: actionName,
+                    date: log.createdAt,
+                    description: log.details?.message || log.details?.title || actionName,
+                    referenceId: log.entityName || log.details?.referenceId || log.entityId
+                };
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch recent activities: ${error.message}`);
+            return [];
+        }
     }
     async getRackDistribution(authHeader) {
         try {
@@ -379,7 +410,7 @@ let StaffDashboardService = StaffDashboardService_1 = class StaffDashboardServic
     }
     async getTodaysIssues(authHeader) {
         try {
-            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issus-service:3013';
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             this.logger.log(`Fetching today's issues from: ${issuesServiceUrl}`);

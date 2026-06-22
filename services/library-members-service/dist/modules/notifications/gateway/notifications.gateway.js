@@ -9,7 +9,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var NotificationsGateway_1;
-var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
@@ -26,26 +25,30 @@ let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
         try {
             const token = client.handshake.auth.token || client.handshake.query.token;
             if (!token) {
-                this.logger.warn('Client connected without token');
-                client.disconnect();
+                this.logger.log(`Public client connected: ${client.id}`);
+                client.join('public');
+                client.emit('connected', { message: 'Connected to public notifications' });
                 return;
             }
             const payload = this.jwtService.verify(token);
             const userId = payload.userId || payload.id || payload.sub;
             if (!userId) {
-                this.logger.warn('Token verified but no userId found');
-                client.disconnect();
+                this.logger.log(`Public client connected (invalid token): ${client.id}`);
+                client.join('public');
+                client.emit('connected', { message: 'Connected to public notifications' });
                 return;
             }
             this.userSockets.set(userId, client.id);
             client.join(`user_${userId}`);
             client.join(userId);
-            this.logger.log(`Client connected and joined rooms: user_${userId}, ${userId} (${client.id})`);
+            client.join('public');
+            this.logger.log(`Client connected and joined rooms: user_${userId}, ${userId}, public (${client.id})`);
             client.emit('connected', { message: 'Connected to notifications', userId });
         }
         catch (error) {
-            this.logger.error(`Connection error: ${error.message}`);
-            client.disconnect();
+            this.logger.error(`Connection error: ${error.message}. Connecting as public.`);
+            client.join('public');
+            client.emit('connected', { message: 'Connected to public notifications' });
         }
     }
     handleDisconnect(client) {
@@ -75,6 +78,11 @@ let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
     }
     broadcastNotification(notification) {
         this.server.emit('broadcastNotification', notification);
+        this.server.to('public').emit('broadcastNotification', notification);
+    }
+    emitPublicUpdate(event, data) {
+        this.server.to('public').emit(event, data);
+        this.logger.log(`Public update emitted: ${event}`);
     }
     sendUnreadCount(userId, count) {
         this.server.to(`user_${userId}`).to(userId).emit('unreadCount', count);
@@ -95,18 +103,18 @@ let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
 exports.NotificationsGateway = NotificationsGateway;
 __decorate([
     (0, websockets_1.WebSocketServer)(),
-    __metadata("design:type", typeof (_b = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _b : Object)
+    __metadata("design:type", socket_io_1.Server)
 ], NotificationsGateway.prototype, "server", void 0);
 __decorate([
     (0, websockets_1.SubscribeMessage)('markAsRead'),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_c = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _c : Object, Object]),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", void 0)
 ], NotificationsGateway.prototype, "handleMarkAsRead", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('subscribe'),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_d = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _d : Object, Object]),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", void 0)
 ], NotificationsGateway.prototype, "handleSubscribe", null);
 exports.NotificationsGateway = NotificationsGateway = NotificationsGateway_1 = __decorate([
@@ -116,6 +124,6 @@ exports.NotificationsGateway = NotificationsGateway = NotificationsGateway_1 = _
             origin: '*',
         },
     }),
-    __metadata("design:paramtypes", [typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object])
+    __metadata("design:paramtypes", [jwt_1.JwtService])
 ], NotificationsGateway);
 //# sourceMappingURL=notifications.gateway.js.map

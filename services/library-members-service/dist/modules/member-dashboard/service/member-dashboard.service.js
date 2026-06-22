@@ -191,6 +191,7 @@ let MemberDashboardService = class MemberDashboardService {
             const issuesServiceUrl = 'http://library-api-gateway:3000/library/issues';
             const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/member/${userId}`));
             const issues = response.data?.data || [];
+            issues.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
             return issues.map((issue) => {
                 const today = new Date();
                 const daysOverdue = issue.dueDate ? Math.max(0, Math.ceil((today.getTime() - new Date(issue.dueDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
@@ -226,14 +227,38 @@ let MemberDashboardService = class MemberDashboardService {
             issueId: damageDto.bookId,
         };
     }
-    async renewBook(renewDto) {
-        const issueServiceURL = "http://library-api-gateway:3000/library/issues";
+    async renewBook(renewDto, authHeader) {
+        const requestServiceURL = process.env.REQUEST_SERVICE_URL ||
+            'http://library-requests-service:3014';
         try {
-            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.put(`${issueServiceURL}/issues/renew/${renewDto.issueId}`));
+            const issueServiceURL = process.env.ISSUE_SERVICE_URL ||
+                'http://library-issues-service:3013';
+            const issueResponse = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issueServiceURL}/issues/${renewDto.issueId}`, {
+                headers: {
+                    Authorization: authHeader,
+                },
+            }));
+            const issue = issueResponse.data?.data;
+            const requestPayload = {
+                memberId: issue.memberId,
+                bookId: issue.bookId,
+                issueId: renewDto.issueId,
+                requestType: 'RENEW',
+                reason: renewDto.reason,
+            };
+            if (renewDto.renewDays) {
+                requestPayload.renewDays = renewDto.renewDays;
+            }
+            const response = await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${requestServiceURL}/requests`, requestPayload, {
+                headers: {
+                    Authorization: authHeader,
+                },
+            }));
             return response.data;
         }
         catch (error) {
-            throw new common_1.BadRequestException(error.response?.data?.message || "Renew failed");
+            console.log('RENEW ERROR :', error.response?.data);
+            throw new common_1.BadRequestException(error.response?.data?.message || 'Renew request failed');
         }
     }
     async submitReview(userId, reviewDto) {

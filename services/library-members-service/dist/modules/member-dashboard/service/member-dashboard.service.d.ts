@@ -49,7 +49,7 @@ export declare class MemberDashboardService {
         message: string;
         issueId: string;
     }>;
-    renewBook(renewDto: RenewBookDto): Promise<any>;
+    renewBook(renewDto: RenewBookDto, authHeader: string): Promise<any>;
     submitReview(userId: string, reviewDto: SubmitReviewDto): Promise<{
         bookId: string;
         rating: number;

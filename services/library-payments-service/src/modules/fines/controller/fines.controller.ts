@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Param, Body, Query, UsePipes, ValidationPipe, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UsePipes, ValidationPipe, HttpStatus, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { FinesService } from '../service/fines.service';
 import { PayFineDto } from '../dto/pay-fine.dto';
@@ -119,5 +120,59 @@ export class FinesController {
     );
     return { message: 'Payment verified successfully', data };
   }
-}
 
+  @Post(':id/update')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Update a fine (Admin only)' })
+  @ApiParam({ name: 'id', required: true })
+  async updateFine(@Param('id') id: string, @Body() data: any) {
+    return this.finesService.updateFine(id, data);
+  }
+
+  @Post(':id/delete')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Delete a fine (Admin only)' })
+  @ApiParam({ name: 'id', required: true })
+  async deleteFine(@Param('id') id: string) {
+    return this.finesService.deleteFine(id);
+  }
+
+  @Public()
+  @Get(':id/invoice')
+  @ApiOperation({ summary: 'Get invoice HTML for a fine' })
+  @ApiParam({ name: 'id', required: true })
+  async getInvoice(@Param('id') id: string) {
+    return this.finesService.getInvoiceHtml(id);
+  }
+
+  @Public()
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Download invoice PDF' })
+  @ApiParam({ name: 'id', required: true })
+  async downloadInvoicePdf(@Param('id') id: string, @Res() res: Response) {
+    const buffer = await this.finesService.getInvoicePdf(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=Invoice_${id}.pdf`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.finesService.getReportsData(today, today);
+    }
+    return this.finesService.getReportsData(startDate, endDate);
+  }
+
+  @Roles('admin')
+  @Get('reports/payments')
+  @ApiOperation({ summary: 'Get payments report data' })
+  async getPaymentsReport() {
+    return this.finesService.getPaymentsReport();
+  }
+}

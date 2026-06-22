@@ -28,12 +28,14 @@ const notifications_gateway_1 = require("../gateway/notifications.gateway");
 const notification_entity_2 = require("../entities/notification.entity");
 const web_push_service_1 = require("./web-push.service");
 const push_subscription_schema_1 = require("../schema/push-subscription.schema");
+const library_config_entity_1 = require("../../contact/entities/library-config.entity");
 let NotificationsService = NotificationsService_1 = class NotificationsService {
-    constructor(notificationModel, memberModel, userModel, pushSubscriptionModel, emailService, notificationsGateway, httpService, webPushService) {
+    constructor(notificationModel, memberModel, userModel, pushSubscriptionModel, libraryConfigModel, emailService, notificationsGateway, httpService, webPushService) {
         this.notificationModel = notificationModel;
         this.memberModel = memberModel;
         this.userModel = userModel;
         this.pushSubscriptionModel = pushSubscriptionModel;
+        this.libraryConfigModel = libraryConfigModel;
         this.emailService = emailService;
         this.notificationsGateway = notificationsGateway;
         this.httpService = httpService;
@@ -49,6 +51,20 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         catch (error) {
             this.logger.error(`Failed to fetch book details: ${error.message}`);
             return null;
+        }
+    }
+    async getLibraryInfo() {
+        try {
+            let config = await this.libraryConfigModel.findOne().exec();
+            if (!config) {
+                config = new this.libraryConfigModel({});
+                await config.save();
+            }
+            return config;
+        }
+        catch (error) {
+            this.logger.error(`Failed to fetch library info: ${error.message}`);
+            return {};
         }
     }
     async create(createNotificationDto) {
@@ -150,7 +166,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     async notifyStaff(payload) {
         try {
             const StaffSchema = this.notificationModel.db.model('Staff');
-            const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian'] } }).exec();
+            const staffMembers = await StaffSchema.find({ role: { $in: ['staff', 'librarian', 'admin'] } }).exec();
             const allStaffToNotify = [
                 ...staffMembers.map(s => ({ _id: s._id, email: s.email, name: s.fullName || s.name }))
             ];
@@ -211,6 +227,8 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
                 color = '#f59e0b';
                 icon = '⏳';
             }
+            const libConfig = await this.getLibraryInfo();
+            const libName = libConfig?.libraryName || 'Modern Library Management System';
             const htmlTemplate = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9fa; padding: 20px; border-radius: 10px;">
         <div style="background-color: #ffffff; padding: 30px; border-top: 5px solid ${color}; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
@@ -224,11 +242,11 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             ${message}
           </div>
           <p style="font-size: 14px; color: #777; margin-top: 30px;">
-            If you have any questions, feel free to reply to this email or contact the librarian.
+            If you have any questions, feel free to reply to this email or contact the librarian at ${libConfig?.email || 'the library'}.
           </p>
           <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0 15px 0;">
           <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
-            &copy; ${new Date().getFullYear()} Modern Library Management System. All rights reserved.
+            &copy; ${new Date().getFullYear()} ${libName}. All rights reserved.
           </p>
         </div>
       </div>
@@ -297,7 +315,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         this.logger.log('Executing automated Due Date Reminders cron job...');
         let count = 0;
         try {
-            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
             const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues`));
             const allIssues = response.data?.data || [];
             const today = new Date();
@@ -336,7 +354,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         this.logger.log('Executing automated Overdue Notifications cron job...');
         let count = 0;
         try {
-            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+            const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
             const response = await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${issuesServiceUrl}/issues/overdue`));
             const overdueIssues = response.data?.data || [];
             for (const issue of overdueIssues) {
@@ -396,7 +414,9 @@ exports.NotificationsService = NotificationsService = NotificationsService_1 = _
     __param(1, (0, mongoose_1.InjectModel)(member_entity_1.Member.name)),
     __param(2, (0, mongoose_1.InjectModel)(user_entity_1.User.name)),
     __param(3, (0, mongoose_1.InjectModel)(push_subscription_schema_1.PushSubscription.name)),
+    __param(4, (0, mongoose_1.InjectModel)(library_config_entity_1.LibraryConfig.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model,
         mongoose_2.Model,
         mongoose_2.Model,
         mongoose_2.Model,

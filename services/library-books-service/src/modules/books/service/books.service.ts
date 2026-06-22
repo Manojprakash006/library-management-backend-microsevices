@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Book, BookDocument } from '../entities/book.entity';
+import { Book, BookDocument, BookStatus, BookCondition } from '../entities/book.entity';
+import { BookCopy, BookCopyDocument } from '../entities/book-copy.entity';
 import { BookReview, BookReviewDocument } from '../entities/book-review.entity';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
@@ -18,6 +19,7 @@ export class BooksService {
   constructor(
     @InjectModel(Book.name) private bookModel: Model<BookDocument>,
     @InjectModel(BookReview.name) private bookReviewModel: Model<BookReviewDocument>,
+    @InjectModel(BookCopy.name) private bookCopyModel: Model<BookCopyDocument>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly redisEmitter: RedisEmitterService,
@@ -25,7 +27,7 @@ export class BooksService {
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -42,7 +44,7 @@ export class BooksService {
 
   private async notifyAdmins(type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3002';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
@@ -89,7 +91,9 @@ export class BooksService {
   async create(createBookDto: CreateBookDto, adminId?: string, role?: string): Promise<Book> {
     // Force auto-generate bookId
     const count = await this.bookModel.countDocuments().exec();
-    createBookDto.bookId = `BK-${count + 1}`;
+
+    const categoryCode = createBookDto.category ?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+    createBookDto.bookId = `BK-${count + 1}-${categoryCode}`;
 
     // Validate Rack & Shelf Capacity
     if (createBookDto.rackNumber) {
@@ -105,6 +109,30 @@ export class BooksService {
       createdBy: adminId, // Set the staff/admin who created this book
     });
     const savedBook = await createdBook.save();
+    this.logger.log(`Book saved: ${savedBook._id}, bookId: ${savedBook.bookId}`);
+
+    // Create individual copies
+    const copies = [];
+    const quantity = savedBook.quantity || 1;
+    const firstWord = savedBook.title?.split(' ')[0]?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+    for (let i = 1; i <= quantity; i++) {
+      copies.push({
+        bookId: savedBook._id,
+        copyNumber: `${savedBook.bookId}-${firstWord}-C${i.toString().padStart(2, '0')}`,
+        status: savedBook.status || BookStatus.AVAILABLE,
+        condition: savedBook.condition || BookCondition.GOOD,
+        addedBy: adminId,
+      });
+    }
+    
+    try {
+      const insertedCopies = await this.bookCopyModel.insertMany(copies);
+      this.logger.log(`Successfully created ${insertedCopies.length} copies for book ${savedBook.bookId}`);
+    } catch (copyError) {
+      this.logger.error(`Failed to create copies for book ${savedBook.bookId}: ${copyError.message}`);
+      // Even if copies fail, the book is created, but we should know why
+    }
 
     if (adminId) {
       await this.logActivity(adminId, 'BOOKSADDED', savedBook.bookId, { title: savedBook.title });
@@ -179,9 +207,10 @@ export class BooksService {
 
     const updatedBooks = books.map((book) => {
       const issuedCount = availabilityMap[book._id.toString()] || 0;
+      const damagedCount = book.damagedQuantity || 0;
       return {
         ...book,
-        available: (book.quantity || 0) - issuedCount,
+        available: Math.max(0, (book.quantity || 0) - issuedCount - damagedCount),
         totalReviews: reviewCountsMap[book._id.toString()] || 0,
         rating: Number((book.rating || 0).toFixed(1)),
       };
@@ -210,12 +239,14 @@ export class BooksService {
           `${issuesServiceUrl}/issues/count/book/${book._id}`) );
 
       const issuedCount = response.data?.count || 0;
+      const damagedCount = book.damagedQuantity || 0;
 
-      return { ...book.toObject(), available: book.quantity - issuedCount };
+      return { ...book.toObject(), available: Math.max(0, book.quantity - issuedCount - damagedCount) };
     } catch (error) {
       console.log("ISSUE COUNT FETCH FAILED:", error);
+      const damagedCount = book.damagedQuantity || 0;
 
-      return { ...book.toObject(), available: book.quantity };
+      return { ...book.toObject(), available: Math.max(0, book.quantity - damagedCount) };
     }
   }
 
@@ -225,6 +256,43 @@ export class BooksService {
       throw new NotFoundException('Book not found');
     }
     return book;
+  }
+
+  async findCopiesByBookId(bookId: string): Promise<BookCopy[]> {
+    const book = await this.bookModel.findById(bookId).exec();
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+    return this.bookCopyModel.find({ bookId: book._id }).exec() as any;
+  }
+
+  async findCopiesByTitleId(id: string): Promise<BookCopy[]> {
+    const book = await this.bookModel.findById(id).exec();
+    if (!book) return [];
+
+    const copies = await this.bookCopyModel.find({ bookId: book._id }).exec();
+    
+    // Self-healing: If no copies found but quantity > 0, generate them now
+    if (copies.length === 0 && book.quantity > 0) {
+      this.logger.log(`No copies found for book ${book.bookId}, generating ${book.quantity} copies now...`);
+      const newCopies = [];
+      for (let i = 1; i <= book.quantity; i++) {
+        newCopies.push({
+          bookId: book._id,
+          copyNumber: `${book.bookId}-C${i.toString().padStart(2, '0')}`,
+          status: BookStatus.AVAILABLE,
+          condition: BookCondition.GOOD,
+        });
+      }
+      try {
+        return await this.bookCopyModel.insertMany(newCopies) as any;
+      } catch (err) {
+        this.logger.error(`Failed to auto-generate copies: ${err.message}`);
+        return [];
+      }
+    }
+    
+    return copies as any;
   }
 
   async update(id: string, updateBookDto: UpdateBookDto, adminId?: string): Promise<Book> {
@@ -265,6 +333,51 @@ export class BooksService {
     this.logger.log(`Book ${id} status updated to ${status}`);
     return book;
   }
+
+  async updateCopyStatus(copyNumber: string, status: BookStatus, condition?: BookCondition): Promise<BookCopy> {
+    const update: any = { status };
+    if (condition) {
+      update.condition = condition;
+    }
+
+    const copy = await this.bookCopyModel.findOneAndUpdate({ copyNumber }, update, { new: true }).exec();
+    if (!copy) {
+      throw new NotFoundException(`Book copy ${copyNumber} not found`);
+    }
+
+    // Also update the main book's status if necessary
+    // (e.g. if all copies are issued, mark book as issued)
+    // For now, we'll keep it simple.
+    
+    return copy;
+  }
+
+  async updateConditionQuantity(bookId: string, condition: string, change: number): Promise<Book> {
+    const update: any = {};
+    if (condition === 'Damaged') {
+      update.$inc = { damagedQuantity: change };
+    } else if (condition === 'Lost') {
+      // If lost, we increase lostQuantity and decrease total quantity
+      update.$inc = { lostQuantity: change, quantity: -change };
+    }
+
+    const book = await this.bookModel.findByIdAndUpdate(bookId, update, { new: true }).exec();
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+
+    // Auto-update status if quantity is 0
+    if (book.quantity === 0 && condition === 'Lost') {
+      book.status = BookStatus.LOST;
+      await book.save();
+    }
+
+    // Emit real-time updates
+    await this.redisEmitter.emit('BOOKS_UPDATED', { type: 'update', book });
+    return book;
+  }
+
+
 
   async remove(id: string, adminId?: string): Promise<void> {
     const book = await this.bookModel.findById(id).exec();
@@ -522,5 +635,50 @@ export class BooksService {
       { $sort: { reviewDate: -1 } },
       { $limit: 10 }
     ]).exec();
+  }
+  async getReportsData(startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const allBooks = await this.bookModel.find().exec();
+    const booksAddedRange = await this.bookModel.find({
+      createdAt: { $gte: start, $lte: end }
+    }).exec();
+
+    let totalValue = 0;
+    let totalInventory = 0;
+    const categoryCount: Record<string, number> = {};
+
+    allBooks.forEach(book => {
+      totalValue += (book.price || 0) * (book.quantity || 1);
+      totalInventory += (book.quantity || 1);
+      const cat = book.category || 'Uncategorized';
+      categoryCount[cat] = (categoryCount[cat] || 0) + (book.quantity || 1);
+    });
+
+    const colors = ['#6366F1', '#10B981', '#F59E0B', '#EC4899', '#3B82F6', '#8B5CF6'];
+    const categoryData = Object.entries(categoryCount)
+      .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5); // top 5
+
+    return {
+      totalValue,
+      totalInventory,
+      booksAdded: booksAddedRange.length,
+      categoryData
+    };
+  }
+
+  async getBooksPerformanceReport() {
+    const books = await this.bookModel.find().lean().exec();
+    return books;
+  }
+
+  async getReviewsReport() {
+    const reviews = await this.bookReviewModel.find().lean().exec();
+    return reviews;
   }
 }

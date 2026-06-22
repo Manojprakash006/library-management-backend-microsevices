@@ -85,6 +85,18 @@ export class Member {
 
   @Prop({ select: false })
   resetPasswordExpires: Date;
+
+  @Prop({ default: 0 })
+  extraRenewals: number;
+
+  @Prop({ default: 0 })
+  currentStreak: number;
+
+  @Prop({ default: 0 })
+  longestStreak: number;
+
+  @Prop({ default: 0 })
+  lastRewardStreakClaimed: number;
 }
 
 export const MemberSchema = SchemaFactory.createForClass(Member);

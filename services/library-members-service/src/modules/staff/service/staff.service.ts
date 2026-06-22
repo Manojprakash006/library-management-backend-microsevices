@@ -21,7 +21,7 @@ export class StaffService {
 
   async login(loginDto: StaffLoginDto) {
     const { email, password } = loginDto;
-    const staff = await this.staffModel.findOne({ email }).select('+password');
+    const staff = await this.staffModel.findOne({ email }).select('+password').populate('shift');
 
     if (!staff) {
       throw new UnauthorizedException('Invalid credentials');
@@ -67,7 +67,6 @@ export class StaffService {
 
   async logout(staffId: string) {
     const staff = await this.staffModel.findById(staffId);
-    console.log("logout before save :", staff);
 
     if(!staff) {
       throw new NotFoundException("Staff not found");
@@ -118,7 +117,7 @@ export class StaffService {
     const skip = (page - 1) * limit;
     
     const [staff, total] = await Promise.all([
-      this.staffModel.find().select('-password').sort({ _id: -1 }).skip(skip).limit(limit).exec(),
+      this.staffModel.find().select('-password').populate('shift').sort({ _id: -1 }).skip(skip).limit(limit).exec(),
       this.staffModel.countDocuments().exec(),
     ]);
 
@@ -132,7 +131,7 @@ export class StaffService {
   }
 
   async findById(id: string) {
-    const staff = await this.staffModel.findById(id).select('-password');
+    const staff = await this.staffModel.findById(id).select('-password').populate('shift');
     if (!staff) {
       throw new NotFoundException('Staff not found');
     }
@@ -216,5 +215,10 @@ export class StaffService {
         lastActive: new Date()}, 
       {timestamps: false,});
     }
+  }
+
+  async getStaffPerformanceReport() {
+    const staff = await this.staffModel.find().lean().exec();
+    return staff;
   }
 }

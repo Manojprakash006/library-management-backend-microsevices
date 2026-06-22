@@ -57,7 +57,7 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
                 memberId: checkInDto.memberId,
                 timeIn: new Date(),
                 purpose: checkInDto.purpose || 'reading',
-                bookId: checkInDto.bookId,
+                bookIds: checkInDto.bookId ? [checkInDto.bookId] : [],
                 notes: checkInDto.notes,
                 isActive: true,
             });
@@ -246,6 +246,44 @@ let LibraryVisitsService = LibraryVisitsService_1 = class LibraryVisitsService {
         catch (error) {
             this.logger.error(`Failed to record return visit: ${error.message}`);
             return null;
+        }
+    }
+    async getVisitStats() {
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const count = await this.libraryVisitModel.countDocuments({
+                timeIn: { $gte: today },
+            }).exec();
+            return count;
+        }
+        catch (error) {
+            this.logger.error(`Failed to get visit stats: ${error.message}`);
+            return 0;
+        }
+    }
+    async getVisitsByDate(dateStr) {
+        try {
+            let query = {};
+            if (dateStr) {
+                const start = new Date(dateStr);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(dateStr);
+                end.setHours(23, 59, 59, 999);
+                query = {
+                    timeIn: { $gte: start, $lte: end }
+                };
+            }
+            const visits = await this.libraryVisitModel
+                .find(query)
+                .populate('memberId', 'name email memberId')
+                .sort({ timeIn: -1 })
+                .exec();
+            return visits;
+        }
+        catch (error) {
+            this.logger.error(`Failed to get visits by date: ${error.message}`);
+            return [];
         }
     }
 };

@@ -6,9 +6,11 @@ export declare class StaffDashboardController {
     getStaffStats(req: any): Promise<{
         message: string;
         data: {
-            totalBooks: number;
-            availableBooks: number;
-            issuedBooks: number;
+            totalBooks: any;
+            availableBooks: any;
+            issuedBooks: any;
+            damagedBooks: any;
+            lostBooks: any;
             todayBookAdded: number;
         };
     }>;
@@ -156,5 +158,15 @@ export declare class StaffDashboardController {
         message: string;
         count: number;
         data: any[];
+    }>;
+    getRecentActivities(req: any): Promise<{
+        message: string;
+        data: {
+            _id: any;
+            action: any;
+            date: any;
+            description: any;
+            referenceId: any;
+        }[];
     }>;
 }

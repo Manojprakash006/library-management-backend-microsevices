@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsBoolean, MinLength, MaxLength, IsEnum } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsBoolean, MinLength, MaxLength, IsEnum, IsMongoId } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { StaffRole } from '../entities/staff.entity';
 
@@ -32,8 +32,8 @@ export class CreateStaffDto {
   @MaxLength(100)
   department: string;
 
-  @ApiProperty({ description: 'Shift' })
-  @IsString()
+  @ApiProperty({ description: 'ID of the assigned shift' })
+  @IsMongoId()
   shift: string;
 
   @ApiProperty({ description: 'Qualification', required: false })
@@ -59,4 +59,25 @@ export class CreateStaffDto {
   @IsOptional()
   @IsEnum(StaffRole)
   role: StaffRole;
+
+  @ApiProperty({ description: 'Staff designation', required: false, default: 'Staff' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  designation: string;
+
+  @ApiProperty({ description: 'ID Proof Type', required: false })
+  @IsOptional()
+  @IsString()
+  idProofType: string;
+
+  @ApiProperty({ description: 'ID Proof Number', required: false })
+  @IsOptional()
+  @IsString()
+  idProofNumber: string;
+
+  @ApiProperty({ description: 'Photo URL', required: false })
+  @IsOptional()
+  @IsString()
+  photoUrl: string;
 }

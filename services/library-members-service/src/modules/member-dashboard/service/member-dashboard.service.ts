@@ -291,6 +291,7 @@ export class MemberDashboardService {
           issueId: issue.issueId,
           returnDate: issue.returnDate,
           reviewed: issue.reviewed,
+          copyNumber: issue.copyNumber,
         };
       });
 
@@ -312,17 +313,76 @@ export class MemberDashboardService {
     };
   }
 
-  async renewBook(renewDto: RenewBookDto) {
-    const issueServiceURL = "http://library-api-gateway:3000/library/issues";
+  // async renewBook(renewDto: RenewBookDto) {
+  //   const issueServiceURL = "http://library-api-gateway:3000/library/issues";
+
+  //   try {
+  //     const response = await firstValueFrom(this.httpService.put(
+  //       `${issueServiceURL}/issues/renew/${renewDto.issueId}`
+  //     ));
+  //     return response.data;
+  //   } catch (error: any) {
+
+  //     throw new BadRequestException(error.response?.data?.message || "Renew failed");
+  //   }
+  // }
+
+  async renewBook(renewDto: RenewBookDto, authHeader: string) {
+
+    const requestServiceURL =
+      process.env.REQUEST_SERVICE_URL ||
+      'http://library-requests-service:3014';
 
     try {
-      const response = await firstValueFrom(this.httpService.put(
-        `${issueServiceURL}/issues/renew/${renewDto.issueId}`
-      ));
-      return response.data;
-    } catch (error: any) {
 
-      throw new BadRequestException(error.response?.data?.message || "Renew failed");
+      const issueServiceURL =
+        process.env.ISSUE_SERVICE_URL ||
+        'http://library-issues-service:3013';
+
+      const issueResponse = await firstValueFrom(
+        this.httpService.get(
+          `${issueServiceURL}/issues/${renewDto.issueId}`,
+          {
+            headers: {
+              Authorization: authHeader,
+            },
+          }
+        )
+      );
+
+      const issue = issueResponse.data?.data;
+
+      const requestPayload: any = {
+        memberId: issue.memberId,
+        bookId: issue.bookId,
+        issueId: renewDto.issueId,
+        requestType: 'RENEW',
+        reason: renewDto.reason,
+      };
+
+      if (renewDto.renewDays) {
+        requestPayload.renewDays = renewDto.renewDays;
+      }
+
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${requestServiceURL}/requests`,
+          requestPayload,
+          {
+            headers: {
+              Authorization: authHeader,
+            },
+          }
+        )
+      );
+
+      return response.data;
+
+    } catch (error: any) {
+      console.log('RENEW ERROR :', error.response?.data);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Renew request failed'
+      );
     }
   }
 

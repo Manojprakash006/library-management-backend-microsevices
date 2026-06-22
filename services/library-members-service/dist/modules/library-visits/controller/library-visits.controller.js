@@ -25,6 +25,10 @@ let LibraryVisitsController = class LibraryVisitsController {
     constructor(libraryVisitsService) {
         this.libraryVisitsService = libraryVisitsService;
     }
+    async getVisitStats() {
+        const count = await this.libraryVisitsService.getVisitStats();
+        return { message: 'Library visit stats retrieved', count };
+    }
     async autoRecordVisit(data) {
         const result = await this.libraryVisitsService.createVisitForBookIssue(data.memberId, data.bookId, data.purpose, new Date(data.timeIn), data.timeOut ? new Date(data.timeOut) : null);
         return { message: 'Library visit auto-recorded', data: result };
@@ -54,8 +58,21 @@ let LibraryVisitsController = class LibraryVisitsController {
         const visits = await this.libraryVisitsService.getMemberVisitHistory(memberId);
         return { message: 'Visit history retrieved', data: visits };
     }
+    async getVisitsByDate(req) {
+        const dateStr = req.query.date;
+        const visits = await this.libraryVisitsService.getVisitsByDate(dateStr);
+        return { message: 'Visits retrieved', data: visits };
+    }
 };
 exports.LibraryVisitsController = LibraryVisitsController;
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('public/stats'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total library visit count for today' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], LibraryVisitsController.prototype, "getVisitStats", null);
 __decorate([
     (0, common_1.Post)('auto-record'),
     (0, public_decorator_1.Public)(),
@@ -117,6 +134,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], LibraryVisitsController.prototype, "getMyHistory", null);
+__decorate([
+    (0, common_1.Get)('by-date'),
+    (0, roles_decorator_1.Roles)('staff', 'admin'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all visits for a specific date' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], LibraryVisitsController.prototype, "getVisitsByDate", null);
 exports.LibraryVisitsController = LibraryVisitsController = __decorate([
     (0, swagger_1.ApiTags)('Library Visits'),
     (0, swagger_1.ApiBearerAuth)(),

@@ -14,10 +14,10 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 var RequestStatus;
 (function (RequestStatus) {
-    RequestStatus["PENDING"] = "Pending";
-    RequestStatus["APPROVED"] = "Approved";
-    RequestStatus["REJECTED"] = "Rejected";
-    RequestStatus["CANCELLED"] = "Cancelled";
+    RequestStatus["PENDING"] = "PENDING";
+    RequestStatus["APPROVED"] = "APPROVED";
+    RequestStatus["REJECTED"] = "REJECTED";
+    RequestStatus["CANCELLED"] = "CANCELLED";
 })(RequestStatus || (exports.RequestStatus = RequestStatus = {}));
 let BookRequest = class BookRequest {
 };

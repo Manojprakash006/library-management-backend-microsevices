@@ -8,7 +8,7 @@ export declare class StaffController {
     staffLogin(loginDto: StaffLoginDto): Promise<{
         message: string;
         data: {
-            token: any;
+            token: string;
             user: {
                 id: import("mongoose").Types.ObjectId;
                 email: string;

@@ -27,6 +27,7 @@ interface RackInfo {
   books?: any[];
   recentBooks?: any[];
   booksByCategory?: Record<string, any[]>;
+  damagedQuantity: number;
 }
 
 @Injectable()
@@ -40,7 +41,7 @@ export class RacksService {
   ) {}
 
   async findAll(): Promise<RackInfo[]> {
-    const books = await this.bookModel.find().exec();
+    const books = await this.bookModel.find().lean().select('+damagedQuantity');
     const config = await this.configService.getConfig();
     const maxRackCapacity = config?.maxRackCapacity || 50;
     const maxShelfCapacity = config?.maxShelfCapacity || 10;
@@ -62,6 +63,7 @@ export class RacksService {
           shelves: {},
           recentBooks: [],
           books: [],
+          damagedQuantity: 0,
         };
       }
 
@@ -71,6 +73,7 @@ export class RacksService {
 
       rackMap[rackNumber].totalBooks += 1;
       rackMap[rackNumber].totalQuantity += (book.quantity || 0);
+      rackMap[rackNumber].damagedQuantity += (book.damagedQuantity || 0);
       
       const shelfNumber = book.shelfNumber || 'S1';
       if (!rackMap[rackNumber].shelves![shelfNumber]) {
@@ -106,6 +109,7 @@ export class RacksService {
         condition: book.condition,
         description: book.description,
         quantity: book.quantity,
+        damagedQuantity: book.damagedQuantity ?? 0,
         available: availableCount,
         issued: issuedCount,
         status: availableCount > 0 ? 'Available' : 'Issued',
@@ -131,7 +135,7 @@ export class RacksService {
 
   private async getIssuedCountForBook(bookId: string): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count/book/${bookId}`)
       );
@@ -141,9 +145,9 @@ export class RacksService {
       return 0;
     }
   }
-
+  
   async findByRackNumber(rackNumber: string): Promise<RackInfo> {
-    const books = await this.bookModel.find({ rackNumber }).exec();
+    const books = await this.bookModel.find({ rackNumber }).lean().select('+damagedQuantity');
     const config = await this.configService.getConfig();
     const maxRackCapacity = config?.maxRackCapacity || 50;
     const maxShelfCapacity = config?.maxShelfCapacity || 10;
@@ -163,13 +167,16 @@ export class RacksService {
       shelves: {},
       books: [],
       booksByCategory: {},
+      damagedQuantity: 0,
     };
 
     for (const book of books) {
+      
       const issuedCount = await this.getIssuedCountForBook(book._id.toString());
       const availableCount = Math.max(0, (book.quantity || 0) - issuedCount);
 
       rackData.totalQuantity += (book.quantity || 0);
+      rackData.damagedQuantity += (book.damagedQuantity || 0);
 
       const shelfNumber = book.shelfNumber || 'S1';
       if (!rackData.shelves![shelfNumber]) {
@@ -205,6 +212,7 @@ export class RacksService {
         condition: book.condition,
         description: book.description,
         quantity: book.quantity,
+        damagedQuantity: book.damagedQuantity || 0,
         available: availableCount,
         issued: issuedCount,
         status: availableCount > 0 ? 'Available' : 'Issued',

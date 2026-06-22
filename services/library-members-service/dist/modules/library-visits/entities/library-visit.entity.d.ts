@@ -9,4 +9,12 @@ export declare class LibraryVisit {
     notes: string;
     isActive: boolean;
 }
-export declare const LibraryVisitSchema: any;
+export declare const LibraryVisitSchema: import("mongoose").Schema<LibraryVisit, import("mongoose").Model<LibraryVisit, any, any, any, Document<unknown, any, LibraryVisit, any, {}> & LibraryVisit & {
+    _id: Types.ObjectId;
+} & {
+    __v: number;
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, LibraryVisit, Document<unknown, {}, import("mongoose").FlatRecord<LibraryVisit>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<LibraryVisit> & {
+    _id: Types.ObjectId;
+} & {
+    __v: number;
+}>;

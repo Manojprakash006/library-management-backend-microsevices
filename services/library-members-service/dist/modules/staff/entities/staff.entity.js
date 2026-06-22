@@ -11,7 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffSchema = exports.Staff = exports.StaffStatus = exports.StaffRole = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
+const mongoose_2 = require("mongoose");
 const bcrypt = require("bcryptjs");
+const shift_entity_1 = require("../../shift/entities/shift.entity");
 var StaffRole;
 (function (StaffRole) {
     StaffRole["ADMIN"] = "admin";
@@ -46,8 +48,8 @@ __decorate([
     __metadata("design:type", String)
 ], Staff.prototype, "password", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, trim: true }),
-    __metadata("design:type", String)
+    (0, mongoose_1.Prop)({ type: mongoose_2.Schema.Types.ObjectId, ref: 'Shift', index: true }),
+    __metadata("design:type", shift_entity_1.Shift)
 ], Staff.prototype, "shift", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: String, enum: StaffStatus, default: StaffStatus.ACTIVE, index: true }),
@@ -61,6 +63,22 @@ __decorate([
     (0, mongoose_1.Prop)({ trim: true, maxlength: 200 }),
     __metadata("design:type", String)
 ], Staff.prototype, "qualification", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ trim: true, maxlength: 100, default: 'Staff' }),
+    __metadata("design:type", String)
+], Staff.prototype, "designation", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ trim: true }),
+    __metadata("design:type", String)
+], Staff.prototype, "idProofType", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ trim: true }),
+    __metadata("design:type", String)
+], Staff.prototype, "idProofNumber", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ trim: true }),
+    __metadata("design:type", String)
+], Staff.prototype, "photoUrl", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ trim: true, maxlength: 500 }),
     __metadata("design:type", String)

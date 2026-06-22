@@ -54,8 +54,9 @@ let MemberDashboardController = class MemberDashboardController {
         const result = await this.memberDashboardService.reportBookDamage(damageDto);
         return { message: 'Damage report submitted', data: result };
     }
-    async renewBook(renewDto) {
-        const result = await this.memberDashboardService.renewBook(renewDto);
+    async renewBook(renewDto, req) {
+        const token = req.headers.authorization;
+        const result = await this.memberDashboardService.renewBook(renewDto, token);
         return { message: 'Book renewal requested', data: result };
     }
     async submitReview(req, reviewDto) {
@@ -75,7 +76,6 @@ let MemberDashboardController = class MemberDashboardController {
     async updateReview(reviewId, req, data) {
         const userId = req.user.id;
         const token = req.headers.authorization;
-        console.log("Token log from member-dashboar at line 100 :", token);
         const result = await this.memberDashboardService.updateReview(reviewId, userId, data, token);
         return { message: 'Review updated', data: result };
     }
@@ -141,8 +141,9 @@ __decorate([
     (0, common_1.Post)('renew-book'),
     (0, swagger_1.ApiOperation)({ summary: 'Renew a book' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [renew_book_dto_1.RenewBookDto]),
+    __metadata("design:paramtypes", [renew_book_dto_1.RenewBookDto, Object]),
     __metadata("design:returntype", Promise)
 ], MemberDashboardController.prototype, "renewBook", null);
 __decorate([

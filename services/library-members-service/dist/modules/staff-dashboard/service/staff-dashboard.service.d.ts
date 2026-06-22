@@ -14,9 +14,11 @@ export declare class StaffDashboardService {
     constructor(memberModel: Model<Member>, staffModel: Model<Staff>, libraryVisitModel: Model<LibraryVisit>, httpService: HttpService, activityLogService: ActivityLogService);
     private getBooksAddedTodayCount;
     getStaffStats(authHeader?: string): Promise<{
-        totalBooks: number;
-        availableBooks: number;
-        issuedBooks: number;
+        totalBooks: any;
+        availableBooks: any;
+        issuedBooks: any;
+        damagedBooks: any;
+        lostBooks: any;
         todayBookAdded: number;
     }>;
     getBooksAddedTodayList(authHeader?: string): Promise<any[]>;
@@ -32,7 +34,13 @@ export declare class StaffDashboardService {
         pendingRequests: number;
     }>;
     getBooksAddedToday(authHeader?: string): Promise<any[]>;
-    getRecentActivities(): Promise<any[]>;
+    getRecentActivities(staffId: string): Promise<{
+        _id: any;
+        action: any;
+        date: any;
+        description: any;
+        referenceId: any;
+    }[]>;
     getRackDistribution(authHeader?: string): Promise<any[]>;
     createBook(bookData: any, staffId: string, authHeader?: string): Promise<{
         message: string;

@@ -106,6 +106,11 @@ let StaffDashboardController = class StaffDashboardController {
         const result = await this.staffDashboardService.getTodaysIssues(authHeader);
         return { message: 'Today\'s book issues retrieved', count: result.length, data: result };
     }
+    async getRecentActivities(req) {
+        const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+        const result = await this.staffDashboardService.getRecentActivities(staffId);
+        return { message: 'Recent activities retrieved successfully', data: result };
+    }
 };
 exports.StaffDashboardController = StaffDashboardController;
 __decorate([
@@ -261,6 +266,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StaffDashboardController.prototype, "getTodaysIssues", null);
+__decorate([
+    (0, common_1.Get)('recent-activities'),
+    (0, roles_decorator_1.Roles)('staff'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get recent activities' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], StaffDashboardController.prototype, "getRecentActivities", null);
 exports.StaffDashboardController = StaffDashboardController = __decorate([
     (0, swagger_1.ApiTags)('Staff Dashboard'),
     (0, swagger_1.ApiBearerAuth)(),

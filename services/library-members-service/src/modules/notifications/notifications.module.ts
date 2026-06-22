@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { HttpModule } from '@nestjs/axios';
 import { NotificationsController } from './controller/notifications.controller';
@@ -19,9 +19,13 @@ import { LibraryConfig, LibraryConfigSchema } from '../contact/entities/library-
   imports: [
     ConfigModule,
     HttpModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'defaultsecret',
-      signOptions: { expiresIn: '24h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET') || 'your-secret-key',
+        signOptions: { expiresIn: '24h' },
+      }),
     }),
     MongooseModule.forFeature([
       { name: Notification.name, schema: NotificationSchema },

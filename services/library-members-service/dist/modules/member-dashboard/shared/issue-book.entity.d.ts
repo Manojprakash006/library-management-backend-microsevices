@@ -22,4 +22,12 @@ export declare class IssueBook {
     fine: number;
     finePerDay: number;
 }
-export declare const IssueBookSchema: any;
+export declare const IssueBookSchema: import("mongoose").Schema<IssueBook, import("mongoose").Model<IssueBook, any, any, any, import("mongoose").Document<unknown, any, IssueBook, any, {}> & IssueBook & {
+    _id: Types.ObjectId;
+} & {
+    __v: number;
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, IssueBook, import("mongoose").Document<unknown, {}, import("mongoose").FlatRecord<IssueBook>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<IssueBook> & {
+    _id: Types.ObjectId;
+} & {
+    __v: number;
+}>;

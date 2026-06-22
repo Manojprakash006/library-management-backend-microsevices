@@ -19,13 +19,14 @@ export class EmailService {
     });
   }
 
-  async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  async sendEmail(to: string, subject: string, html: string, attachments?: any[]): Promise<boolean> {
     try {
       await this.transporter.sendMail({
         from: this.configService.get('SMTP_USER'),
         to,
         subject,
         html,
+        attachments,
       });
       this.logger.log(`Email sent successfully to ${to}`);
       return true;
@@ -33,6 +34,40 @@ export class EmailService {
       this.logger.error(`Failed to send email to ${to}: ${error.message}`);
       return false;
     }
+  }
+
+  async sendInvoiceEmail(to: string, memberName: string, invoiceId: string, pdfBuffer: Buffer): Promise<boolean> {
+    const subject = `📑 Invoice for your Library Payment - ${invoiceId}`;
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+        <div style="background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">Payment Successful</h1>
+        </div>
+        <div style="padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+          <p style="font-size: 18px; font-weight: 600; color: #1f2937;">Hi ${memberName},</p>
+          <p>Thank you for your payment. Your transaction has been successfully processed, and your library account has been updated.</p>
+          <p>Attached to this email, you will find the official invoice <strong>#${invoiceId}</strong> for your records.</p>
+          
+          <div style="margin: 30px 0; padding: 20px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #4f46e5;">
+            <p style="margin: 0; font-size: 14px; color: #6b7280;">Invoice Number</p>
+            <p style="margin: 5px 0 0 0; font-weight: 700; color: #1f2937;">${invoiceId}</p>
+          </div>
+
+          <p>If you have any questions regarding this payment or your account, please feel free to reach out to our support team.</p>
+          
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; text-align: center;">
+            <p>&copy; ${new Date().getFullYear()} Library Management System. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    return this.sendEmail(to, subject, html, [
+      {
+        filename: `Invoice_${invoiceId}.pdf`,
+        content: pdfBuffer,
+      },
+    ]);
   }
 
   async sendDueDateReminder(to: string, memberName: string, bookTitle: string, dueDate: Date): Promise<boolean> {

@@ -27,6 +27,12 @@ const favourite_module_1 = require("./modules/favourite/favourite.module");
 const redis_emitter_module_1 = require("./modules/redis-emitter/redis-emitter.module");
 const jwt_auth_guard_1 = require("./auth/guards/jwt-auth.guard");
 const core_1 = require("@nestjs/core");
+const contact_module_1 = require("./modules/contact/contact.module");
+const attendance_module_1 = require("./modules/attendance/attendance.module");
+const leave_management_module_1 = require("./modules/leave-management/leave-management.module");
+const system_config_module_1 = require("./modules/system-config/system-config.module");
+const shift_module_1 = require("./modules/shift/shift.module");
+const member_progress_module_1 = require("./modules/member-progress/member-progress.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -52,6 +58,12 @@ exports.AppModule = AppModule = __decorate([
             library_visits_module_1.LibraryVisitsModule,
             favourite_module_1.FavouriteModule,
             redis_emitter_module_1.RedisEmitterModule,
+            contact_module_1.ContactModule,
+            attendance_module_1.AttendanceModule,
+            leave_management_module_1.LeaveManagementModule,
+            system_config_module_1.SystemConfigModule,
+            shift_module_1.ShiftModule,
+            member_progress_module_1.MemberProgressModule,
         ],
         providers: [
             {

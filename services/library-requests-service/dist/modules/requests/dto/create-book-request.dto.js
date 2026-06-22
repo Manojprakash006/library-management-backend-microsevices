@@ -28,7 +28,9 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Request Type' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(4),
+    (0, class_validator_1.IsIn)(['Taking Home', 'Reading Inside Library'], {
+        message: 'Please select a valid request type',
+    }),
     __metadata("design:type", String)
 ], CreateBookRequestDto.prototype, "requestType", void 0);
 __decorate([

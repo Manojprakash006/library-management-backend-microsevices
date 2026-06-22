@@ -169,7 +169,7 @@ __decorate([
 ], MembersController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    (0, roles_decorator_1.Roles)('admin'),
+    (0, roles_decorator_1.Roles)('admin', 'staff'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a member' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Req)()),
@@ -188,6 +188,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MembersController.prototype, "addBorrowingHistory", null);
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Post)(':id/borrow'),
     (0, roles_decorator_1.Roles)('admin', 'staff', 'member'),
     (0, swagger_1.ApiOperation)({ summary: 'Update member borrowing history (return book)' }),
@@ -201,6 +202,7 @@ exports.MembersController = MembersController = __decorate([
     (0, swagger_1.ApiTags)('Members'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('admin', 'staff'),
     (0, common_1.Controller)('members'),
     __metadata("design:paramtypes", [members_service_1.MembersService])
 ], MembersController);

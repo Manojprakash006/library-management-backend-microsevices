@@ -17,6 +17,7 @@ export declare class NotificationsGateway implements OnGatewayConnection, OnGate
     }): void;
     sendNotificationToUser(userId: string, notification: any): void;
     broadcastNotification(notification: any): void;
+    emitPublicUpdate(event: string, data: any): void;
     sendUnreadCount(userId: string, count: number): void;
     private getUserIdFromSocket;
     getConnectedUsersCount(): number;

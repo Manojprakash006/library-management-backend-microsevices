@@ -15,6 +15,7 @@ export declare enum NotificationType {
     PAYMENT_SUCCESS = "PAYMENT_SUCCESS",
     PAYMENT_RECEIVED = "PAYMENT_RECEIVED",
     FINE_ADDED = "FINE_ADDED",
+    CONTACT_MESSAGE = "CONTACT_MESSAGE",
     GENERAL = "GENERAL"
 }
 export declare class Notification {
@@ -26,4 +27,12 @@ export declare class Notification {
     isRead: boolean;
     sentAt: Date;
 }
-export declare const NotificationSchema: any;
+export declare const NotificationSchema: MongooseSchema<Notification, import("mongoose").Model<Notification, any, any, any, import("mongoose").Document<unknown, any, Notification, any, {}> & Notification & {
+    _id: import("mongoose").Types.ObjectId;
+} & {
+    __v: number;
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, Notification, import("mongoose").Document<unknown, {}, import("mongoose").FlatRecord<Notification>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<Notification> & {
+    _id: import("mongoose").Types.ObjectId;
+} & {
+    __v: number;
+}>;

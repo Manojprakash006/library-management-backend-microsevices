@@ -48,6 +48,9 @@ export class Fine {
 
   @Prop({ required: false })
   razorpayOrderId?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const FineSchema = SchemaFactory.createForClass(Fine);

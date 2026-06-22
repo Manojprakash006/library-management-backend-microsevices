@@ -73,6 +73,8 @@ export class DashboardService {
     const [
       totalBooks,
       totalBooksResult,
+      totalDamagedResult,
+      totalLostResult,
       issuedBooks,
       pendingRequests,
       overdueBooks,
@@ -82,8 +84,10 @@ export class DashboardService {
     ] = await Promise.all([
       this.bookModel.countDocuments(),
       this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]),
+      this.bookModel.aggregate([{ $group: { _id: null, totalDamaged: { $sum: '$damagedQuantity' } } }]),
+      this.bookModel.aggregate([{ $group: { _id: null, totalLost: { $sum: '$lostQuantity' } } }]),
       this.getActiveIssuesCount(),
-      this.bookRequestModel.countDocuments({ status: 'Pending' }),
+      this.bookRequestModel.countDocuments({ status: { $regex: /pending/i } }),
       this.getOverdueBooksCount(),
       this.getTotalMembersCount(),
       this.getNewArrivalsCount(),
@@ -91,6 +95,8 @@ export class DashboardService {
     ]);
 
     const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const damagedBooks = totalDamagedResult.length > 0 ? totalDamagedResult[0].totalDamaged : 0;
+    const lostBooks = totalLostResult.length > 0 ? totalLostResult[0].totalLost : 0;
     const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
     return {
@@ -99,6 +105,8 @@ export class DashboardService {
       availableBooks: availableQuantity,
       availableQuantity,
       issuedBooks,
+      damagedBooks,
+      lostBooks,
       totalMembers,
       activeIssues: issuedBooks,
       overdueBooks,
@@ -124,7 +132,7 @@ export class DashboardService {
   }
 
   async getStatCards(authHeader?: string) {
-    const cacheKey = 'dashboard:stat_cards';
+    const cacheKey = 'dashboard:stat_cards_v2';
     try {
       const cached = await this.redisEmitter.client.get(cacheKey);
       if (cached) return JSON.parse(cached);
@@ -135,6 +143,8 @@ export class DashboardService {
     const [
       totalBooks,
       totalBooksResult,
+      totalDamagedResult,
+      totalLostResult,
       activeIssues,
       pendingRequests,
       overdueBooks,
@@ -144,6 +154,8 @@ export class DashboardService {
     ] = await Promise.all([
       this.bookModel.countDocuments().exec(),
       this.bookModel.aggregate([{ $group: { _id: null, totalQuantity: { $sum: '$quantity' } } }]).exec(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalDamaged: { $sum: '$damagedQuantity' } } }]).exec(),
+      this.bookModel.aggregate([{ $group: { _id: null, totalLost: { $sum: '$lostQuantity' } } }]).exec(),
       this.getActiveIssuesCount(),
       this.getPendingRequestsCount(),
       this.getOverdueBooksCount(),
@@ -153,6 +165,8 @@ export class DashboardService {
     ]);
 
     const totalQuantity = totalBooksResult.length > 0 ? totalBooksResult[0].totalQuantity : 0;
+    const damagedBooks = totalDamagedResult.length > 0 ? totalDamagedResult[0].totalDamaged : 0;
+    const lostBooks = totalLostResult.length > 0 ? totalLostResult[0].totalLost : 0;
     const issuedBooks = activeIssues;
     const availableQuantity = Math.max(0, totalQuantity - issuedBooks);
 
@@ -162,6 +176,8 @@ export class DashboardService {
       availableBooks: availableQuantity,
       availableQuantity,
       issuedBooks,
+      damagedBooks,
+      lostBooks,
       overdueBooks,
       totalMembers,
       newArrivals,
@@ -258,7 +274,7 @@ export class DashboardService {
         })
       );
 
-      const pendingRequests = response.data?.data?.filter(req => req.status === 'Pending') || [];
+      const pendingRequests = response.data?.data?.filter(req => req.status?.toLowerCase().includes('pending')) || [];
       if (pendingRequests.length === 0) return [];
 
       // Sort by latest first
@@ -422,7 +438,7 @@ export class DashboardService {
 
   private async getActiveIssuesCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count`)
       );
@@ -434,7 +450,7 @@ export class DashboardService {
 
   private async getPendingRequestsCount(): Promise<number> {
     try {
-      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://localhost:3014';
+      const requestsServiceUrl = process.env.REQUESTS_SERVICE_URL || 'http://library-requests-service:3014';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${requestsServiceUrl}/requests/count/pending`)
       );
@@ -446,7 +462,7 @@ export class DashboardService {
 
   private async getOverdueBooksCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/overdue/count`)
       );
@@ -458,7 +474,7 @@ export class DashboardService {
 
   private async getTotalMembersCount(authHeader?: string): Promise<number> {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://localhost:3003';
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
       const response: AxiosResponse<any> = await firstValueFrom(
         this.httpService.get(`${membersServiceUrl}/members/stats/total`, {
           headers: authHeader ? { Authorization: authHeader } : undefined,
@@ -480,7 +496,7 @@ export class DashboardService {
 
   private async getTodayIssuesCount(): Promise<number> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3002';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const today = new Date().toISOString().split('T')[0];
       const response: AxiosResponse<CountResponse> = await firstValueFrom(
         this.httpService.get(`${issuesServiceUrl}/issues/count?date=${today}`)

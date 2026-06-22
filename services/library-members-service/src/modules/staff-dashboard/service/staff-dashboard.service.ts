@@ -13,6 +13,8 @@ interface BooksStatsResponse {
   totalBooks: number;
   availableBooks: number;
   issuedBooks: number;
+  damagedBooks?: number;
+  lostBooks?: number;
 }
 
 @Injectable()
@@ -57,10 +59,12 @@ export class StaffDashboardService {
        
       this.logger.log(`Books service response: ${JSON.stringify(statsResponse.data)}`);
 
-      const stats: BooksStatsResponse = statsResponse.data?.data || {
+      const stats: any = statsResponse.data?.data || {
         totalBooks: 0,
         availableBooks: 0,
         issuedBooks: 0,
+        damagedBooks: 0,
+        lostBooks: 0,
       };
 
       this.logger.log(`Parsed stats: ${JSON.stringify(stats)}`);
@@ -70,6 +74,8 @@ export class StaffDashboardService {
         totalBooks: stats.totalBooks || 0,
         availableBooks: stats.availableBooks || 0,
         issuedBooks: stats.issuedBooks || 0,
+        damagedBooks: stats.damagedBooks || 0,
+        lostBooks: stats.lostBooks || 0,
         todayBookAdded: todayBookAdded,
       };
     } catch (error) {
@@ -80,6 +86,8 @@ export class StaffDashboardService {
         totalBooks: 0,
         availableBooks: 0,
         issuedBooks: 0,
+        damagedBooks: 0,
+        lostBooks: 0,
         todayBookAdded: 0,
       };
     }
@@ -157,8 +165,31 @@ export class StaffDashboardService {
     }
   }
 
-  async getRecentActivities() {
-    return [];
+  async getRecentActivities(staffId: string) {
+    try {
+      const lastActivityQuery = await this.activityLogService.getLogs(1, 5, {
+        adminId: staffId,
+        action: { $nin: ['STAFF_LOGIN', 'STAFF_LOGOUT', 'ADMIN_LOGIN'] }
+      });
+
+      return lastActivityQuery.data.map((log: any) => {
+        let actionName = log.action;
+        if (log.action === 'BOOKSADDED') actionName = 'ADD BOOK';
+        else if (log.action === 'REQUEST_APPROVED') actionName = 'APPROVE REQUEST';
+        else if (log.action === 'REQUEST_REJECTED') actionName = 'REJECT REQUEST';
+
+        return {
+          _id: log._id,
+          action: actionName,
+          date: log.createdAt,
+          description: log.details?.message || log.details?.title || actionName,
+          referenceId: log.entityName || log.details?.referenceId || log.entityId
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Failed to fetch recent activities: ${error.message}`);
+      return [];
+    }
   }
 
   async getRackDistribution(authHeader?: string) {
@@ -466,7 +497,7 @@ export class StaffDashboardService {
 
   async getTodaysIssues(authHeader?: string) {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issus-service:3013';
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

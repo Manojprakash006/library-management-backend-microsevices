@@ -31,7 +31,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({ id: user._id, role: user.role });
+    let designation = 'Staff';
+    if (user.role === 'staff') {
+      const staff = await this.staffModel.findOne({ email: user.email });
+      if (staff) {
+        designation = staff.designation || 'Staff';
+        staff.status = StaffStatus.ACTIVE;
+        await staff.save();
+      }
+    }
+
+    const token = this.jwtService.sign({ 
+      id: user._id, 
+      role: user.role,
+      designation: user.role === 'admin' ? 'Admin' : designation 
+    });
 
     if (user.role === 'admin') {
       await this.activityLogService.logAction({
@@ -43,17 +57,15 @@ export class AuthService {
       });
     }
 
-    if (user.role === 'staff') {
-      const staff = await this.staffModel.findOne({ email: user.email });
-      if (staff) {
-        staff.status = StaffStatus.ACTIVE;
-        await staff.save();
-      }
-    }
-
     return {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        designation: user.role === 'admin' ? 'Admin' : designation
+      },
     };
   }
 

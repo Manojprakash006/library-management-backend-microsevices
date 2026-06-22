@@ -13,7 +13,6 @@ export class HolidayCleanupService {
 
   @Cron('0 0 * * *', { timeZone: 'Asia/kolkata'})
   async resetExpiredHoliday() {
-    console.log('Cron running...');
 
     const config = await this.libraryConfigModel.findOne();
 
@@ -29,7 +28,6 @@ export class HolidayCleanupService {
       toDate.setHours(0,0,0,0);
 
       if (toDate < today) {
-      console.log('Holiday expired, updating...');
 
       config.holidaysInfo = holidays.publicLeave;
       config.holidayFromDate = null;
@@ -38,7 +36,6 @@ export class HolidayCleanupService {
 
       await config.save();
 
-      console.log('DB updated');
     } else {
       console.log('No expiry yet');
     }

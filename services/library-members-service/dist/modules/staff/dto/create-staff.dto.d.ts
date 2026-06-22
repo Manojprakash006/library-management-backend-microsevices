@@ -10,4 +10,8 @@ export declare class CreateStaffDto {
     address: string;
     emergencyContact: string;
     role: StaffRole;
+    designation: string;
+    idProofType: string;
+    idProofNumber: string;
+    photoUrl: string;
 }

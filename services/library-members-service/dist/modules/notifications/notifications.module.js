@@ -22,6 +22,7 @@ const member_entity_1 = require("../members/entities/member.entity");
 const user_entity_1 = require("../auth/entities/user.entity");
 const web_push_service_1 = require("./service/web-push.service");
 const push_subscription_schema_1 = require("./schema/push-subscription.schema");
+const library_config_entity_1 = require("../contact/entities/library-config.entity");
 let NotificationsModule = class NotificationsModule {
 };
 exports.NotificationsModule = NotificationsModule;
@@ -39,6 +40,7 @@ exports.NotificationsModule = NotificationsModule = __decorate([
                 { name: member_entity_1.Member.name, schema: member_entity_1.MemberSchema },
                 { name: user_entity_1.User.name, schema: user_entity_1.UserSchema },
                 { name: push_subscription_schema_1.PushSubscription.name, schema: push_subscription_schema_1.PushSubscriptionSchema },
+                { name: library_config_entity_1.LibraryConfig.name, schema: library_config_entity_1.LibraryConfigSchema },
             ]),
         ],
         controllers: [notifications_controller_1.NotificationsController],

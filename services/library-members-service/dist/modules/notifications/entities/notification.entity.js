@@ -28,6 +28,7 @@ var NotificationType;
     NotificationType["PAYMENT_SUCCESS"] = "PAYMENT_SUCCESS";
     NotificationType["PAYMENT_RECEIVED"] = "PAYMENT_RECEIVED";
     NotificationType["FINE_ADDED"] = "FINE_ADDED";
+    NotificationType["CONTACT_MESSAGE"] = "CONTACT_MESSAGE";
     NotificationType["GENERAL"] = "GENERAL";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 let Notification = class Notification {

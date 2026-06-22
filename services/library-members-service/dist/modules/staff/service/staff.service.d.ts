@@ -13,7 +13,7 @@ export declare class StaffService {
     private readonly redisEmitter;
     constructor(staffModel: Model<StaffDocument>, jwtService: JwtService, activityLogService: ActivityLogService, redisEmitter: RedisEmitterService);
     login(loginDto: StaffLoginDto): Promise<{
-        token: any;
+        token: string;
         user: {
             id: import("mongoose").Types.ObjectId;
             email: string;

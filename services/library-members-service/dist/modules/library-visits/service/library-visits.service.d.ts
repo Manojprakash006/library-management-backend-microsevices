@@ -50,4 +50,10 @@ export declare class LibraryVisitsService {
     }> & {
         __v: number;
     }>;
+    getVisitStats(): Promise<number>;
+    getVisitsByDate(dateStr?: string): Promise<(import("mongoose").Document<unknown, {}, LibraryVisitDocument, {}, {}> & LibraryVisit & import("mongoose").Document<Types.ObjectId, any, any, Record<string, any>, {}> & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    })[]>;
 }

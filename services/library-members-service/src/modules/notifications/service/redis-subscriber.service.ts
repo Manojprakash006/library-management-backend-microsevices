@@ -13,18 +13,20 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
     private notificationsGateway: NotificationsGateway
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     const host = this.configService.get<string>('REDIS_HOST', 'redis');
     const port = this.configService.get<number>('REDIS_PORT', 6379);
 
     this.redisClient = new Redis({
       host,
       port,
+      retryStrategy: (times) => {
+        return Math.min(times * 1000, 5000);
+      },
     });
 
     this.redisClient.on('connect', () => {
       this.logger.log(`Connected to Redis for subscription at ${host}:${port}`);
-      this.redisClient.subscribe('lms_updates');
     });
 
     this.redisClient.on('message', (channel, message) => {
@@ -36,6 +38,10 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
     this.redisClient.on('error', (err) => {
       this.logger.error('Redis subscription error', err);
     });
+
+    await this.redisClient.subscribe('lms_updates');
+ 
+    this.logger.log('Subscribed to lms_updates channel');
   }
 
   onModuleDestroy() {

@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
 import { Public } from '../../../auth/guards/public.decorator';
+import { ApproveRequestDto } from '../dto/approve-request.dto';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,7 +25,7 @@ export class RequestsController {
     return { message: 'Book request created successfully', data: request };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @Get()
   @ApiOperation({ summary: 'Get all book requests' })
   @ApiResponse({ status: 200, description: 'Book requests retrieved successfully', type: [BookRequest] })
@@ -66,7 +67,19 @@ export class RequestsController {
     return { data: requests };
   }
 
-  @Roles('admin')
+  @Public()
+  @Put('link-issue')
+  async linkIssue(
+    @Body() body: {
+      memberId: string;
+      bookId: string;
+      issueId: string;
+    }
+  ) {
+    return this.requestsService.linkIssue(body);
+  }
+
+  @Roles('admin', 'staff')
   @Get(':id')
   @ApiOperation({ summary: 'Get book request by ID' })
   @ApiResponse({ status: 200, description: 'Book request retrieved successfully', type: BookRequest })
@@ -94,17 +107,26 @@ export class RequestsController {
     return { message: 'Book request cancelled successfully', data: request };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
   @Put(':id/approve')
   @ApiOperation({ summary: 'Approve a book request' })
   @ApiResponse({ status: 200, description: 'Book request approved successfully', type: BookRequest })
-  async approve(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
+  async approve(@Param('id') id: string, @Body() approveDto: ApproveRequestDto, @Req() req: any): Promise<{ message: string; data: BookRequest }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
-    const request = await this.requestsService.approve(id, adminId);
+    const request = await this.requestsService.approve(id, adminId, approveDto);
     return { message: 'Book request approved successfully', data: request };
   }
 
-  @Roles('admin')
+  @Roles('admin', 'staff')
+  @Put(':issueId/mark-returned')
+    async markRequestAsReturned(
+      @Param('issueId') issueId: string,
+    ) {
+      console.log('CONTROLLER ISSUEWID:', issueId);
+      return this.requestsService.markRequestAsReturned(issueId);
+    }
+
+  @Roles('admin', 'staff')
   @Put(':id/reject')
   @ApiOperation({ summary: 'Reject a book request' })
   @ApiResponse({ status: 200, description: 'Book request rejected successfully', type: BookRequest })
@@ -121,5 +143,12 @@ export class RequestsController {
   async remove(@Param('id') id: string): Promise<{ message: string }> {
     await this.requestsService.remove(id);
     return { message: 'Book request deleted successfully' };
+  }
+
+  @Roles('admin')
+  @Get('reports/requests')
+  @ApiOperation({ summary: 'Get requests report data' })
+  async getRequestsReport() {
+    return this.requestsService.getRequestsReport();
   }
 }

@@ -10,7 +10,7 @@ import { Public } from '../../../auth/guards/public.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@Roles('admin', 'staff')
 @ApiTags('Issues')
 @Controller('issues')
 export class IssuesController {
@@ -190,6 +190,7 @@ export class IssuesController {
     return { message: 'Overdue books retrieved successfully', data: overdueIssues, count: overdueIssues.length };
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get issued book by ID' })
   @ApiResponse({ status: 200, description: 'Issued book retrieved successfully', type: IssueBook })
@@ -214,10 +215,15 @@ export class IssuesController {
   @ApiResponse({ status: 200, description: 'Book returned successfully', type: IssueBook })
   @ApiResponse({ status: 400, description: 'Book already returned' })
   @ApiResponse({ status: 404, description: 'Issued book not found' })
-  async returnBook(@Param('id') id: string, @Req() req: any): Promise<{ message: string; data: IssueBook; fine: any }> {
+  async returnBook(
+    @Param('id') id: string, 
+    @Body() returnDto: { condition?: any; remarks?: string },
+    @Req() req: any
+  ): Promise<{ message: string; data: IssueBook; fine: any }> {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
     const authHeader = req.headers.authorization;
-    const issue = await this.issuesService.returnBook(id, adminId, authHeader);
+    const { condition, remarks } = returnDto;
+    const issue = await this.issuesService.returnBook(id, adminId, authHeader, condition, remarks);
     return {
       message: 'Book returned successfully',
       data: issue,
@@ -235,8 +241,8 @@ export class IssuesController {
 
   @Public()
   @Put('renew/:id')
-  async renewBook(@Param('id') id: string) {
-    const result = await this.issuesService.renewBook(id);
+  async renewBook(@Param('id') issueId: string, @Body('renewDays') renewDays?: number) {
+    const result = await this.issuesService.renewBook(issueId, renewDays ?? 7);
     return { message: 'Book renewed successfully', data: result };
   }
 
@@ -248,5 +254,15 @@ export class IssuesController {
     const adminId = req.user?.id || req.user?.userId || 'SYSTEM';
     await this.issuesService.remove(id, adminId);
     return { message: 'Issued book record deleted successfully' };
+  }
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.issuesService.getReportsData(today, today);
+    }
+    return this.issuesService.getReportsData(startDate, endDate);
   }
 }

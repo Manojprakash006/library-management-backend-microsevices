@@ -18,6 +18,7 @@ let StaffModule = class StaffModule {
 };
 exports.StaffModule = StaffModule;
 exports.StaffModule = StaffModule = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({
         imports: [
             mongoose_1.MongooseModule.forFeature([{ name: staff_entity_1.Staff.name, schema: staff_entity_1.StaffSchema }]),

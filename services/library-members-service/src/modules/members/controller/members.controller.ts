@@ -10,6 +10,7 @@ import { Public } from '../../../auth/guards/public.decorator';
 @ApiTags('Members')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'staff')
 @Controller('members')
 export class MembersController {
     constructor(private readonly membersService: MembersService) { }
@@ -103,7 +104,7 @@ export class MembersController {
     }
 
     @Delete(':id')
-    @Roles('admin')
+    @Roles('admin', 'staff')
     @ApiOperation({ summary: 'Delete a member' })
     async remove(@Param('id') id: string, @Req() req: any) {
         const adminId = req.user?.id || req.user?.userId;
@@ -119,6 +120,7 @@ export class MembersController {
         return { message: 'Borrowing history added successfully' };
     }
 
+    @Public()
     @Post(':id/borrow')
     @Roles('admin', 'staff', 'member')
     @ApiOperation({ summary: 'Update member borrowing history (return book)' })
@@ -127,4 +129,29 @@ export class MembersController {
         await this.membersService.updateBorrowingHistory(id, issueId, updateData);
         return { message: 'Borrowing history updated successfully' };
     }
+
+    @Public()
+    @Get(':id/rewards')
+      async getMemberRewards(
+      @Param('id') id: string
+      ) {
+      return this.membersService.getMemberRewards(id);
+      }
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.membersService.getReportsData(today, today);
+    }
+    return this.membersService.getReportsData(startDate, endDate);
+  }
+
+  @Roles('admin')
+  @Get('reports/members-performance')
+  @ApiOperation({ summary: 'Get members performance report' })
+  async getMembersPerformanceReport() {
+    return this.membersService.getMembersPerformanceReport();
+  }
 }

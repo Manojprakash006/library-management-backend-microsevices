@@ -26,4 +26,9 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RenewBookDto.prototype, "reason", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], RenewBookDto.prototype, "renewDays", void 0);
 //# sourceMappingURL=renew-book.dto.js.map

@@ -60,7 +60,7 @@ export declare class MemberDashboardController {
             issueId: string;
         };
     }>;
-    renewBook(renewDto: RenewBookDto): Promise<{
+    renewBook(renewDto: RenewBookDto, req: any): Promise<{
         message: string;
         data: any;
     }>;

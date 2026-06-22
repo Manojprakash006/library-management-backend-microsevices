@@ -11,4 +11,8 @@ export declare class UpdateStaffDto {
     qualification?: string;
     address?: string;
     emergencyContact?: string;
+    designation?: string;
+    idProofType?: string;
+    idProofNumber?: string;
+    photoUrl?: string;
 }

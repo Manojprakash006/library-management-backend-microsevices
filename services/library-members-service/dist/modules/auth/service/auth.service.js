@@ -11,7 +11,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -38,7 +37,20 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        const token = this.jwtService.sign({ id: user._id, role: user.role });
+        let designation = 'Staff';
+        if (user.role === 'staff') {
+            const staff = await this.staffModel.findOne({ email: user.email });
+            if (staff) {
+                designation = staff.designation || 'Staff';
+                staff.status = staff_entity_1.StaffStatus.ACTIVE;
+                await staff.save();
+            }
+        }
+        const token = this.jwtService.sign({
+            id: user._id,
+            role: user.role,
+            designation: user.role === 'admin' ? 'Admin' : designation
+        });
         if (user.role === 'admin') {
             await this.activityLogService.logAction({
                 adminId: user._id.toString(),
@@ -48,16 +60,15 @@ let AuthService = class AuthService {
                 details: { email: user.email }
             });
         }
-        if (user.role === 'staff') {
-            const staff = await this.staffModel.findOne({ email: user.email });
-            if (staff) {
-                staff.status = staff_entity_1.StaffStatus.ACTIVE;
-                await staff.save();
-            }
-        }
         return {
             token,
-            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                designation: user.role === 'admin' ? 'Admin' : designation
+            },
         };
     }
     async register(registerDto) {
@@ -100,6 +111,8 @@ exports.AuthService = AuthService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(user_entity_1.User.name)),
     __param(1, (0, mongoose_1.InjectModel)(staff_entity_1.Staff.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        mongoose_2.Model, typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, activity_log_service_1.ActivityLogService])
+        mongoose_2.Model,
+        jwt_1.JwtService,
+        activity_log_service_1.ActivityLogService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

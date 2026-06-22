@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
+import { Shift } from '../../shift/entities/shift.entity';
 
 export type StaffDocument = HydratedDocument<Staff>;
 
@@ -31,8 +32,8 @@ export class Staff {
   @Prop({ required: true, minlength: 6, maxlength: 100, select: false })
   password: string;
 
-  @Prop({ required: true, trim: true })
-  shift: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Shift', index: true })
+  shift: Shift;
 
   @Prop({ type: String, enum: StaffStatus, default: StaffStatus.ACTIVE, index: true })
   status: StaffStatus;
@@ -42,6 +43,18 @@ export class Staff {
 
   @Prop({ trim: true, maxlength: 200 })
   qualification: string;
+
+  @Prop({ trim: true, maxlength: 100, default: 'Staff' })
+  designation: string;
+
+  @Prop({ trim: true })
+  idProofType: string; // Aadhar, PAN, License, etc.
+
+  @Prop({ trim: true })
+  idProofNumber: string;
+
+  @Prop({ trim: true })
+  photoUrl: string;
 
   @Prop({ trim: true, maxlength: 500 })
   address: string;

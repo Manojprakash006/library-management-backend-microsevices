@@ -170,6 +170,15 @@ export class NotificationsService {
           memberName: admin.name
         });
       }
+
+      // Also broadcast real-time to all connected admins
+      this.notificationsGateway.sendNotificationToRole('admin', {
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        timestamp: new Date().toISOString()
+      });
+
       this.logger.log(`Notified ${admins.length} admins about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify admins: ${err.message}`);
@@ -197,6 +206,15 @@ export class NotificationsService {
           memberName: staff.name
         });
       }
+
+      // Also broadcast real-time to all connected staff
+      this.notificationsGateway.sendNotificationToRole('staff', {
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        timestamp: new Date().toISOString()
+      });
+
       this.logger.log(`Notified ${allStaffToNotify.length} staff members about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify staff: ${err.message}`);
@@ -224,6 +242,15 @@ export class NotificationsService {
           memberName: member.name
         });
       }
+
+      // Also broadcast real-time to all connected members
+      this.notificationsGateway.sendNotificationToRole('member', {
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        timestamp: new Date().toISOString()
+      });
+
       this.logger.log(`Notified ${allMembersToNotify.length} members about: ${payload.title}`);
     } catch (err) {
       this.logger.error(`Failed to notify members: ${err.message}`);
@@ -356,7 +383,7 @@ export class NotificationsService {
     this.logger.log('Executing automated Due Date Reminders cron job...');
     let count = 0;
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues`));
       const allIssues = response.data?.data || [];
 
@@ -400,7 +427,7 @@ export class NotificationsService {
     this.logger.log('Executing automated Overdue Notifications cron job...');
     let count = 0;
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://localhost:3013';
+      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
       const response = await firstValueFrom(this.httpService.get(`${issuesServiceUrl}/issues/overdue`));
       const overdueIssues = response.data?.data || [];
 
@@ -446,6 +473,15 @@ export class NotificationsService {
       }
     } catch (err) {
       this.logger.error(`Failed to send web push notifications: ${err.message}`);
+    }
+  }
+
+  async sendInvoiceEmail(email: string, memberName: string, invoiceId: string, pdfBuffer: Buffer): Promise<void> {
+    try {
+      await this.emailService.sendInvoiceEmail(email, memberName, invoiceId, pdfBuffer);
+      this.logger.log(`Invoice email sent to ${email} for invoice ${invoiceId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send invoice email to ${email}: ${error.message}`);
     }
   }
 }

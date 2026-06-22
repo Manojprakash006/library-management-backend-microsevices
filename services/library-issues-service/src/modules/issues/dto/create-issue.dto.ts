@@ -1,4 +1,4 @@
-import { IsMongoId, IsEnum, IsNumber, IsOptional, IsDateString, Min } from 'class-validator';
+import { IsMongoId, IsEnum, IsNumber, IsOptional, IsDateString, Min, IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IssueType } from '../entities/issue-book.entity';
 
@@ -10,6 +10,11 @@ export class CreateIssueDto {
   @ApiProperty({ description: 'Member ID' })
   @IsMongoId()
   memberId: string;
+
+  @ApiProperty({ description: 'Copy Number' })
+  @IsString()
+  @IsNotEmpty()
+  copyNumber: string;
 
   @ApiProperty({ description: 'Issue type', enum: IssueType })
   @IsEnum(IssueType)

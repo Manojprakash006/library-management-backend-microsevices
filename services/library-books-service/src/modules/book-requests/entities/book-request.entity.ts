@@ -1,12 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type BookRequestDocument = HydratedDocument<BookRequest>;
 
 export enum BookRequestStatus {
-  PENDING = 'Pending',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 @Schema({ timestamps: true })
@@ -15,10 +15,10 @@ export class BookRequest {
   requestId: string;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Book', required: true })
-  bookId: MongooseSchema.Types.ObjectId;
+  bookId: Types.ObjectId;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Member', required: true })
-  memberId: MongooseSchema.Types.ObjectId;
+  memberId: Types.ObjectId;
 
   @Prop({ type: Date, default: Date.now })
   requestDate: Date;
@@ -37,13 +37,16 @@ export class BookRequest {
   totalHistory: number;
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'IssueBook' }] })
-  activeBookIds: MongooseSchema.Types.ObjectId[];
+  activeBookIds: Types.ObjectId[];
 
   @Prop({ type: [String] })
   booklistBorrowed: string[];
 
   @Prop({ type: Date })
   processedDate: Date;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId })
+  processedBy: Types.ObjectId;
 }
 
 export const BookRequestSchema = SchemaFactory.createForClass(BookRequest);

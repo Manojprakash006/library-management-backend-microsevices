@@ -4,7 +4,8 @@ import { BooksService } from '../service/books.service';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { CreateBookReviewDto } from '../dto/create-book-review.dto';
-import { Book } from '../entities/book.entity';
+import { Book, BookStatus, BookCondition } from '../entities/book.entity';
+import { BookCopy } from '../entities/book-copy.entity';
 import { BookReview } from '../entities/book-review.entity';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../auth/guards/roles.decorator';
@@ -18,6 +19,31 @@ import { Public } from '../../../auth/guards/public.decorator';
 @Controller('books')
 export class BooksController {
   constructor(private readonly booksService: BooksService) { }
+
+  @Roles('admin')
+  @Get('reports/overview')
+  @ApiOperation({ summary: 'Get report overview data' })
+  async getReportsData(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    if (!startDate || !endDate) {
+      const today = new Date().toISOString();
+      return this.booksService.getReportsData(today, today);
+    }
+    return this.booksService.getReportsData(startDate, endDate);
+  }
+
+  @Roles('admin')
+  @Get('reports/books-performance')
+  @ApiOperation({ summary: 'Get books performance report' })
+  async getBooksPerformanceReport() {
+    return this.booksService.getBooksPerformanceReport();
+  }
+
+  @Roles('admin')
+  @Get('reports/reviews')
+  @ApiOperation({ summary: 'Get reviews report' })
+  async getReviewsReport() {
+    return this.booksService.getReviewsReport();
+  }
 
   @Public()
   @Get('public/collection-stats')
@@ -110,6 +136,13 @@ export class BooksController {
     const book = await this.booksService.findOne(id);
     return { message: 'Book retrieved successfully', data: book };
   }
+
+  @Get(':id/copies')
+  @ApiOperation({ summary: 'Get all copies of a book' })
+  async findCopies(@Param('id') id: string) {
+    const copies = await this.booksService.findCopiesByTitleId(id);
+    return { message: 'Book copies retrieved successfully', data: copies };
+  }
   
   @Public()
   @Get(':bookId/reviews')
@@ -152,6 +185,30 @@ export class BooksController {
   async updateStatus(@Param('id') id: string, @Body('status') status: string): Promise<{ message: string; data: Book }> {
     const book = await this.booksService.updateStatus(id, status);
     return { message: 'Book status updated successfully', data: book };
+  }
+
+  @Public()
+  @Patch('copies/:copyNumber/status')
+  @ApiOperation({ summary: 'Update book copy status' })
+  async updateCopyStatus(
+    @Param('copyNumber') copyNumber: string,
+    @Body('status') status: BookStatus,
+    @Body('condition') condition?: BookCondition
+  ) {
+    const copy = await this.booksService.updateCopyStatus(copyNumber, status, condition);
+    return { message: 'Book copy status updated successfully', data: copy };
+  }
+
+  @Public()
+  @Patch(':id/condition-quantity')
+  @ApiOperation({ summary: 'Update book damaged/lost quantities' })
+  async updateConditionQuantity(
+    @Param('id') id: string,
+    @Body('condition') condition: string,
+    @Body('change') change: number
+  ): Promise<{ message: string; data: Book }> {
+    const book = await this.booksService.updateConditionQuantity(id, condition, change);
+    return { message: 'Book condition quantity updated successfully', data: book };
   }
 
   @Delete(':id')
@@ -227,5 +284,4 @@ export class BooksController {
       throw new ForbiddenException(error.message);
     }
   }
-
 }

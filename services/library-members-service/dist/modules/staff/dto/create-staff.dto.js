@@ -51,8 +51,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "department", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Shift' }),
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ description: 'ID of the assigned shift' }),
+    (0, class_validator_1.IsMongoId)(),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "shift", void 0);
 __decorate([
@@ -83,4 +83,29 @@ __decorate([
     (0, class_validator_1.IsEnum)(staff_entity_1.StaffRole),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "role", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Staff designation', required: false, default: 'Staff' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "designation", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID Proof Type', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "idProofType", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID Proof Number', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "idProofNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Photo URL', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "photoUrl", void 0);
 //# sourceMappingURL=create-staff.dto.js.map

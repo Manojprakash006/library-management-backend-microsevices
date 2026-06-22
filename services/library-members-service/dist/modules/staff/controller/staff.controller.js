@@ -22,6 +22,7 @@ const staff_login_dto_1 = require("../dto/staff-login.dto");
 const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
 const roles_decorator_1 = require("../../../auth/guards/roles.decorator");
 const roles_guard_1 = require("../../../auth/guards/roles.guard");
+const public_decorator_1 = require("../../../auth/guards/public.decorator");
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;
@@ -74,6 +75,7 @@ let StaffController = class StaffController {
 };
 exports.StaffController = StaffController;
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Post)('login'),
     (0, swagger_1.ApiOperation)({ summary: 'Staff login' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),

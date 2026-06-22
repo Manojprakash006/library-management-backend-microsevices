@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const axios_1 = require("@nestjs/axios");
 const members_controller_1 = require("./controller/members.controller");
+const public_stats_controller_1 = require("./controller/public-stats.controller");
 const members_service_1 = require("./service/members.service");
 const member_entity_1 = require("./entities/member.entity");
 const activity_log_module_1 = require("../activity-log/activity-log.module");
@@ -26,7 +27,7 @@ exports.MembersModule = MembersModule = __decorate([
             activity_log_module_1.ActivityLogModule,
             staff_module_1.StaffModule,
         ],
-        controllers: [members_controller_1.MembersController],
+        controllers: [members_controller_1.MembersController, public_stats_controller_1.PublicStatsController],
         providers: [members_service_1.MembersService],
         exports: [members_service_1.MembersService],
     })

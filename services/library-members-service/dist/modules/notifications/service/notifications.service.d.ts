@@ -8,18 +8,21 @@ import { EmailService } from './email.service';
 import { NotificationsGateway } from '../gateway/notifications.gateway';
 import { WebPushService } from './web-push.service';
 import { PushSubscription } from '../schema/push-subscription.schema';
+import { LibraryConfigDocument } from '../../contact/entities/library-config.entity';
 export declare class NotificationsService {
     private notificationModel;
     private memberModel;
     private userModel;
     private pushSubscriptionModel;
+    private libraryConfigModel;
     private readonly emailService;
     private readonly notificationsGateway;
     private readonly httpService;
     private readonly webPushService;
     private readonly logger;
-    constructor(notificationModel: Model<NotificationDocument>, memberModel: Model<MemberDocument>, userModel: Model<UserDocument>, pushSubscriptionModel: Model<PushSubscription>, emailService: EmailService, notificationsGateway: NotificationsGateway, httpService: HttpService, webPushService: WebPushService);
+    constructor(notificationModel: Model<NotificationDocument>, memberModel: Model<MemberDocument>, userModel: Model<UserDocument>, pushSubscriptionModel: Model<PushSubscription>, libraryConfigModel: Model<LibraryConfigDocument>, emailService: EmailService, notificationsGateway: NotificationsGateway, httpService: HttpService, webPushService: WebPushService);
     private getBookDetails;
+    private getLibraryInfo;
     create(createNotificationDto: CreateNotificationDto): Promise<Notification>;
     getUnreadCount(memberId: string): Promise<number>;
     notifyAdmins(payload: {

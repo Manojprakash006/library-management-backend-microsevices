@@ -10,7 +10,7 @@ export declare class MemberAuthService {
     private emailService;
     constructor(memberModel: Model<Member>, jwtService: JwtService, emailService: EmailService);
     register(registerDto: MemberRegisterDto): Promise<{
-        token: any;
+        token: string;
         user: {
             id: import("mongoose").Types.ObjectId;
             email: string;
@@ -19,7 +19,7 @@ export declare class MemberAuthService {
         };
     }>;
     login(loginDto: MemberLoginDto): Promise<{
-        token: any;
+        token: string;
         user: {
             id: import("mongoose").Types.ObjectId;
             email: string;

@@ -143,4 +143,19 @@ export class NotificationsController {
 
     return { message: 'Subscribed to push notifications successfully' };
   }
+
+  @Public()
+  @Post('send-invoice-email')
+  @ApiOperation({ summary: 'Send invoice email with PDF attachment' })
+  async sendInvoiceEmail(@Body() payload: { 
+    email: string; 
+    memberName: string; 
+    invoiceId: string; 
+    pdfBase64: string 
+  }): Promise<{ message: string }> {
+    console.log(`Received request to send invoice email for ID: ${payload.invoiceId} to ${payload.email}`);
+    const pdfBuffer = Buffer.from(payload.pdfBase64, 'base64');
+    await this.notificationsService.sendInvoiceEmail(payload.email, payload.memberName, payload.invoiceId, pdfBuffer);
+    return { message: 'Invoice email sent successfully' };
+  }
 }

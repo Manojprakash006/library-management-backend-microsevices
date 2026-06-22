@@ -14,6 +14,12 @@ export enum IssueStatus {
   RETURNED = 'Returned',
 }
 
+export enum BookCondition {
+  GOOD = 'Good',
+  DAMAGED = 'Damaged',
+  LOST = 'Lost',
+}
+
 @Schema({ timestamps: true })
 export class IssueBook {
   @Prop({ unique: true, index: true, sparse: true })
@@ -21,6 +27,9 @@ export class IssueBook {
 
   @Prop({ type: Types.ObjectId, required: true, ref: 'Book' })
   bookId: Types.ObjectId;
+
+  @Prop({ type: String, required: true })
+  copyNumber: string; // The specific copy's ID (e.g. BK-1-C01)
 
   @Prop({ type: Types.ObjectId, required: true, ref: 'Member' })
   memberId: Types.ObjectId;
@@ -49,11 +58,23 @@ export class IssueBook {
   @Prop({ default: 0, min: 0 })
   fine: number;
 
+  @Prop({ default: 0, min: 0 })
+  overdueFine: number;
+
+  @Prop({ default: 0, min: 0 })
+  conditionFine: number;
+
   @Prop({ default: 10, min: 0 })
   finePerDay: number;
 
   @Prop({ default: 0 })
   renewCount: number;
+
+  @Prop({ type: String, enum: BookCondition, default: BookCondition.GOOD })
+  condition: BookCondition;
+
+  @Prop()
+  remarks: string;
 }
 
 export const IssueBookSchema = SchemaFactory.createForClass(IssueBook);

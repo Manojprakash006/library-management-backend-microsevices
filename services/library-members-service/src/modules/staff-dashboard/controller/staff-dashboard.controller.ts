@@ -167,4 +167,13 @@ export class StaffDashboardController {
     const result = await this.staffDashboardService.getTodaysIssues(authHeader);
     return { message: 'Today\'s book issues retrieved', count: result.length, data: result };
   }
+
+  @Get('recent-activities')
+  @Roles('staff')
+  @ApiOperation({ summary: 'Get recent activities' })
+  async getRecentActivities(@Request() req) {
+    const staffId = req.user?.sub || req.user?._id || req.user?.userId || req.user?.id;
+    const result = await this.staffDashboardService.getRecentActivities(staffId);
+    return { message: 'Recent activities retrieved successfully', data: result };
+  }
 }

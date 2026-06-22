@@ -8,7 +8,7 @@ export declare class MemberAuthController {
     register(registerDto: MemberRegisterDto): Promise<{
         message: string;
         data: {
-            token: any;
+            token: string;
             user: {
                 id: import("mongoose").Types.ObjectId;
                 email: string;
@@ -20,7 +20,7 @@ export declare class MemberAuthController {
     login(loginDto: MemberLoginDto): Promise<{
         message: string;
         data: {
-            token: any;
+            token: string;
             user: {
                 id: import("mongoose").Types.ObjectId;
                 email: string;

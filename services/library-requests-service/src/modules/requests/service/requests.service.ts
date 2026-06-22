@@ -4,9 +4,11 @@ import { Model, Types } from 'mongoose';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
-import { BookRequest, BookRequestDocument, RequestStatus } from '../entities/book-request.entity';
+import { BookRequest, BookRequestDocument, RequestStatus, RequestType } from '../entities/book-request.entity';
 import { CreateBookRequestDto } from '../dto/create-book-request.dto';
 import { RedisEmitterService } from '../../redis-emitter/redis-emitter.service';
+import { ApproveRequestDto } from '../dto/approve-request.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RequestsService {
@@ -16,11 +18,24 @@ export class RequestsService {
     @InjectModel(BookRequest.name) private bookRequestModel: Model<BookRequestDocument>,
     private readonly httpService: HttpService,
     private readonly redisEmitter: RedisEmitterService,
+    private readonly configService: ConfigService,
   ) { }
+
+  private getMembersServiceUrl(): string {
+    return this.configService.get('MEMBERS_SERVICE_URL') || 'http://localhost:3012';
+  }
+
+  private getIssuesServiceUrl(): string {
+    return this.configService.get('ISSUES_SERVICE_URL') || 'http://localhost:3013';
+  }
+
+  private getBooksServiceUrl(): string {
+    return this.configService.get('BOOKS_SERVICE_URL') || 'http://localhost:3001';
+  }
 
   private async logActivity(adminId: string, action: string, entityId: string, details: any) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
+      const membersServiceUrl = this.getMembersServiceUrl();
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/activities/logs`, {
           adminId,
@@ -37,7 +52,7 @@ export class RequestsService {
 
   private async sendNotification(memberId: string, type: string, title: string, message: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
+      const membersServiceUrl = this.getMembersServiceUrl();
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications`, {
           memberId,
@@ -53,7 +68,7 @@ export class RequestsService {
 
   private async notifyAdmins(type: string, title: string, message: string, issueId?: string) {
     try {
-      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || 'http://library-members-service:3012';
+      const membersServiceUrl = this.getMembersServiceUrl();
       await firstValueFrom(
         this.httpService.post(`${membersServiceUrl}/notifications/admin`, {
           type,
@@ -68,51 +83,112 @@ export class RequestsService {
   }
 
   async create(createDto: CreateBookRequestDto): Promise<BookRequest> {
-    // 1. Check if member already has a pending request for this book
 
-    // 1. Check if member already has a pending request for this book
-    const existingPendingRequest = await this.bookRequestModel.findOne({
+    const isBorrowRequest =
+      createDto.requestType === RequestType.TAKE_HOME ||
+      createDto.requestType === RequestType.READING_INSIDE_LIBRARY;
+
+    const existingRequests = await this.bookRequestModel.find({
       memberId: new Types.ObjectId(createDto.memberId),
       bookId: new Types.ObjectId(createDto.bookId),
-      status: RequestStatus.PENDING
     }).exec();
+      
+      const {
+        currentlyBorrowed,
+        totalHistory,
+        activeBookIds,
+      } = await this.getMemberBorrowingDetails(createDto.memberId);
+  
+      const alreadyBorrowed = activeBookIds.some(
+        (id) => id.toString() === createDto.bookId.toString()
+      );
 
-    if (existingPendingRequest) {
-      throw new ConflictException('You have already requested this book and it is pending approval.');
+    if (isBorrowRequest) {
+
+      // Already borrowed / issued
+      if (alreadyBorrowed) {
+        throw new ConflictException(
+          'You have already borrowed this book. Please return it before requesting again.'
+        );
+      }
+
+      // Pending request exists
+      const hasPendingRequest = existingRequests.some(
+        (req) => req.status === RequestStatus.PENDING
+      );
+
+      if (hasPendingRequest) {
+        throw new ConflictException(
+          'You already have a pending request for this book.'
+        );
+      }
+
+      // Approved but not yet issued
+      const hasApprovedRequest = existingRequests.some(
+        (req) => req.status === RequestStatus.APPROVED && !req.issueId
+      );
+
+      if (hasApprovedRequest) {
+        throw new ConflictException(
+          'Book request already approved. Please visit the library to collect the book.'
+        );
+      }
     }
 
-    // Fetch member borrowing statistics
-    const { currentlyBorrowed, totalHistory, activeBookIds } = await this.getMemberBorrowingDetails(createDto.memberId);
+    if (createDto.requestType === RequestType.RENEW) {
 
-    // 2. Check if member already has this book actively borrowed
-    const alreadyBorrowed = activeBookIds.some(id => id.toString() === createDto.bookId.toString());
-    if (alreadyBorrowed) {
-      throw new ConflictException('You have already borrowed this book. Please return it before requesting again.');
+      if (!alreadyBorrowed) {
+        throw new ConflictException(
+          'Renew request is only allowed for borrowed books.'
+        );
+      }
+
+      const existingRenewRequest =
+        await this.bookRequestModel.findOne({
+          issueId: createDto.issueId,
+          status: RequestStatus.RENEW_PENDING,
+        });
+
+      if (existingRenewRequest) {
+        throw new ConflictException(
+          'Renew request already pending'
+        );
+      }
     }
 
     const bookRequest = new this.bookRequestModel({
       ...createDto,
+
       bookId: new Types.ObjectId(createDto.bookId),
       memberId: new Types.ObjectId(createDto.memberId),
+
       requestDate: createDto.requestDate || new Date(),
-      status: RequestStatus.PENDING,
+
+      status:
+        createDto.requestType === RequestType.RENEW
+          ? RequestStatus.RENEW_PENDING
+          : RequestStatus.PENDING,
+
       currentlyBorrowed,
       totalHistory,
     });
 
     const savedRequest = await bookRequest.save();
 
-    // Notify admins about the new request
     await this.notifyAdmins(
       'NEW_BOOK_REQUEST',
       'New Book Request Received',
       `A new request has been placed for Book ID: ${createDto.bookId} by Member ID: ${createDto.memberId}.`,
-      createDto.bookId // Pass bookId as issueId for enrichment
+      createDto.bookId
     );
 
-    // Emit real-time event
     await this.redisEmitter.emit('REQUEST_CREATED', savedRequest);
-    await this.redisEmitter.emit('REQUESTS_UPDATED', { type: 'create', request: savedRequest });
+
+    await this.redisEmitter.emit('REQUESTS_UPDATED', {
+      type: 'create',
+      request: savedRequest,
+    });
+
     await this.invalidatePendingCountCache();
 
     return savedRequest;
@@ -120,7 +196,7 @@ export class RequestsService {
 
   private async getMemberBorrowingDetails(memberId: string): Promise<{ currentlyBorrowed: number; totalHistory: number; activeBookIds: Types.ObjectId[]; booklistBorrowed: string[] }> {
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+      const issuesServiceUrl = this.getIssuesServiceUrl();
 
       // Get all issues for this member from issues service
       const response: AxiosResponse<any> = await firstValueFrom(
@@ -163,7 +239,7 @@ export class RequestsService {
     if (status) {
       const statuses = status.split(',').map(s => s.trim());
       // Use case-insensitive regex for each status to be 100% sure
-      query.status = { $in: statuses.map(s => new RegExp(`^${s}$`, 'i')) };
+      query.status = { $in: statuses.map(s => new RegExp(s, 'i')) };
     }
     
     if (search) {
@@ -185,7 +261,7 @@ export class RequestsService {
     let bulkStats: Record<string, any> = {};
     
     try {
-      const issuesServiceUrl = process.env.ISSUES_SERVICE_URL || 'http://library-issues-service:3013';
+      const issuesServiceUrl = this.getIssuesServiceUrl();
       const response = await firstValueFrom(
         this.httpService.post(`${issuesServiceUrl}/issues/batch-stats`, { memberIds })
       );
@@ -233,7 +309,7 @@ export class RequestsService {
         }
 
         try {
-          const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+          const bookServiceURL = this.getBooksServiceUrl();
           const bookResponse = await firstValueFrom(
             this.httpService.get(`${bookServiceURL}/books/${bookId}`)
           );
@@ -245,7 +321,7 @@ export class RequestsService {
           };
 
         } catch (error) {
-          console.log("❌ BOOK FETCH FAILED:", error.message);
+          console.log("BOOK FETCH FAILED:", error.message);
 
           return {
             ...req,
@@ -257,6 +333,27 @@ export class RequestsService {
 
 
     return enriched;
+  }
+
+  async linkIssue(body: {
+    memberId: string;
+    bookId: string;
+    issueId: string;
+  }) {
+
+    const request = await this.bookRequestModel.findOne({
+      memberId: new Types.ObjectId(body.memberId),
+      bookId: new Types.ObjectId(body.bookId),
+      status: RequestStatus.APPROVED,
+    }).sort({ createdAt: -1 });
+
+    if (!request) {
+      return null;
+    }
+
+    request.issueId = body.issueId;
+
+    return await request.save();
   }
 
   async findOne(id: string): Promise<BookRequest> {
@@ -273,7 +370,7 @@ export class RequestsService {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be updated');
     }
 
@@ -301,39 +398,63 @@ export class RequestsService {
     return request.save();
   }
 
-  async approve(id: string, adminId?: string): Promise<BookRequest> {
+  async approve(id: string, adminId?: string, approveDto?: ApproveRequestDto): Promise<BookRequest> {
+
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be approved');
+    }
+    if (request.requestType === 'RENEW') {
+
+      const renewDays = approveDto?.renewDays ?? request.renewDays ?? 7;
+
+      const issueServiceURL =
+        process.env.ISSUES_SERVICE_URL ||
+        'http://library-issues-service:3013';
+
+      try {
+        await firstValueFrom(
+          this.httpService.put(
+            `${issueServiceURL}/issues/renew/${request.issueId}`, { renewDays}
+          )
+        );
+      } catch (error) {
+        console.log('RENEW FAILED :', error.response?.data || error.message);
+        throw new BadRequestException('Renew Failed');
+      }
+
+
+      request.renewDays = renewDays;
     }
 
     request.status = RequestStatus.APPROVED;
     request.processedDate = new Date();
     const savedRequest = await request.save();
 
-    const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || "http://library-members-service:3012";
+    if (request.requestType !== 'RENEW') {
+      const membersServiceUrl = process.env.MEMBERS_SERVICE_URL || "http://library-members-service:3012";
 
-    try {
-      await firstValueFrom(
-        this.httpService.post(
-          `${membersServiceUrl}/members/${request.memberId}/borrow`,
-          {
-            bookId: request.bookId.toString(),
-            issueId: request._id.toString(),
-            borrowedAt: new Date(),
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            status: 'borrowed',
-          }
-        )
-      );
-    } catch (error) {
-      this.logger.error(`Failed to update borrowing history: ${error.message}`);
+      try {
+        await firstValueFrom(
+          this.httpService.post(
+            `${membersServiceUrl}/members/${request.memberId}/borrow`,
+            {
+              bookId: request.bookId.toString(),
+              issueId: request._id.toString(),
+              borrowedAt: new Date(),
+              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+              status: 'borrowed',
+            }
+          )
+        );
+      } catch (error) {
+        this.logger.error(`Failed to update borrowing history: ${error.message}`);
+      }
     }
-
     if (adminId) {
       this.logActivity(adminId, 'APPROVE', id, { bookId: request.bookId, memberId: request.memberId });
     }
@@ -341,14 +462,13 @@ export class RequestsService {
     // Fetch book details for notification
     let bookTitle = 'Book';
     try {
-      const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+      const bookServiceURL = this.getBooksServiceUrl();
       const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
       bookTitle = bookRes.data?.data?.title || 'Book';
     } catch (e) {
       this.logger.error(`Failed to fetch book title for approval notification: ${e.message}`);
     }
 
-    // Send notification to member (fire and forget)
     this.sendNotification(
       request.memberId.toString(),
       'REQUEST_APPROVED',
@@ -364,13 +484,29 @@ export class RequestsService {
     return savedRequest;
   }
 
+  async markRequestAsReturned(issueId: string) {
+
+    const request = await this.bookRequestModel.findOne({
+      issueId,
+      status: RequestStatus.APPROVED,
+    });
+
+    if (!request) {
+      return null;
+    }
+
+    request.status = RequestStatus.RETURNED;
+    const save =  await request.save();
+    return save;
+  }
+
   async reject(id: string, adminId?: string): Promise<BookRequest> {
     const request = await this.bookRequestModel.findById(id).exec();
     if (!request) {
       throw new NotFoundException('Book request not found');
     }
 
-    if (request.status !== RequestStatus.PENDING) {
+    if (!/pending/i.test(request.status)) {
       throw new BadRequestException('Only pending requests can be rejected');
     }
 
@@ -385,7 +521,7 @@ export class RequestsService {
     // Fetch book details for notification
     let bookTitle = 'Book';
     try {
-      const bookServiceURL = process.env.BOOKS_SERVICE_URL || "http://library-books-service:3001";
+      const bookServiceURL = this.getBooksServiceUrl();
       const bookRes = await firstValueFrom(this.httpService.get(`${bookServiceURL}/books/${request.bookId}`));
       bookTitle = bookRes.data?.data?.title || 'Book';
     } catch (e) {
@@ -427,7 +563,9 @@ export class RequestsService {
       this.logger.error(`Redis cache get error: ${e.message}`);
     }
 
-    const count = await this.bookRequestModel.countDocuments({ status: RequestStatus.PENDING }).exec();
+    const count = await this.bookRequestModel.countDocuments({ 
+      status: { $regex: /pending/i } 
+    }).exec();
     
     try {
       // Cache for 5 minutes
@@ -445,5 +583,10 @@ export class RequestsService {
     } catch (e) {
       this.logger.error(`Redis cache invalidate error: ${e.message}`);
     }
+  }
+
+  async getRequestsReport() {
+    const requests = await this.bookRequestModel.find().lean().exec();
+    return requests;
   }
 }
