@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@nestjs/mongoose": "^11.0.4",
+    "@nestjs/swagger": "github:nestjs/swagger",
     "@nestjs/testing": "^11.1.17"
   }
 }

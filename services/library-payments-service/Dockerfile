@@ -1,26 +1,13 @@
 FROM node:20-alpine
 
-# Install Chromium and dependencies for Puppeteer
-RUN apk add --no-cache \
-      chromium \
-      nss \
-      freetype \
-      harfbuzz \
-      ca-certificates \
-      ttf-freefont
-
-# Tell Puppeteer to skip downloading Chromium and use the system-installed one
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --include=dev
+RUN npm ci
 
 COPY . .
+
 RUN npm run build
- RUN npm ci
 
 RUN npm prune --production
 
@@ -29,4 +16,4 @@ RUN npm prune --production
 
 EXPOSE 3005
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]
